@@ -37,4 +37,14 @@ Start infrastructure if needed:
 docker compose up -d
 ```
 
+## Run API (Local)
+
+```
+pnpm install
+pnpm -C packages/db generate
+pnpm api:dev
+```
+
+API endpoints are served at `http://localhost:3000` (health check: `GET /health`).
+
 Refer to AGENTS.md for development rules and architecture decisions.
