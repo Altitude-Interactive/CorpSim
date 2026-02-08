@@ -2,6 +2,7 @@ export * from "./domain/errors";
 export * from "./domain/reservations";
 export * from "./services/market-orders";
 export * from "./services/market-matching";
+export * from "./services/market-candles";
 export * from "./services/invariants";
 export * from "./services/read-models";
 export * from "./services/players";

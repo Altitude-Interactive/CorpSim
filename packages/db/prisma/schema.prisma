@@ -101,6 +101,7 @@ model Item {
   inventories       Inventory[]
   orders            MarketOrder[]
   trades            Trade[]
+  candles           ItemTickCandle[]
   outputRecipes     Recipe[]     @relation("RecipeOutput")
   recipeInputs      RecipeInput[]
   contracts         Contract[]
@@ -367,4 +368,23 @@ model LedgerEntry {
   company           Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId, tick])
+}
+
+model ItemTickCandle {
+  id          String   @id @default(cuid())
+  itemId      String
+  tick        Int
+  openCents   BigInt
+  highCents   BigInt
+  lowCents    BigInt
+  closeCents  BigInt
+  volumeQty   Int
+  tradeCount  Int
+  vwapCents   BigInt?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, tick])
+  @@index([itemId, tick])
 }

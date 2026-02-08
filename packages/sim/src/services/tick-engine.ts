@@ -5,6 +5,7 @@ import {
   ContractLifecycleConfig,
   runContractLifecycleForTick
 } from "./contracts";
+import { upsertMarketCandlesForTick } from "./market-candles";
 import { runMarketMatchingForTick } from "./market-matching";
 import { completeDueProductionJobs } from "./production";
 import { completeDueResearchJobs } from "./research";
@@ -80,8 +81,9 @@ export async function advanceSimulationTicks(
       // 2) production completions
       // 3) research completions and recipe unlocks
       // 4) market matching and settlement
-      // 5) contract lifecycle (expire and generate)
-      // 6) finalize world tick state
+      // 5) market candle aggregation (OHLC/VWAP/volume)
+      // 6) contract lifecycle (expire and generate)
+      // 7) finalize world tick state
       if (options.runBots) {
         await runBotsForTick(tx, nextTick, options.botConfig);
       }
@@ -90,6 +92,7 @@ export async function advanceSimulationTicks(
       await completeDueResearchJobs(tx, nextTick);
       // Matching runs in tick processing, not in request path.
       await runMarketMatchingForTick(tx, nextTick);
+      await upsertMarketCandlesForTick(tx, nextTick);
       await runContractLifecycleForTick(tx, nextTick, options.contractConfig);
 
       const result = await tx.worldTickState.updateMany({

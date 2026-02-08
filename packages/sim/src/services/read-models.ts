@@ -21,6 +21,32 @@ export interface MarketTradeFilters {
   limit?: number;
 }
 
+export interface MarketCandleFilters {
+  itemId: string;
+  fromTick?: number;
+  toTick?: number;
+  limit?: number;
+}
+
+export interface MarketAnalyticsSummaryInput {
+  itemId: string;
+  windowTicks?: number;
+}
+
+export interface MarketAnalyticsSummaryOutput {
+  itemId: string;
+  fromTick: number;
+  toTick: number;
+  candleCount: number;
+  lastPriceCents: bigint | null;
+  changePctBps: number | null;
+  highCents: bigint | null;
+  lowCents: bigint | null;
+  avgVolumeQty: number;
+  totalVolumeQty: number;
+  vwapCents: bigint | null;
+}
+
 export interface ProductionJobFilters {
   companyId?: string;
   status?: ProductionJobStatus;
@@ -268,6 +294,195 @@ export async function listMarketTrades(
       createdAt: true
     }
   });
+}
+
+export async function listMarketCandles(
+  prisma: PrismaClient,
+  filters: MarketCandleFilters
+) {
+  if (!filters.itemId) {
+    throw new DomainInvariantError("itemId is required");
+  }
+
+  const limit = filters.limit ?? 200;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 2000) {
+    throw new DomainInvariantError("limit must be an integer between 1 and 2000");
+  }
+
+  if (filters.fromTick !== undefined && (!Number.isInteger(filters.fromTick) || filters.fromTick < 0)) {
+    throw new DomainInvariantError("fromTick must be a non-negative integer");
+  }
+  if (filters.toTick !== undefined && (!Number.isInteger(filters.toTick) || filters.toTick < 0)) {
+    throw new DomainInvariantError("toTick must be a non-negative integer");
+  }
+  if (
+    filters.fromTick !== undefined &&
+    filters.toTick !== undefined &&
+    filters.fromTick > filters.toTick
+  ) {
+    throw new DomainInvariantError("fromTick cannot be greater than toTick");
+  }
+
+  const itemExists = await prisma.item.findUnique({
+    where: { id: filters.itemId },
+    select: { id: true }
+  });
+
+  if (!itemExists) {
+    throw new NotFoundError(`item ${filters.itemId} not found`);
+  }
+
+  const rows = await prisma.itemTickCandle.findMany({
+    where: {
+      itemId: filters.itemId,
+      tick: {
+        gte: filters.fromTick,
+        lte: filters.toTick
+      }
+    },
+    orderBy: [{ tick: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      itemId: true,
+      tick: true,
+      openCents: true,
+      highCents: true,
+      lowCents: true,
+      closeCents: true,
+      volumeQty: true,
+      tradeCount: true,
+      vwapCents: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
+
+  return rows.reverse();
+}
+
+export async function getMarketAnalyticsSummary(
+  prisma: PrismaClient,
+  input: MarketAnalyticsSummaryInput
+): Promise<MarketAnalyticsSummaryOutput> {
+  if (!input.itemId) {
+    throw new DomainInvariantError("itemId is required");
+  }
+
+  const windowTicks = input.windowTicks ?? 200;
+  if (!Number.isInteger(windowTicks) || windowTicks < 1 || windowTicks > 10_000) {
+    throw new DomainInvariantError("windowTicks must be an integer between 1 and 10000");
+  }
+
+  const [item, world] = await Promise.all([
+    prisma.item.findUnique({
+      where: { id: input.itemId },
+      select: { id: true }
+    }),
+    prisma.worldTickState.findUnique({
+      where: { id: 1 },
+      select: { currentTick: true }
+    })
+  ]);
+
+  if (!item) {
+    throw new NotFoundError(`item ${input.itemId} not found`);
+  }
+
+  const toTick = world?.currentTick ?? 0;
+  const fromTick = Math.max(0, toTick - windowTicks + 1);
+
+  const candles = await prisma.itemTickCandle.findMany({
+    where: {
+      itemId: input.itemId,
+      tick: {
+        gte: fromTick,
+        lte: toTick
+      }
+    },
+    orderBy: [{ tick: "asc" }],
+    select: {
+      tick: true,
+      openCents: true,
+      highCents: true,
+      lowCents: true,
+      closeCents: true,
+      volumeQty: true,
+      vwapCents: true
+    }
+  });
+
+  if (candles.length === 0) {
+    return {
+      itemId: input.itemId,
+      fromTick,
+      toTick,
+      candleCount: 0,
+      lastPriceCents: null,
+      changePctBps: null,
+      highCents: null,
+      lowCents: null,
+      avgVolumeQty: 0,
+      totalVolumeQty: 0,
+      vwapCents: null
+    };
+  }
+
+  const first = candles[0];
+  const last = candles[candles.length - 1];
+
+  if (!first || !last) {
+    throw new DomainInvariantError("candle sequence unexpectedly empty");
+  }
+
+  let high = first.highCents;
+  let low = first.lowCents;
+  let totalVolumeQty = 0;
+  let weightedNotional = 0n;
+
+  for (const candle of candles) {
+    if (candle.highCents > high) {
+      high = candle.highCents;
+    }
+    if (candle.lowCents < low) {
+      low = candle.lowCents;
+    }
+
+    totalVolumeQty += candle.volumeQty;
+    if (candle.vwapCents !== null && candle.volumeQty > 0) {
+      weightedNotional += candle.vwapCents * BigInt(candle.volumeQty);
+    }
+  }
+
+  const avgVolumeQty = Math.round(totalVolumeQty / candles.length);
+  const vwapCents =
+    totalVolumeQty > 0
+      ? (weightedNotional + BigInt(Math.floor(totalVolumeQty / 2))) / BigInt(totalVolumeQty)
+      : null;
+
+  let changePctBps: number | null = null;
+  if (first.openCents > 0n) {
+    const numerator = (last.closeCents - first.openCents) * 10_000n;
+    const rounded =
+      numerator >= 0n
+        ? (numerator + first.openCents / 2n) / first.openCents
+        : (numerator - first.openCents / 2n) / first.openCents;
+    changePctBps = Number(rounded);
+  }
+
+  return {
+    itemId: input.itemId,
+    fromTick,
+    toTick,
+    candleCount: candles.length,
+    lastPriceCents: last.closeCents,
+    changePctBps,
+    highCents: high,
+    lowCents: low,
+    avgVolumeQty,
+    totalVolumeQty,
+    vwapCents
+  };
 }
 
 export async function listItems(prisma: PrismaClient) {
