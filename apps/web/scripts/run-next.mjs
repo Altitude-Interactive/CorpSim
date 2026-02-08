@@ -25,7 +25,7 @@ function loadEnvironment() {
   }
 }
 
-function readPort(): string {
+function readPort() {
   const raw = process.env.WEB_PORT ?? process.env.PORT;
   if (!raw) {
     throw new Error("WEB_PORT or PORT environment variable is required");
