@@ -1,0 +1,2 @@
+- Architecture / coding rules → docs/agents/AGENTS.md
+- UI design system → docs/design/DESIGN_GUIDELINES.md

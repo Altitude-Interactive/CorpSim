@@ -1,0 +1,14 @@
+{
+  "name": "corpsim",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo Use app-specific dev commands",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo No tests yet"
+  }
+}

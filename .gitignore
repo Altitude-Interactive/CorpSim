@@ -1,0 +1,91 @@
+#######################################
+# Node / TypeScript
+#######################################
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+#######################################
+# Environment / Secrets
+#######################################
+.env
+.env.*
+!.env.example
+!.env.sample
+
+#######################################
+# Logs
+#######################################
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+#######################################
+# OS / Editor junk
+#######################################
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+#######################################
+# Prisma / Database
+#######################################
+prisma/dev.db
+prisma/*.db
+*.sqlite
+
+#######################################
+# Docker / Deployment
+#######################################
+docker-data/
+*.pid
+*.seed
+
+#######################################
+# Testing / Reports
+#######################################
+coverage/
+test-results/
+playwright-report/
+
+#######################################
+# Misc build artifacts
+#######################################
+tmp/
+temp/
+.cache/
+.eslintcache
+
+#######################################
+# Frontend assets build
+#######################################
+apps/web/.next/
+apps/web/out/
+apps/web/build/
+
+#######################################
+# Backend builds
+#######################################
+apps/api/dist/
+apps/worker/dist/
+
+#######################################
+# Optional: local docs/build exports
+#######################################
+docs/.cache/
