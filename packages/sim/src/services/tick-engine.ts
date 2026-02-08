@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient, ProductionJobStatus } from "@prisma/client";
-import { DomainInvariantError } from "../domain/errors";
+import { DomainInvariantError, OptimisticLockConflictError } from "../domain/errors";
 
 interface WorldState {
   id: number;
@@ -110,7 +110,7 @@ export async function advanceSimulationTicks(
       });
 
       if (result.count !== 1) {
-        throw new DomainInvariantError(
+        throw new OptimisticLockConflictError(
           "world tick state changed during tick advance; retry operation"
         );
       }

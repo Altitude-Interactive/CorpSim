@@ -12,6 +12,13 @@ export class NotFoundError extends DomainInvariantError {
   }
 }
 
+export class OptimisticLockConflictError extends DomainInvariantError {
+  constructor(message: string) {
+    super(message);
+    this.name = "OptimisticLockConflictError";
+  }
+}
+
 export class InsufficientFundsError extends DomainInvariantError {
   constructor(message: string) {
     super(message);
