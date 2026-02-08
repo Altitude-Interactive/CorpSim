@@ -45,7 +45,7 @@ services:
     command: ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema", "packages/db/prisma/schema.prisma"]
     restart: "no"
     environment:
-      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-corpsim}
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,7 +69,7 @@ services:
     command: ["pnpm", "-C", "packages/db", "seed"]
     restart: "no"
     environment:
-      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-corpsim}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -96,7 +96,7 @@ services:
       NODE_ENV: production
       API_PORT: ${API_PORT:-4310}
       PORT: ${API_PORT:-4310}
-      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-corpsim}
       REDIS_HOST: ${PREVIEW_REDIS_HOST:-redis}
       REDIS_PORT: ${PREVIEW_REDIS_PORT:-6379}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${WEB_PUBLIC_PORT:-4311}}
@@ -140,7 +140,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-corpsim}
       REDIS_HOST: ${PREVIEW_REDIS_HOST:-redis}
       REDIS_PORT: ${PREVIEW_REDIS_PORT:-6379}
       TICK_INTERVAL_MS: ${TICK_INTERVAL_MS:-60000}
