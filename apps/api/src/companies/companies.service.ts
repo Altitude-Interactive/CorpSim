@@ -39,7 +39,10 @@ export class CompaniesService {
     }));
   }
 
-  async getCompany(companyId: string) {
+  async getCompany(companyId: string, playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
+
     const company = await getCompanyById(this.prisma, companyId);
 
     return {

@@ -17,8 +17,11 @@ export class CompaniesController {
   }
 
   @Get(":id")
-  async getOne(@Param() params: CompanyParamDto) {
-    return this.companiesService.getCompany(params.id);
+  async getOne(
+    @Param() params: CompanyParamDto,
+    @CurrentPlayerHandle() playerHandle: string
+  ) {
+    return this.companiesService.getCompany(params.id, playerHandle);
   }
 
   @Get(":id/inventory")
