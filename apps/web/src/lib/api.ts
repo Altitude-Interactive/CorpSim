@@ -119,6 +119,42 @@ export interface MarketTradeFilters {
   limit?: number;
 }
 
+export interface MarketCandle {
+  id: string;
+  itemId: string;
+  tick: number;
+  openCents: string;
+  highCents: string;
+  lowCents: string;
+  closeCents: string;
+  volumeQty: number;
+  tradeCount: number;
+  vwapCents: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MarketCandleFilters {
+  itemId: string;
+  fromTick?: number;
+  toTick?: number;
+  limit?: number;
+}
+
+export interface MarketAnalyticsSummary {
+  itemId: string;
+  fromTick: number;
+  toTick: number;
+  candleCount: number;
+  lastPriceCents: string | null;
+  changePctBps: number | null;
+  highCents: string | null;
+  lowCents: string | null;
+  avgVolumeQty: number;
+  totalVolumeQty: number;
+  vwapCents: string | null;
+}
+
 export interface ItemCatalogItem {
   id: string;
   code: string;
@@ -615,6 +651,49 @@ function parseMarketTrade(value: unknown): MarketTrade {
   };
 }
 
+function parseMarketCandle(value: unknown): MarketCandle {
+  if (!isRecord(value)) {
+    throw new Error("Invalid market candle");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    itemId: readString(value.itemId, "itemId"),
+    tick: readNumber(value.tick, "tick"),
+    openCents: readString(value.openCents, "openCents"),
+    highCents: readString(value.highCents, "highCents"),
+    lowCents: readString(value.lowCents, "lowCents"),
+    closeCents: readString(value.closeCents, "closeCents"),
+    volumeQty: readNumber(value.volumeQty, "volumeQty"),
+    tradeCount: readNumber(value.tradeCount, "tradeCount"),
+    vwapCents: value.vwapCents === null ? null : readString(value.vwapCents, "vwapCents"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt")
+  };
+}
+
+function parseMarketAnalyticsSummary(value: unknown): MarketAnalyticsSummary {
+  if (!isRecord(value)) {
+    throw new Error("Invalid market analytics summary");
+  }
+
+  return {
+    itemId: readString(value.itemId, "itemId"),
+    fromTick: readNumber(value.fromTick, "fromTick"),
+    toTick: readNumber(value.toTick, "toTick"),
+    candleCount: readNumber(value.candleCount, "candleCount"),
+    lastPriceCents:
+      value.lastPriceCents === null ? null : readString(value.lastPriceCents, "lastPriceCents"),
+    changePctBps:
+      value.changePctBps === null ? null : readNumber(value.changePctBps, "changePctBps"),
+    highCents: value.highCents === null ? null : readString(value.highCents, "highCents"),
+    lowCents: value.lowCents === null ? null : readString(value.lowCents, "lowCents"),
+    avgVolumeQty: readNumber(value.avgVolumeQty, "avgVolumeQty"),
+    totalVolumeQty: readNumber(value.totalVolumeQty, "totalVolumeQty"),
+    vwapCents: value.vwapCents === null ? null : readString(value.vwapCents, "vwapCents")
+  };
+}
+
 function parseItemCatalogItem(value: unknown): ItemCatalogItem {
   if (!isRecord(value)) {
     throw new Error("Invalid item catalog row");
@@ -1045,6 +1124,36 @@ export async function listMarketTrades(filters: MarketTradeFilters): Promise<Mar
   return fetchJson(`/v1/market/trades${query ? `?${query}` : ""}`, (value) =>
     readArray(value, "marketTrades").map(parseMarketTrade)
   );
+}
+
+export async function listMarketCandles(filters: MarketCandleFilters): Promise<MarketCandle[]> {
+  const params = new URLSearchParams();
+  params.set("itemId", filters.itemId);
+
+  if (filters.fromTick !== undefined) {
+    params.set("fromTick", String(filters.fromTick));
+  }
+  if (filters.toTick !== undefined) {
+    params.set("toTick", String(filters.toTick));
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+
+  return fetchJson(`/v1/market/candles?${params.toString()}`, (value) =>
+    readArray(value, "marketCandles").map(parseMarketCandle)
+  );
+}
+
+export async function getMarketAnalyticsSummary(
+  itemId: string,
+  windowTicks = 200
+): Promise<MarketAnalyticsSummary> {
+  const params = new URLSearchParams();
+  params.set("itemId", itemId);
+  params.set("windowTicks", String(windowTicks));
+
+  return fetchJson(`/v1/market/analytics/summary?${params.toString()}`, parseMarketAnalyticsSummary);
 }
 
 export async function listItems(): Promise<ItemCatalogItem[]> {

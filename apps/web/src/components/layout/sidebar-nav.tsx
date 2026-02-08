@@ -10,6 +10,7 @@ import {
   FlaskConical,
   Globe,
   LayoutDashboard,
+  LineChart,
   PackageSearch,
   TrendingUp
 } from "lucide-react";
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/inventory", label: "Inventory", icon: PackageSearch },
   { href: "/contracts", label: "Contracts", icon: ClipboardList },
   { href: "/finance", label: "Finance", icon: CircleDollarSign },
+  { href: "/analytics", label: "Analytics", icon: LineChart },
   { href: "/world", label: "World", icon: Globe }
 ];
 
