@@ -18,6 +18,7 @@ coverage/
 #######################################
 .env
 .env.*
+.env.preview
 !.env.example
 !.env.sample
 

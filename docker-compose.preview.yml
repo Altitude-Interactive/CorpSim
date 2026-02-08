@@ -1,0 +1,134 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-corpsim}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-corpsim}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    command: ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema", "packages/db/prisma/schema.prisma"]
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${API_PORT:-4310}
+      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      REDIS_HOST: ${PREVIEW_REDIS_HOST:-redis}
+      REDIS_PORT: ${PREVIEW_REDIS_PORT:-6379}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${WEB_PUBLIC_PORT:-4311}}
+      SHIPMENT_BASE_FEE_CENTS: ${SHIPMENT_BASE_FEE_CENTS:-250}
+      SHIPMENT_FEE_PER_UNIT_CENTS: ${SHIPMENT_FEE_PER_UNIT_CENTS:-15}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${API_PUBLIC_PORT:-4310}:${API_PORT:-4310}"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${API_PORT:-4310}/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      REDIS_HOST: ${PREVIEW_REDIS_HOST:-redis}
+      REDIS_PORT: ${PREVIEW_REDIS_PORT:-6379}
+      TICK_INTERVAL_MS: ${TICK_INTERVAL_MS:-60000}
+      SIMULATION_SPEED: ${SIMULATION_SPEED:-1}
+      MAX_TICKS_PER_RUN: ${MAX_TICKS_PER_RUN:-10}
+      INVARIANTS_CHECK_EVERY_TICKS: ${INVARIANTS_CHECK_EVERY_TICKS:-10}
+      ON_INVARIANT_VIOLATION: ${ON_INVARIANT_VIOLATION:-log_only}
+      BOT_ENABLED: ${BOT_ENABLED:-true}
+      BOT_COUNT: ${BOT_COUNT:-25}
+      BOT_ITEMS: ${BOT_ITEMS:-}
+      BOT_SPREAD_BPS: ${BOT_SPREAD_BPS:-500}
+      BOT_MAX_NOTIONAL_PER_TICK_CENTS: ${BOT_MAX_NOTIONAL_PER_TICK_CENTS:-50000}
+      BOT_PRODUCER_CADENCE_TICKS: ${BOT_PRODUCER_CADENCE_TICKS:-3}
+      BOT_PRODUCER_MIN_PROFIT_BPS: ${BOT_PRODUCER_MIN_PROFIT_BPS:-0}
+      CONTRACTS_PER_TICK: ${CONTRACTS_PER_TICK:-2}
+      CONTRACT_TTL_TICKS: ${CONTRACT_TTL_TICKS:-50}
+      CONTRACT_ITEM_CODES: ${CONTRACT_ITEM_CODES:-}
+      CONTRACT_PRICE_BAND_BPS: ${CONTRACT_PRICE_BAND_BPS:-500}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${WEB_PORT:-4311}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:${API_PUBLIC_PORT:-4310}}
+      NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS: ${NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS:-250}
+      NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS: ${NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS:-15}
+    command: ["sh", "-lc", "pnpm -C apps/web exec next start -p $$PORT"]
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PUBLIC_PORT:-4311}:${WEB_PORT:-4311}"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${WEB_PORT:-4311}').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:
+  redisdata:
