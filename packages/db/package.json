@@ -2,9 +2,9 @@
   "name": "@corpsim/db",
   "private": true,
   "scripts": {
-    "generate": "prisma generate --schema prisma/schema.prisma",
-    "migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
-    "migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "generate": "dotenv -e ../../.env -- prisma generate --schema prisma/schema.prisma",
+    "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev --schema prisma/schema.prisma",
+    "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy --schema prisma/schema.prisma",
     "seed": "tsx seed.ts"
   }
 }

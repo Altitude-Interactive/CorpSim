@@ -42,6 +42,8 @@ docker compose up -d
 ```
 pnpm install
 pnpm -C packages/db generate
+pnpm -C packages/db migrate:deploy
+pnpm sim:reset
 pnpm api:dev
 ```
 
