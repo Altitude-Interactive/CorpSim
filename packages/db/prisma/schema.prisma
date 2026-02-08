@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  OPEN
+  FILLED
+  CANCELLED
+}
+
+enum ProductionJobStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum LedgerEntryType {
+  ORDER_RESERVE
+  TRADE_SETTLEMENT
+  PRODUCTION_COST
+  MANUAL_ADJUSTMENT
+}
+
+model Company {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  name              String
+  isPlayer          Boolean      @default(false)
+  cashCents         BigInt
+  reservedCashCents BigInt       @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  inventories       Inventory[]
+  orders            MarketOrder[]
+  productionJobs    ProductionJob[]
+  ledgerEntries     LedgerEntry[]
+  buyTrades         Trade[]      @relation("TradeBuyerCompany")
+  sellTrades        Trade[]      @relation("TradeSellerCompany")
+}
+
+model Item {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  name              String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  inventories       Inventory[]
+  orders            MarketOrder[]
+  trades            Trade[]
+  outputRecipes     Recipe[]     @relation("RecipeOutput")
+  recipeInputs      RecipeInput[]
+}
+
+model Inventory {
+  companyId         String
+  itemId            String
+  quantity          Int          @default(0)
+  reservedQuantity  Int          @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, itemId])
+  @@index([companyId])
+  @@index([itemId])
+}
+
+model MarketOrder {
+  id                String       @id @default(cuid())
+  companyId         String
+  itemId            String
+  side              OrderSide
+  status            OrderStatus  @default(OPEN)
+  quantity          Int
+  remainingQuantity Int
+  unitPriceCents    BigInt
+  reservedCashCents BigInt       @default(0)
+  reservedQuantity  Int          @default(0)
+  tickPlaced        Int
+  tickClosed        Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  closedAt          DateTime?
+  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  buyTrades         Trade[]      @relation("TradeBuyOrder")
+  sellTrades        Trade[]      @relation("TradeSellOrder")
+
+  @@index([itemId, side, status, unitPriceCents, createdAt])
+  @@index([companyId, status])
+}
+
+model Trade {
+  id                String       @id @default(cuid())
+  buyOrderId        String
+  sellOrderId       String
+  buyerCompanyId    String
+  sellerCompanyId   String
+  itemId            String
+  quantity          Int
+  unitPriceCents    BigInt
+  totalPriceCents   BigInt
+  tick              Int
+  createdAt         DateTime     @default(now())
+  buyOrder          MarketOrder  @relation("TradeBuyOrder", fields: [buyOrderId], references: [id], onDelete: Cascade)
+  sellOrder         MarketOrder  @relation("TradeSellOrder", fields: [sellOrderId], references: [id], onDelete: Cascade)
+  buyerCompany      Company      @relation("TradeBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Cascade)
+  sellerCompany     Company      @relation("TradeSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: Cascade)
+  item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId, tick])
+  @@index([buyerCompanyId, tick])
+  @@index([sellerCompanyId, tick])
+}
+
+model Recipe {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  name              String
+  durationTicks     Int
+  outputItemId      String
+  outputQuantity    Int
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  outputItem        Item         @relation("RecipeOutput", fields: [outputItemId], references: [id], onDelete: Restrict)
+  inputs            RecipeInput[]
+  jobs              ProductionJob[]
+}
+
+model RecipeInput {
+  recipeId          String
+  itemId            String
+  quantity          Int
+  recipe            Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  item              Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@id([recipeId, itemId])
+}
+
+model ProductionJob {
+  id                String             @id @default(cuid())
+  companyId         String
+  recipeId          String
+  status            ProductionJobStatus @default(QUEUED)
+  runs              Int                @default(1)
+  startedTick       Int
+  dueTick           Int
+  completedTick     Int?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recipe            Recipe             @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+
+  @@index([status, dueTick])
+  @@index([companyId, status])
+}
+
+model WorldTickState {
+  id                Int          @id @default(1)
+  currentTick       Int          @default(0)
+  lockVersion       Int          @default(0)
+  lastAdvancedAt    DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model LedgerEntry {
+  id                String         @id @default(cuid())
+  companyId         String
+  tick              Int
+  entryType         LedgerEntryType
+  deltaCashCents    BigInt
+  balanceAfterCents BigInt
+  referenceType     String
+  referenceId       String
+  createdAt         DateTime       @default(now())
+  company           Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, tick])
+}
