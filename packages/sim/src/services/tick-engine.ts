@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient, ProductionJobStatus } from "@prisma/client";
 import { DomainInvariantError, OptimisticLockConflictError } from "../domain/errors";
+import { runMarketMatchingForTick } from "./market-matching";
 
 interface WorldState {
   id: number;
@@ -117,6 +118,8 @@ export async function advanceSimulationTicks(
       const nextTick = world.currentTick + 1;
 
       await completeDueProductionJobs(tx, nextTick);
+      // Matching runs in tick processing, not in request path.
+      await runMarketMatchingForTick(tx, nextTick);
 
       const result = await tx.worldTickState.updateMany({
         where: {
