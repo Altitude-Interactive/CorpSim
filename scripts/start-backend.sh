@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-pnpm -C apps/api start &
+# Normalize env names across Dokploy/local variants.
+if [[ -z "${DATABASE_URL:-}" && -n "${PREVIEW_DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="${PREVIEW_DATABASE_URL}"
+fi
+
+if [[ -z "${REDIS_HOST:-}" && -n "${PREVIEW_REDIS_HOST:-}" ]]; then
+  export REDIS_HOST="${PREVIEW_REDIS_HOST}"
+fi
+
+if [[ -z "${REDIS_PORT:-}" && -n "${PREVIEW_REDIS_PORT:-}" ]]; then
+  export REDIS_PORT="${PREVIEW_REDIS_PORT}"
+fi
+
+pnpm --filter @corpsim/api start &
 api_pid=$!
 
-pnpm -C apps/worker start &
+pnpm --filter @corpsim/worker start &
 worker_pid=$!
 
 shutdown() {

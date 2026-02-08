@@ -3,16 +3,29 @@ set -euo pipefail
 
 role="${APP_ROLE:-all}"
 
+# Normalize env names across Dokploy/local variants.
+if [[ -z "${DATABASE_URL:-}" && -n "${PREVIEW_DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="${PREVIEW_DATABASE_URL}"
+fi
+
+if [[ -z "${REDIS_HOST:-}" && -n "${PREVIEW_REDIS_HOST:-}" ]]; then
+  export REDIS_HOST="${PREVIEW_REDIS_HOST}"
+fi
+
+if [[ -z "${REDIS_PORT:-}" && -n "${PREVIEW_REDIS_PORT:-}" ]]; then
+  export REDIS_PORT="${PREVIEW_REDIS_PORT}"
+fi
+
 run_api() {
-  exec pnpm -C apps/api start
+  exec pnpm --filter @corpsim/api start
 }
 
 run_web() {
-  exec pnpm -C apps/web start
+  exec pnpm --filter @corpsim/web start
 }
 
 run_worker() {
-  exec pnpm -C apps/worker start
+  exec pnpm --filter @corpsim/worker start
 }
 
 run_migrate() {
@@ -20,13 +33,13 @@ run_migrate() {
 }
 
 run_all() {
-  pnpm -C apps/api start &
+  pnpm --filter @corpsim/api start &
   api_pid=$!
 
-  pnpm -C apps/worker start &
+  pnpm --filter @corpsim/worker start &
   worker_pid=$!
 
-  pnpm -C apps/web start &
+  pnpm --filter @corpsim/web start &
   web_pid=$!
 
   shutdown() {
