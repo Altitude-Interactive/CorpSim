@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Box, Globe, LayoutDashboard, PackageSearch, TrendingUp } from "lucide-react";
+import {
+  Box,
+  Factory,
+  Globe,
+  LayoutDashboard,
+  PackageSearch,
+  TrendingUp
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/market", label: "Market", icon: TrendingUp },
+  { href: "/production", label: "Production", icon: Factory },
   { href: "/inventory", label: "Inventory", icon: PackageSearch },
   { href: "/world", label: "World", icon: Globe }
 ];

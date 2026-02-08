@@ -118,6 +118,79 @@ export interface PlaceMarketOrderInput {
   quantity: number;
 }
 
+export interface ProductionRecipeInput {
+  itemId: string;
+  quantityPerRun: number;
+  item: {
+    id: string;
+    code: string;
+    name: string;
+  };
+}
+
+export interface ProductionRecipe {
+  id: string;
+  code: string;
+  name: string;
+  durationTicks: number;
+  outputQuantity: number;
+  outputItem: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  inputs: ProductionRecipeInput[];
+}
+
+export type ProductionJobStatus = "RUNNING" | "COMPLETED" | "CANCELLED";
+
+export interface ProductionJob {
+  id: string;
+  companyId: string;
+  recipeId: string;
+  status: ProductionJobStatus;
+  quantity: number;
+  tickStarted: number;
+  tickCompletionExpected: number;
+  tickCompleted: number | null;
+  createdAt: string;
+  updatedAt: string;
+  recipe: {
+    id: string;
+    code: string;
+    name: string;
+    durationTicks: number;
+    outputQuantity: number;
+    outputItem: {
+      id: string;
+      code: string;
+      name: string;
+    };
+    inputs: Array<{
+      itemId: string;
+      quantityPerRun: number;
+      quantityTotal: number;
+      item: {
+        id: string;
+        code: string;
+        name: string;
+      };
+    }>;
+  };
+}
+
+export interface ProductionJobFilters {
+  companyId?: string;
+  status?: ProductionJobStatus;
+  limit?: number;
+}
+
+export interface CreateProductionJobInput {
+  companyId: string;
+  recipeId: string;
+  quantity: number;
+}
+
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null;
 }
@@ -304,8 +377,7 @@ function parseMarketOrder(value: unknown): MarketOrder {
     reservedCashCents: readString(value.reservedCashCents, "reservedCashCents"),
     reservedQuantity: readNumber(value.reservedQuantity, "reservedQuantity"),
     tickPlaced: readNumber(value.tickPlaced, "tickPlaced"),
-    tickClosed:
-      tickClosedValue === null ? null : readNumber(tickClosedValue, "tickClosed"),
+    tickClosed: tickClosedValue === null ? null : readNumber(tickClosedValue, "tickClosed"),
     createdAt: readString(value.createdAt, "createdAt"),
     updatedAt: readString(value.updatedAt, "updatedAt"),
     closedAt: readNullableString(value.closedAt, "closedAt")
@@ -345,6 +417,111 @@ function parseItemCatalogItem(value: unknown): ItemCatalogItem {
   };
 }
 
+function parseProductionRecipe(value: unknown): ProductionRecipe {
+  if (!isRecord(value)) {
+    throw new Error("Invalid production recipe row");
+  }
+
+  if (!isRecord(value.outputItem)) {
+    throw new Error("Invalid production recipe output item");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    code: readString(value.code, "code"),
+    name: readString(value.name, "name"),
+    durationTicks: readNumber(value.durationTicks, "durationTicks"),
+    outputQuantity: readNumber(value.outputQuantity, "outputQuantity"),
+    outputItem: {
+      id: readString(value.outputItem.id, "outputItem.id"),
+      code: readString(value.outputItem.code, "outputItem.code"),
+      name: readString(value.outputItem.name, "outputItem.name")
+    },
+    inputs: readArray(value.inputs, "inputs").map((inputValue) => {
+      if (!isRecord(inputValue)) {
+        throw new Error("Invalid production recipe input row");
+      }
+      if (!isRecord(inputValue.item)) {
+        throw new Error("Invalid production recipe input item");
+      }
+
+      return {
+        itemId: readString(inputValue.itemId, "input.itemId"),
+        quantityPerRun: readNumber(inputValue.quantityPerRun, "input.quantityPerRun"),
+        item: {
+          id: readString(inputValue.item.id, "input.item.id"),
+          code: readString(inputValue.item.code, "input.item.code"),
+          name: readString(inputValue.item.name, "input.item.name")
+        }
+      };
+    })
+  };
+}
+
+function parseProductionJobStatus(value: unknown): ProductionJobStatus {
+  const status = readString(value, "status");
+  if (status !== "RUNNING" && status !== "COMPLETED" && status !== "CANCELLED") {
+    throw new Error("Invalid production job status");
+  }
+  return status;
+}
+
+function parseProductionJob(value: unknown): ProductionJob {
+  if (!isRecord(value)) {
+    throw new Error("Invalid production job row");
+  }
+  if (!isRecord(value.recipe)) {
+    throw new Error("Invalid production job recipe");
+  }
+  if (!isRecord(value.recipe.outputItem)) {
+    throw new Error("Invalid production job output item");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    companyId: readString(value.companyId, "companyId"),
+    recipeId: readString(value.recipeId, "recipeId"),
+    status: parseProductionJobStatus(value.status),
+    quantity: readNumber(value.quantity, "quantity"),
+    tickStarted: readNumber(value.tickStarted, "tickStarted"),
+    tickCompletionExpected: readNumber(value.tickCompletionExpected, "tickCompletionExpected"),
+    tickCompleted: value.tickCompleted === null ? null : readNumber(value.tickCompleted, "tickCompleted"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt"),
+    recipe: {
+      id: readString(value.recipe.id, "recipe.id"),
+      code: readString(value.recipe.code, "recipe.code"),
+      name: readString(value.recipe.name, "recipe.name"),
+      durationTicks: readNumber(value.recipe.durationTicks, "recipe.durationTicks"),
+      outputQuantity: readNumber(value.recipe.outputQuantity, "recipe.outputQuantity"),
+      outputItem: {
+        id: readString(value.recipe.outputItem.id, "recipe.outputItem.id"),
+        code: readString(value.recipe.outputItem.code, "recipe.outputItem.code"),
+        name: readString(value.recipe.outputItem.name, "recipe.outputItem.name")
+      },
+      inputs: readArray(value.recipe.inputs, "recipe.inputs").map((inputValue) => {
+        if (!isRecord(inputValue)) {
+          throw new Error("Invalid production job input row");
+        }
+        if (!isRecord(inputValue.item)) {
+          throw new Error("Invalid production job input item");
+        }
+
+        return {
+          itemId: readString(inputValue.itemId, "recipe.input.itemId"),
+          quantityPerRun: readNumber(inputValue.quantityPerRun, "recipe.input.quantityPerRun"),
+          quantityTotal: readNumber(inputValue.quantityTotal, "recipe.input.quantityTotal"),
+          item: {
+            id: readString(inputValue.item.id, "recipe.input.item.id"),
+            code: readString(inputValue.item.code, "recipe.input.item.code"),
+            name: readString(inputValue.item.name, "recipe.input.item.name")
+          }
+        };
+      })
+    }
+  };
+}
+
 export async function getWorldHealth(): Promise<WorldHealth> {
   return fetchJson("/v1/world/health", parseWorldHealth);
 }
@@ -381,14 +558,10 @@ export async function listMarketOrders(filters: MarketOrderFilters): Promise<Mar
 }
 
 export async function placeMarketOrder(input: PlaceMarketOrderInput): Promise<MarketOrder> {
-  return fetchJson(
-    "/v1/market/orders",
-    parseMarketOrder,
-    {
-      method: "POST",
-      body: JSON.stringify(input)
-    }
-  );
+  return fetchJson("/v1/market/orders", parseMarketOrder, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
 }
 
 export async function cancelMarketOrder(orderId: string): Promise<MarketOrder> {
@@ -419,24 +592,53 @@ export async function listItems(): Promise<ItemCatalogItem[]> {
   return fetchJson("/v1/items", (value) => readArray(value, "items").map(parseItemCatalogItem));
 }
 
-export async function advanceWorld(ticks: number): Promise<WorldTickState> {
-  return fetchJson(
-    "/v1/world/advance",
-    parseWorldTickState,
-    {
-      method: "POST",
-      body: JSON.stringify({ ticks })
-    }
+export async function listProductionRecipes(): Promise<ProductionRecipe[]> {
+  return fetchJson("/v1/production/recipes", (value) =>
+    readArray(value, "recipes").map(parseProductionRecipe)
   );
 }
 
-export async function resetWorld(reseed = true): Promise<WorldTickState> {
-  return fetchJson(
-    `/v1/world/reset?reseed=${reseed ? "true" : "false"}`,
-    parseWorldTickState,
-    {
-      method: "POST",
-      body: JSON.stringify({ reseed })
-    }
+export async function listProductionJobs(filters: ProductionJobFilters): Promise<ProductionJob[]> {
+  const params = new URLSearchParams();
+  if (filters.companyId) {
+    params.set("companyId", filters.companyId);
+  }
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+
+  const query = params.toString();
+  return fetchJson(`/v1/production/jobs${query ? `?${query}` : ""}`, (value) =>
+    readArray(value, "productionJobs").map(parseProductionJob)
   );
+}
+
+export async function createProductionJob(input: CreateProductionJobInput): Promise<ProductionJob> {
+  return fetchJson("/v1/production/jobs", parseProductionJob, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function cancelProductionJob(jobId: string): Promise<ProductionJob> {
+  return fetchJson(`/v1/production/jobs/${jobId}/cancel`, parseProductionJob, {
+    method: "POST"
+  });
+}
+
+export async function advanceWorld(ticks: number): Promise<WorldTickState> {
+  return fetchJson("/v1/world/advance", parseWorldTickState, {
+    method: "POST",
+    body: JSON.stringify({ ticks })
+  });
+}
+
+export async function resetWorld(reseed = true): Promise<WorldTickState> {
+  return fetchJson(`/v1/world/reset?reseed=${reseed ? "true" : "false"}`, parseWorldTickState, {
+    method: "POST",
+    body: JSON.stringify({ reseed })
+  });
 }

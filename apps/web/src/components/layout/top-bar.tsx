@@ -10,6 +10,7 @@ import { useWorldHealth } from "./world-health-provider";
 const TITLES: Record<string, string> = {
   "/overview": "Overview",
   "/market": "Market",
+  "/production": "Production",
   "/inventory": "Inventory",
   "/world": "World"
 };
