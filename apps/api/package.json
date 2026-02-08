@@ -1,0 +1,9 @@
+{
+  "name": "@corpsim/api",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "vitest run --config vitest.config.ts"
+  }
+}

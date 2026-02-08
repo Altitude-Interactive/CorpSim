@@ -2,8 +2,10 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "types": ["node", "vitest/globals"],
-    "baseUrl": "."
+    "baseUrl": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
-  "include": ["scripts/**/*.ts", "packages/**/*.ts", "vitest.config.ts"],
+  "include": ["apps/**/*.ts", "scripts/**/*.ts", "packages/**/*.ts", "vitest.config.ts"],
   "exclude": ["node_modules"]
 }
