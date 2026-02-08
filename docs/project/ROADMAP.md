@@ -1,78 +1,117 @@
-Read AGENTS.md and docs/design/DESIGN_GUIDELINES.md.
+# CorpSim Roadmap
 
-Next goal: Regional Markets v2. Market orders and trades become region-scoped; analytics/candles become region-scoped; logistics enables arbitrage. Keep deterministic, bounded, and migration-safe.
+## Core Simulation (Implemented)
 
-Scope:
+* Economy engine (items, recipes, companies, inventory)
+* Market orders, region-scoped matching and settlement
+* Ledger / accounting system (cash + reserved cash semantics)
+* Production jobs system (tick completion)
+* Contracts system (generation + fulfillment)
+* Research tech tree + unlock gating
+* Player identity + company ownership enforcement
+* Worker loop + deterministic bots
+* Market analytics (region-scoped candles + KPIs)
+* Regions + logistics (region inventory + shipments)
 
-1) Schema + migration
-Update:
-- MarketOrder: add regionId (required)
-- Trade: add regionId (required)
-- ItemTickCandle: add regionId (required), unique becomes (itemId, regionId, tick)
-Update indexes accordingly for query performance.
+## Economy Depth Expansion (Next Targets)
 
-Rules:
-- A market order belongs to a region order book.
-- A trade occurs in the region where it matched.
-- Shipments remain the only way to move inventory between regions.
+* Arbitrage mechanics (player + optional AI)
+* Warehouses + storage capacity limits
+* Storage costs / depreciation
+* Quality tiers / product differentiation
+* Item spoilage / decay mechanics
+* Resource scarcity simulation
+* Supply chain complexity (multi-stage production)
+* Industrial specialization bonuses
+* Dynamic demand curves
 
-2) Sim: region-scoped matching and settlement
-- Matching runs per (regionId, itemId).
-- When placing an order:
-  - order.regionId must equal the company’s regionId (v2 rule, no “remote trading” yet).
-  - BUY reserves cash as before.
-  - SELL reserves inventory in that region only.
-- Settlement updates inventory in that region only.
-- All invariants remain valid (inventory keys now include regionId).
+## Business Simulation Systems (Planned)
 
-3) API changes
-Market writes:
-- POST /v1/market/orders:
-  - regionId optional in request; if omitted, default to company.regionId
-  - reject if regionId != company.regionId (403)
-Market reads:
-- GET /v1/market/orders:
-  - add regionId filter (default ALL or company region depending on route; choose one and document)
-Trades:
-- If a trades endpoint exists, add regionId filter and return regionId in DTOs.
-Analytics:
-- GET /v1/market/candles:
-  - require regionId (or default), include regionId
-- GET /v1/market/analytics/summary:
-  - require regionId (or default)
+* Company leveling / reputation
+* Branding / product lines
+* Marketing campaigns
+* Pricing automation tools
+* Workforce / employee simulation
+* Energy / operational cost modeling
+* Taxes / regulation simulation
+* Corporate loans / credit system
+* Bankruptcy mechanics
+* Insurance systems
 
-4) UI
-- Market page:
-  - add region selector (defaults to active company region)
-  - show separate order books per region
-  - “My Orders” is filtered by companyId + regionId
-- Analytics page:
-  - add region selector
-  - show candles for that region
-- Logistics page:
-  - add “Arbitrage helper” panel (read-only v2):
-    - for a selected item, compare lastPriceCents across regions and show deltas
+## Multiplayer Economy Layer (Future)
 
-5) Bots
-- Liquidity bot becomes region-aware:
-  - maintain minimal liquidity in each region for configured items (caps per region)
-- Optional: one simple arbitrage bot (OFF by default):
-  - if price diff > threshold and has stock, ship to higher-priced region (respect fees/time)
+* Real authentication system
+* Persistent player accounts
+* Company transfers / mergers
+* Player-to-player contracts
+* Corporate alliances / consortiums
+* Shareholding / takeover mechanics
+* Competitive leaderboards
+* Anti-cheat / exploit detection
 
-6) Tests (required)
-- Unit:
-  - matching only matches within same region
-  - placing SELL in region requires inventory there
-- API integration:
-  - place BUY/SELL in CORE -> tick -> trade has regionId=CORE
-  - attempt to place order in another region => 403
-  - candles are created with regionId and unique key works
-- Web:
-  - typecheck/lint/build only (no UI tests required)
+## Logistics & World Simulation (Expansion)
 
-Constraints:
-- No cross-region remote trading in v2.
-- Keep request contracts backward compatible where possible (regionId defaulting).
-- Full gates green: typecheck, lint, test, api:test, web:build, worker:once.
+* Transport infrastructure tiers
+* Shipping delays / disruptions
+* Fuel / logistics cost volatility
+* Regional events (strikes, disasters)
+* Trade tariffs / borders
+* Infrastructure investment system
+* Private logistics networks
+* Warehousing automation
 
-Proceed.
+## Market & Finance Tools (Expansion)
+
+* Advanced charts / indicators
+* Historical analytics dashboards
+* Forecasting tools
+* Automated trading agents (player-defined)
+* Financial reporting exports
+* Budget planning tools
+* Profitability analysis modules
+
+## AI / Bots Evolution (Planned)
+
+* Adaptive economic bots
+* Competitive corporate AI
+* Market-making per-region balancing improvements
+* NPC corporations with long-term strategy
+* AI research progression
+* AI logistics planning
+
+## UX / ERP Interface Evolution
+
+* Unified corporate dashboard
+* Notification / event system
+* Task automation panel
+* Scenario simulation sandbox
+* Bulk operations tooling
+* Accessibility improvements
+
+## Technical Infrastructure
+
+* Observability / metrics stack
+* Replayable simulation ticks
+* Snapshot/backtesting system
+* Horizontal worker scaling
+* Caching layer refinement
+* Event bus architecture
+* Migration/versioning framework
+
+## Content Expansion
+
+* Additional industries / sectors
+* Service economy layer
+* Technology era progression
+* Energy sector simulation
+* Finance sector simulation
+* Consumer market simulation
+
+## Long-Term Vision
+
+* Fully player-driven economy
+* Persistent world cycles
+* Optional seasonal resets
+* Modding/API ecosystem
+* Mobile-friendly UI
+* Public release / monetization strategy
