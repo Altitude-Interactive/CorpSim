@@ -86,4 +86,24 @@ describe("worker iteration integration", () => {
       )
     ).toBe(true);
   });
+
+  it("starts at least one bot production job over several ticks", async () => {
+    for (let i = 0; i < 6; i += 1) {
+      await runWorkerIteration(prisma, config, {
+        ticksOverride: 1,
+        maxConflictRetries: 0
+      });
+    }
+
+    const botProductionJobs = await prisma.productionJob.findMany({
+      where: {
+        company: { isPlayer: false }
+      },
+      select: {
+        id: true
+      }
+    });
+
+    expect(botProductionJobs.length).toBeGreaterThan(0);
+  });
 });

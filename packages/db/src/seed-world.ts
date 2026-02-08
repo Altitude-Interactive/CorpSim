@@ -1,4 +1,4 @@
-import { OrderSide, PrismaClient, ProductionJobStatus } from "@prisma/client";
+import { OrderSide, PrismaClient } from "@prisma/client";
 import { placeMarketOrder } from "../../sim/src/services/market-orders";
 import { resetSimulationData } from "../../sim/src/services/reset-simulation";
 
@@ -115,7 +115,7 @@ export async function seedWorld(
     ]
   });
 
-  const smeltRecipe = await prisma.recipe.create({
+  await prisma.recipe.create({
     data: {
       code: "SMELT_IRON",
       name: "Smelt Iron",
@@ -128,7 +128,7 @@ export async function seedWorld(
     }
   });
 
-  const toolRecipe = await prisma.recipe.create({
+  await prisma.recipe.create({
     data: {
       code: "ASSEMBLE_TOOLS",
       name: "Assemble Tools",
@@ -139,27 +139,6 @@ export async function seedWorld(
         create: [{ itemId: ironIngot.id, quantity: 3 }]
       }
     }
-  });
-
-  await prisma.productionJob.createMany({
-    data: [
-      {
-        companyId: botSmelter.id,
-        recipeId: smeltRecipe.id,
-        status: ProductionJobStatus.IN_PROGRESS,
-        runs: 20,
-        startedTick: 0,
-        dueTick: 2
-      },
-      {
-        companyId: botTrader.id,
-        recipeId: toolRecipe.id,
-        status: ProductionJobStatus.IN_PROGRESS,
-        runs: 10,
-        startedTick: 0,
-        dueTick: 3
-      }
-    ]
   });
 
   await placeMarketOrder(prisma, {

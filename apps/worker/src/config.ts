@@ -23,6 +23,20 @@ function parseIntegerEnv(name: string, fallback: number): number {
   return parsed;
 }
 
+function parseNonNegativeIntegerEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
+
+  return parsed;
+}
+
 function parseBigIntEnv(name: string, fallback: bigint): bigint {
   const raw = process.env[name];
   if (!raw) {
@@ -86,7 +100,9 @@ export function loadWorkerConfig(): WorkerConfig {
     botCount: parseIntegerEnv("BOT_COUNT", 25),
     itemCodes: parseItemCodes(process.env.BOT_ITEMS),
     spreadBps: parseIntegerEnv("BOT_SPREAD_BPS", 500),
-    maxNotionalPerTickCents: parseBigIntEnv("BOT_MAX_NOTIONAL_PER_TICK_CENTS", 50_000n)
+    maxNotionalPerTickCents: parseBigIntEnv("BOT_MAX_NOTIONAL_PER_TICK_CENTS", 50_000n),
+    producerCadenceTicks: parseIntegerEnv("BOT_PRODUCER_CADENCE_TICKS", 3),
+    producerMinProfitBps: parseNonNegativeIntegerEnv("BOT_PRODUCER_MIN_PROFIT_BPS", 0)
   });
 
   return {

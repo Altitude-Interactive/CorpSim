@@ -1,32 +1,638 @@
-import { Prisma, ProductionJobStatus } from "@prisma/client";
-import { DomainInvariantError } from "../domain/errors";
+import {
+  LedgerEntryType,
+  Prisma,
+  PrismaClient,
+  ProductionJobStatus
+} from "@prisma/client";
+import {
+  DomainInvariantError,
+  NotFoundError
+} from "../domain/errors";
+import { availableCash } from "../domain/reservations";
 
-export interface StartProductionForCompanyInput {
+interface RecipeInputRow {
+  itemId: string;
+  quantity: number;
+  item: {
+    code: string;
+  };
+}
+
+interface InventoryState {
+  quantity: number;
+  reservedQuantity: number;
+}
+
+export interface StartProductionJobInput {
+  companyId: string;
+  recipeId: string;
+  quantity: number;
+  tick?: number;
+}
+
+export interface CancelProductionJobInput {
+  jobId: string;
+  tick?: number;
+}
+
+export interface StartProfitableProductionForCompanyInput {
   companyId: string;
   tick: number;
   maxJobs?: number;
+  referencePriceByItemId?: Map<string, bigint>;
+  minProfitBps?: number;
+}
+
+export function isProductionJobDue(currentTick: number, dueTick: number): boolean {
+  if (!Number.isInteger(currentTick) || currentTick < 0) {
+    throw new DomainInvariantError("currentTick must be a non-negative integer");
+  }
+  if (!Number.isInteger(dueTick) || dueTick < 0) {
+    throw new DomainInvariantError("dueTick must be a non-negative integer");
+  }
+
+  return currentTick >= dueTick;
+}
+
+export function reserveInventoryForProduction(
+  inventory: InventoryState,
+  quantityToReserve: number
+): InventoryState {
+  if (!Number.isInteger(quantityToReserve) || quantityToReserve <= 0) {
+    throw new DomainInvariantError("quantityToReserve must be a positive integer");
+  }
+  if (inventory.quantity < 0 || inventory.reservedQuantity < 0) {
+    throw new DomainInvariantError("inventory values cannot be negative");
+  }
+
+  const available = inventory.quantity - inventory.reservedQuantity;
+  if (available < quantityToReserve) {
+    throw new DomainInvariantError("insufficient input inventory for production");
+  }
+
+  return {
+    quantity: inventory.quantity,
+    reservedQuantity: inventory.reservedQuantity + quantityToReserve
+  };
+}
+
+export function releaseReservedInventoryForProduction(
+  inventory: InventoryState,
+  quantityToRelease: number
+): InventoryState {
+  if (!Number.isInteger(quantityToRelease) || quantityToRelease <= 0) {
+    throw new DomainInvariantError("quantityToRelease must be a positive integer");
+  }
+  if (inventory.quantity < 0 || inventory.reservedQuantity < 0) {
+    throw new DomainInvariantError("inventory values cannot be negative");
+  }
+  if (inventory.reservedQuantity < quantityToRelease) {
+    throw new DomainInvariantError("reserved inventory cannot become negative");
+  }
+
+  return {
+    quantity: inventory.quantity,
+    reservedQuantity: inventory.reservedQuantity - quantityToRelease
+  };
+}
+
+export function consumeReservedInventoryForProduction(
+  inventory: InventoryState,
+  quantityToConsume: number
+): InventoryState {
+  if (!Number.isInteger(quantityToConsume) || quantityToConsume <= 0) {
+    throw new DomainInvariantError("quantityToConsume must be a positive integer");
+  }
+  if (inventory.quantity < 0 || inventory.reservedQuantity < 0) {
+    throw new DomainInvariantError("inventory values cannot be negative");
+  }
+  if (inventory.quantity < quantityToConsume) {
+    throw new DomainInvariantError("inventory quantity cannot become negative");
+  }
+  if (inventory.reservedQuantity < quantityToConsume) {
+    throw new DomainInvariantError("reserved inventory cannot become negative");
+  }
+
+  return {
+    quantity: inventory.quantity - quantityToConsume,
+    reservedQuantity: inventory.reservedQuantity - quantityToConsume
+  };
+}
+
+export function calculateRecipeInputRequirements(
+  inputs: Array<{ itemId: string; quantity: number }>,
+  runs: number
+): Array<{ itemId: string; quantity: number }> {
+  if (!Number.isInteger(runs) || runs <= 0) {
+    throw new DomainInvariantError("runs must be a positive integer");
+  }
+
+  return inputs.map((entry) => {
+    if (!Number.isInteger(entry.quantity) || entry.quantity <= 0) {
+      throw new DomainInvariantError("recipe input quantity must be a positive integer");
+    }
+
+    return {
+      itemId: entry.itemId,
+      quantity: entry.quantity * runs
+    };
+  });
+}
+
+function validateTick(tick: number, fieldName: string): void {
+  if (!Number.isInteger(tick) || tick < 0) {
+    throw new DomainInvariantError(`${fieldName} must be a non-negative integer`);
+  }
+}
+
+function validateStartInput(input: StartProductionJobInput): void {
+  if (!input.companyId) {
+    throw new DomainInvariantError("companyId is required");
+  }
+  if (!input.recipeId) {
+    throw new DomainInvariantError("recipeId is required");
+  }
+  if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
+    throw new DomainInvariantError("quantity must be a positive integer");
+  }
+  if (input.tick !== undefined) {
+    validateTick(input.tick, "tick");
+  }
+}
+
+function validateCancelInput(input: CancelProductionJobInput): void {
+  if (!input.jobId) {
+    throw new DomainInvariantError("jobId is required");
+  }
+  if (input.tick !== undefined) {
+    validateTick(input.tick, "tick");
+  }
+}
+
+async function resolveTick(tx: Prisma.TransactionClient, explicitTick?: number): Promise<number> {
+  if (explicitTick !== undefined) {
+    return explicitTick;
+  }
+
+  const world = await tx.worldTickState.findUnique({
+    where: { id: 1 },
+    select: { currentTick: true }
+  });
+
+  return world?.currentTick ?? 0;
+}
+
+function resolveFallbackItemPriceCents(itemCode: string): bigint {
+  switch (itemCode) {
+    case "IRON_ORE":
+      return 80n;
+    case "IRON_INGOT":
+      return 200n;
+    case "HAND_TOOLS":
+      return 350n;
+    default:
+      return 100n;
+  }
+}
+
+function resolveItemPriceCents(
+  itemId: string,
+  itemCode: string,
+  referencePriceByItemId: Map<string, bigint> | undefined
+): bigint {
+  const fromMarket = referencePriceByItemId?.get(itemId);
+  if (fromMarket !== undefined) {
+    return fromMarket;
+  }
+
+  return resolveFallbackItemPriceCents(itemCode);
+}
+
+function isRecipeProfitable(
+  recipe: {
+    outputQuantity: number;
+    outputItem: { id: string; code: string };
+    inputs: RecipeInputRow[];
+  },
+  referencePriceByItemId: Map<string, bigint> | undefined,
+  minProfitBps: number
+): boolean {
+  const outputValueCents =
+    BigInt(recipe.outputQuantity) *
+    resolveItemPriceCents(
+      recipe.outputItem.id,
+      recipe.outputItem.code,
+      referencePriceByItemId
+    );
+
+  let totalInputCostCents = 0n;
+  for (const input of recipe.inputs) {
+    totalInputCostCents +=
+      BigInt(input.quantity) *
+      resolveItemPriceCents(input.itemId, input.item.code, referencePriceByItemId);
+  }
+
+  if (totalInputCostCents <= 0n) {
+    return outputValueCents > 0n;
+  }
+
+  return (
+    outputValueCents * 10_000n >
+    totalInputCostCents * BigInt(10_000 + minProfitBps)
+  );
+}
+
+export async function createProductionJob(
+  prisma: PrismaClient,
+  input: StartProductionJobInput
+) {
+  validateStartInput(input);
+
+  return prisma.$transaction(async (tx) => {
+    return createProductionJobWithTx(tx, input);
+  });
+}
+
+export async function createProductionJobWithTx(
+  tx: Prisma.TransactionClient,
+  input: StartProductionJobInput
+) {
+  validateStartInput(input);
+
+  const tick = await resolveTick(tx, input.tick);
+
+  const [company, recipe] = await Promise.all([
+    tx.company.findUnique({
+      where: { id: input.companyId },
+      select: { id: true }
+    }),
+    tx.recipe.findUnique({
+      where: { id: input.recipeId },
+      include: {
+        outputItem: {
+          select: {
+            id: true,
+            code: true,
+            name: true
+          }
+        },
+        inputs: {
+          orderBy: { item: { code: "asc" } },
+          include: {
+            item: {
+              select: {
+                id: true,
+                code: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    })
+  ]);
+
+  if (!company) {
+    throw new NotFoundError(`company ${input.companyId} not found`);
+  }
+  if (!recipe) {
+    throw new NotFoundError(`recipe ${input.recipeId} not found`);
+  }
+  if (recipe.durationTicks < 0) {
+    throw new DomainInvariantError("recipe durationTicks cannot be negative");
+  }
+
+  const requirements = calculateRecipeInputRequirements(recipe.inputs, input.quantity);
+  const requiredItemIds = requirements.map((entry) => entry.itemId);
+
+  const inventoryRows =
+    requiredItemIds.length === 0
+      ? []
+      : await tx.inventory.findMany({
+          where: {
+            companyId: input.companyId,
+            itemId: { in: requiredItemIds }
+          },
+          select: {
+            companyId: true,
+            itemId: true,
+            quantity: true,
+            reservedQuantity: true
+          }
+        });
+
+  const inventoryByItemId = new Map(inventoryRows.map((entry) => [entry.itemId, entry]));
+
+  for (const requirement of requirements) {
+    const inventory = inventoryByItemId.get(requirement.itemId);
+    if (!inventory) {
+      throw new DomainInvariantError(
+        `insufficient input inventory for item ${requirement.itemId}`
+      );
+    }
+
+    reserveInventoryForProduction(
+      {
+        quantity: inventory.quantity,
+        reservedQuantity: inventory.reservedQuantity
+      },
+      requirement.quantity
+    );
+  }
+
+  for (const requirement of requirements) {
+    await tx.inventory.update({
+      where: {
+        companyId_itemId: {
+          companyId: input.companyId,
+          itemId: requirement.itemId
+        }
+      },
+      data: {
+        reservedQuantity: {
+          increment: requirement.quantity
+        }
+      }
+    });
+  }
+
+  return tx.productionJob.create({
+    data: {
+      companyId: input.companyId,
+      recipeId: input.recipeId,
+      status: ProductionJobStatus.IN_PROGRESS,
+      runs: input.quantity,
+      startedTick: tick,
+      dueTick: tick + recipe.durationTicks
+    },
+    include: {
+      recipe: {
+        include: {
+          outputItem: {
+            select: {
+              id: true,
+              code: true,
+              name: true
+            }
+          },
+          inputs: {
+            orderBy: { item: { code: "asc" } },
+            include: {
+              item: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+export async function cancelProductionJob(
+  prisma: PrismaClient,
+  input: CancelProductionJobInput
+) {
+  validateCancelInput(input);
+
+  return prisma.$transaction(async (tx) => {
+    return cancelProductionJobWithTx(tx, input);
+  });
+}
+
+export async function cancelProductionJobWithTx(
+  tx: Prisma.TransactionClient,
+  input: CancelProductionJobInput
+) {
+  validateCancelInput(input);
+
+  const tick = await resolveTick(tx, input.tick);
+  const job = await tx.productionJob.findUnique({
+    where: { id: input.jobId },
+    include: {
+      recipe: {
+        include: {
+          outputItem: {
+            select: {
+              id: true,
+              code: true,
+              name: true
+            }
+          },
+          inputs: {
+            orderBy: { item: { code: "asc" } },
+            include: {
+              item: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!job) {
+    throw new NotFoundError(`production job ${input.jobId} not found`);
+  }
+
+  if (job.status !== ProductionJobStatus.IN_PROGRESS) {
+    return job;
+  }
+
+  const requirements = calculateRecipeInputRequirements(job.recipe.inputs, job.runs);
+  const inventories =
+    requirements.length === 0
+      ? []
+      : await tx.inventory.findMany({
+          where: {
+            companyId: job.companyId,
+            itemId: { in: requirements.map((entry) => entry.itemId) }
+          },
+          select: {
+            companyId: true,
+            itemId: true,
+            quantity: true,
+            reservedQuantity: true
+          }
+        });
+
+  const inventoryByItemId = new Map(inventories.map((entry) => [entry.itemId, entry]));
+
+  for (const requirement of requirements) {
+    const inventory = inventoryByItemId.get(requirement.itemId);
+    if (!inventory) {
+      throw new DomainInvariantError(
+        `reserved inventory row missing for item ${requirement.itemId}`
+      );
+    }
+
+    releaseReservedInventoryForProduction(
+      {
+        quantity: inventory.quantity,
+        reservedQuantity: inventory.reservedQuantity
+      },
+      requirement.quantity
+    );
+  }
+
+  for (const requirement of requirements) {
+    await tx.inventory.update({
+      where: {
+        companyId_itemId: {
+          companyId: job.companyId,
+          itemId: requirement.itemId
+        }
+      },
+      data: {
+        reservedQuantity: {
+          decrement: requirement.quantity
+        }
+      }
+    });
+  }
+
+  return tx.productionJob.update({
+    where: { id: job.id },
+    data: {
+      status: ProductionJobStatus.CANCELLED,
+      completedTick: tick
+    },
+    include: {
+      recipe: {
+        include: {
+          outputItem: {
+            select: {
+              id: true,
+              code: true,
+              name: true
+            }
+          },
+          inputs: {
+            orderBy: { item: { code: "asc" } },
+            include: {
+              item: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
 }
 
 export async function completeDueProductionJobs(
   tx: Prisma.TransactionClient,
   nextTick: number
 ): Promise<void> {
-  const jobs = await tx.productionJob.findMany({
+  validateTick(nextTick, "nextTick");
+
+  const dueJobs = await tx.productionJob.findMany({
     where: {
       status: ProductionJobStatus.IN_PROGRESS,
       dueTick: { lte: nextTick }
     },
+    orderBy: [{ dueTick: "asc" }, { createdAt: "asc" }],
     include: {
       recipe: {
-        select: {
-          outputItemId: true,
-          outputQuantity: true
+        include: {
+          outputItem: {
+            select: {
+              id: true,
+              code: true,
+              name: true
+            }
+          },
+          inputs: {
+            orderBy: { item: { code: "asc" } },
+            include: {
+              item: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true
+                }
+              }
+            }
+          }
         }
       }
     }
   });
 
-  for (const job of jobs) {
+  for (const job of dueJobs) {
+    if (!isProductionJobDue(nextTick, job.dueTick)) {
+      continue;
+    }
+
+    const requirements = calculateRecipeInputRequirements(job.recipe.inputs, job.runs);
+    const inventories =
+      requirements.length === 0
+        ? []
+        : await tx.inventory.findMany({
+            where: {
+              companyId: job.companyId,
+              itemId: { in: requirements.map((entry) => entry.itemId) }
+            },
+            select: {
+              companyId: true,
+              itemId: true,
+              quantity: true,
+              reservedQuantity: true
+            }
+          });
+
+    const inventoryByItemId = new Map(inventories.map((entry) => [entry.itemId, entry]));
+
+    for (const requirement of requirements) {
+      const inventory = inventoryByItemId.get(requirement.itemId);
+      if (!inventory) {
+        throw new DomainInvariantError(
+          `reserved inventory row missing for item ${requirement.itemId}`
+        );
+      }
+
+      consumeReservedInventoryForProduction(
+        {
+          quantity: inventory.quantity,
+          reservedQuantity: inventory.reservedQuantity
+        },
+        requirement.quantity
+      );
+    }
+
+    for (const requirement of requirements) {
+      await tx.inventory.update({
+        where: {
+          companyId_itemId: {
+            companyId: job.companyId,
+            itemId: requirement.itemId
+          }
+        },
+        data: {
+          quantity: {
+            decrement: requirement.quantity
+          },
+          reservedQuantity: {
+            decrement: requirement.quantity
+          }
+        }
+      });
+    }
+
     const outputQuantity = job.recipe.outputQuantity * job.runs;
 
     await tx.inventory.upsert({
@@ -49,6 +655,18 @@ export async function completeDueProductionJobs(
       }
     });
 
+    const company = await tx.company.findUnique({
+      where: { id: job.companyId },
+      select: {
+        id: true,
+        cashCents: true
+      }
+    });
+
+    if (!company) {
+      throw new NotFoundError(`company ${job.companyId} not found`);
+    }
+
     await tx.productionJob.update({
       where: { id: job.id },
       data: {
@@ -56,20 +674,57 @@ export async function completeDueProductionJobs(
         completedTick: nextTick
       }
     });
+
+    await tx.ledgerEntry.create({
+      data: {
+        companyId: company.id,
+        tick: nextTick,
+        entryType: LedgerEntryType.PRODUCTION_COMPLETION,
+        deltaCashCents: 0n,
+        deltaReservedCashCents: 0n,
+        balanceAfterCents: company.cashCents,
+        referenceType: "PRODUCTION_JOB_COMPLETION",
+        referenceId: job.id
+      }
+    });
   }
 }
 
-export async function startProductionForCompanyWithTx(
+export async function startProfitableProductionForCompanyWithTx(
   tx: Prisma.TransactionClient,
-  input: StartProductionForCompanyInput
+  input: StartProfitableProductionForCompanyInput
 ): Promise<number> {
   const maxJobs = input.maxJobs ?? 1;
+  const minProfitBps = input.minProfitBps ?? 0;
 
-  if (!Number.isInteger(input.tick) || input.tick < 0) {
-    throw new DomainInvariantError("tick must be a non-negative integer");
-  }
+  validateTick(input.tick, "tick");
   if (!Number.isInteger(maxJobs) || maxJobs <= 0) {
     throw new DomainInvariantError("maxJobs must be a positive integer");
+  }
+  if (!Number.isInteger(minProfitBps) || minProfitBps < 0) {
+    throw new DomainInvariantError("minProfitBps must be a non-negative integer");
+  }
+
+  const company = await tx.company.findUnique({
+    where: { id: input.companyId },
+    select: {
+      id: true,
+      cashCents: true,
+      reservedCashCents: true
+    }
+  });
+
+  if (!company) {
+    throw new NotFoundError(`company ${input.companyId} not found`);
+  }
+
+  if (
+    availableCash({
+      cashCents: company.cashCents,
+      reservedCashCents: company.reservedCashCents
+    }) <= 0n
+  ) {
+    return 0;
   }
 
   const activeJobs = await tx.productionJob.count({
@@ -86,90 +741,53 @@ export async function startProductionForCompanyWithTx(
   const recipes = await tx.recipe.findMany({
     orderBy: { code: "asc" },
     include: {
+      outputItem: {
+        select: {
+          id: true,
+          code: true
+        }
+      },
       inputs: {
         orderBy: { item: { code: "asc" } },
         include: {
           item: {
-            select: { code: true }
+            select: {
+              code: true
+            }
           }
         }
       }
     }
   });
 
-  if (recipes.length === 0) {
-    return 0;
-  }
-
-  let started = 0;
+  let startedJobs = 0;
 
   for (const recipe of recipes) {
-    if (started >= maxJobs) {
+    if (startedJobs >= maxJobs) {
       break;
     }
 
-    const requiredItemIds = recipe.inputs.map((entry) => entry.itemId);
-    if (requiredItemIds.length === 0) {
+    if (
+      !isRecipeProfitable(recipe, input.referencePriceByItemId, minProfitBps)
+    ) {
       continue;
     }
 
-    const inventories = await tx.inventory.findMany({
-      where: {
-        companyId: input.companyId,
-        itemId: { in: requiredItemIds }
-      },
-      select: {
-        itemId: true,
-        quantity: true,
-        reservedQuantity: true
-      }
-    });
-
-    const inventoryByItemId = new Map(inventories.map((entry) => [entry.itemId, entry]));
-
-    let canStart = true;
-    for (const ingredient of recipe.inputs) {
-      const inventory = inventoryByItemId.get(ingredient.itemId);
-      const available = (inventory?.quantity ?? 0) - (inventory?.reservedQuantity ?? 0);
-      if (available < ingredient.quantity) {
-        canStart = false;
-        break;
-      }
-    }
-
-    if (!canStart) {
-      continue;
-    }
-
-    for (const ingredient of recipe.inputs) {
-      await tx.inventory.update({
-        where: {
-          companyId_itemId: {
-            companyId: input.companyId,
-            itemId: ingredient.itemId
-          }
-        },
-        data: {
-          quantity: {
-            decrement: ingredient.quantity
-          }
-        }
-      });
-    }
-
-    await tx.productionJob.create({
-      data: {
+    try {
+      await createProductionJobWithTx(tx, {
         companyId: input.companyId,
         recipeId: recipe.id,
-        status: ProductionJobStatus.IN_PROGRESS,
-        runs: 1,
-        startedTick: input.tick,
-        dueTick: input.tick + recipe.durationTicks
+        quantity: 1,
+        tick: input.tick
+      });
+      startedJobs += 1;
+    } catch (error: unknown) {
+      if (error instanceof DomainInvariantError) {
+        continue;
       }
-    });
-
-    started += 1;
+      throw error;
+    }
   }
 
-  return started;
+  return startedJobs;
 }

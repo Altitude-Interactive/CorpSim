@@ -17,6 +17,8 @@ export interface BotRuntimeConfig {
   maxNotionalPerTickCents: bigint;
   targetQuantityPerSide: number;
   producerMaxJobsPerTick: number;
+  producerCadenceTicks: number;
+  producerMinProfitBps: number;
 }
 
 export interface BotCompanySnapshot {
@@ -58,7 +60,9 @@ export const DEFAULT_BOT_RUNTIME_CONFIG: BotRuntimeConfig = {
   spreadBps: 500,
   maxNotionalPerTickCents: 50_000n,
   targetQuantityPerSide: 5,
-  producerMaxJobsPerTick: 1
+  producerMaxJobsPerTick: 1,
+  producerCadenceTicks: 3,
+  producerMinProfitBps: 0
 };
 
 function normalizeItemCodes(itemCodes: string[]): string[] {
@@ -81,7 +85,11 @@ export function resolveBotRuntimeConfig(
     targetQuantityPerSide:
       overrides.targetQuantityPerSide ?? DEFAULT_BOT_RUNTIME_CONFIG.targetQuantityPerSide,
     producerMaxJobsPerTick:
-      overrides.producerMaxJobsPerTick ?? DEFAULT_BOT_RUNTIME_CONFIG.producerMaxJobsPerTick
+      overrides.producerMaxJobsPerTick ?? DEFAULT_BOT_RUNTIME_CONFIG.producerMaxJobsPerTick,
+    producerCadenceTicks:
+      overrides.producerCadenceTicks ?? DEFAULT_BOT_RUNTIME_CONFIG.producerCadenceTicks,
+    producerMinProfitBps:
+      overrides.producerMinProfitBps ?? DEFAULT_BOT_RUNTIME_CONFIG.producerMinProfitBps
   };
 }
 
@@ -294,6 +302,19 @@ export async function runBotsForTick(
     }
   }
 
+  const referencePriceByItemId = new Map<string, bigint>(
+    items.map((item) => [
+      item.id,
+      resolveReferencePrice(
+        item.code,
+        item.id,
+        bestBuyPriceByItemId,
+        bestSellPriceByItemId,
+        latestTradeByItemId
+      )
+    ])
+  );
+
   const companySnapshots: BotCompanySnapshot[] = companies.map((company) => {
     const itemsForCompany = items.map((item) => {
       const inventory = inventoryByKey.get(`${company.id}:${item.id}`);
@@ -305,13 +326,7 @@ export async function runBotsForTick(
       return {
         itemId: item.id,
         itemCode: item.code,
-        referencePriceCents: resolveReferencePrice(
-          item.code,
-          item.id,
-          bestBuyPriceByItemId,
-          bestSellPriceByItemId,
-          latestTradeByItemId
-        ),
+        referencePriceCents: referencePriceByItemId.get(item.id) ?? 100n,
         availableInventory,
         hasOpenBuyOrder: openOrderKeySet.has(`${company.id}:${item.id}:${OrderSide.BUY}`),
         hasOpenSellOrder: openOrderKeySet.has(`${company.id}:${item.id}:${OrderSide.SELL}`)
@@ -350,7 +365,10 @@ export async function runBotsForTick(
     startedProductionJobs += await runProducerBot(tx, {
       companyId,
       tick,
-      maxJobsPerTick: config.producerMaxJobsPerTick
+      maxJobsPerTick: config.producerMaxJobsPerTick,
+      cadenceTicks: config.producerCadenceTicks,
+      minProfitBps: config.producerMinProfitBps,
+      referencePriceByItemId
     });
   }
 

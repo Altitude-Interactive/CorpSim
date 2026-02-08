@@ -1,0 +1,7 @@
+DO $$
+BEGIN
+  ALTER TYPE "LedgerEntryType" ADD VALUE 'PRODUCTION_COMPLETION';
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END
+$$;

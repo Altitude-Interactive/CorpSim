@@ -7,6 +7,8 @@ import { ItemsService } from "./items/items.service";
 import { MarketController } from "./market/market.controller";
 import { MarketService } from "./market/market.service";
 import { PrismaService } from "./prisma/prisma.service";
+import { ProductionController } from "./production/production.controller";
+import { ProductionService } from "./production/production.service";
 import { RootController } from "./root.controller";
 import { WorldController } from "./world/world.controller";
 import { WorldService } from "./world/world.service";
@@ -19,8 +21,16 @@ import { WorldService } from "./world/world.service";
     WorldController,
     CompaniesController,
     MarketController,
-    ItemsController
+    ItemsController,
+    ProductionController
   ],
-  providers: [PrismaService, WorldService, CompaniesService, MarketService, ItemsService]
+  providers: [
+    PrismaService,
+    WorldService,
+    CompaniesService,
+    MarketService,
+    ItemsService,
+    ProductionService
+  ]
 })
 export class AppModule {}

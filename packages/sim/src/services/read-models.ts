@@ -1,4 +1,4 @@
-import { OrderSide, PrismaClient } from "@prisma/client";
+import { OrderSide, PrismaClient, ProductionJobStatus } from "@prisma/client";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
 import { scanSimulationInvariants } from "./invariants";
 
@@ -12,6 +12,12 @@ export interface MarketOrderFilters {
 export interface MarketTradeFilters {
   itemId?: string;
   companyId?: string;
+  limit?: number;
+}
+
+export interface ProductionJobFilters {
+  companyId?: string;
+  status?: ProductionJobStatus;
   limit?: number;
 }
 
@@ -194,6 +200,92 @@ export async function listItems(prisma: PrismaClient) {
       id: true,
       code: true,
       name: true
+    }
+  });
+}
+
+export async function listRecipes(prisma: PrismaClient) {
+  return prisma.recipe.findMany({
+    orderBy: [{ code: "asc" }],
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      durationTicks: true,
+      outputQuantity: true,
+      outputItem: {
+        select: {
+          id: true,
+          code: true,
+          name: true
+        }
+      },
+      inputs: {
+        orderBy: { item: { code: "asc" } },
+        select: {
+          itemId: true,
+          quantity: true,
+          item: {
+            select: {
+              id: true,
+              code: true,
+              name: true
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+export async function listProductionJobs(
+  prisma: PrismaClient,
+  filters: ProductionJobFilters = {}
+) {
+  const limit = filters.limit ?? 100;
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+    throw new DomainInvariantError("limit must be an integer between 1 and 500");
+  }
+
+  return prisma.productionJob.findMany({
+    where: {
+      companyId: filters.companyId,
+      status: filters.status
+    },
+    orderBy: [{ createdAt: "desc" }],
+    take: limit,
+    include: {
+      recipe: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          durationTicks: true,
+          outputQuantity: true,
+          outputItem: {
+            select: {
+              id: true,
+              code: true,
+              name: true
+            }
+          },
+          inputs: {
+            orderBy: { item: { code: "asc" } },
+            select: {
+              itemId: true,
+              quantity: true,
+              item: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      }
     }
   });
 }
