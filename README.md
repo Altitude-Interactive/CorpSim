@@ -48,5 +48,6 @@ pnpm api:dev
 ```
 
 API endpoints are served at `http://localhost:3000` (health check: `GET /health`).
+If port `3000` is occupied, run with `PORT=3001 pnpm api:dev`.
 
 Refer to AGENTS.md for development rules and architecture decisions.
