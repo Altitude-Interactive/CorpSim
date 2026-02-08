@@ -50,7 +50,7 @@ services:
       postgres:
         condition: service_healthy
 
-  api:
+  backend:
     build:
       context: .
       dockerfile_inline: |
@@ -165,7 +165,7 @@ services:
       NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS: ${NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS:-250}
       NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS: ${NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS:-15}
     depends_on:
-      api:
+      backend:
         condition: service_healthy
     ports:
       - "${WEB_PUBLIC_PORT:-4311}:${WEB_PORT:-4311}"
