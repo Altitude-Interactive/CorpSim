@@ -16,9 +16,13 @@ import { PlayersService } from "./players/players.service";
 import { PrismaService } from "./prisma/prisma.service";
 import { ProductionController } from "./production/production.controller";
 import { ProductionService } from "./production/production.service";
+import { RegionsController } from "./regions/regions.controller";
+import { RegionsService } from "./regions/regions.service";
 import { ResearchController } from "./research/research.controller";
 import { ResearchService } from "./research/research.service";
 import { RootController } from "./root.controller";
+import { ShipmentsController } from "./shipments/shipments.controller";
+import { ShipmentsService } from "./shipments/shipments.service";
 import { WorldController } from "./world/world.controller";
 import { WorldService } from "./world/world.service";
 
@@ -34,6 +38,8 @@ import { WorldService } from "./world/world.service";
     CompaniesController,
     MarketController,
     ItemsController,
+    RegionsController,
+    ShipmentsController,
     ProductionController,
     ResearchController
   ],
@@ -46,6 +52,8 @@ import { WorldService } from "./world/world.service";
     PlayersService,
     MarketService,
     ItemsService,
+    RegionsService,
+    ShipmentsService,
     ProductionService,
     ResearchService
   ]

@@ -12,6 +12,7 @@ describe("players ownership integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
+  let playerRegionId: string;
   let botCompanyId: string;
   let ironOreId: string;
 
@@ -41,6 +42,11 @@ describe("players ownership integration", () => {
     playerCompanyId = seeded.companyIds.player;
     botCompanyId = seeded.companyIds.botTrader;
     ironOreId = seeded.itemIds.ironOre;
+    const playerCompany = await prisma.company.findUniqueOrThrow({
+      where: { id: playerCompanyId },
+      select: { regionId: true }
+    });
+    playerRegionId = playerCompany.regionId;
 
     const secondPlayer = await prisma.player.create({
       data: {
@@ -54,6 +60,7 @@ describe("players ownership integration", () => {
         name: "Second Player Co",
         isPlayer: true,
         ownerPlayerId: secondPlayer.id,
+        regionId: playerRegionId,
         cashCents: 250_000n,
         reservedCashCents: 0n
       }

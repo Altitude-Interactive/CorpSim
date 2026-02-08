@@ -1,6 +1,7 @@
-import { Controller, Get, Inject, Param } from "@nestjs/common";
+import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
 import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
 import { CompanyParamDto } from "./dto/company-param.dto";
+import { ListCompanyInventoryDto } from "./dto/list-company-inventory.dto";
 import { CompaniesService } from "./companies.service";
 
 @Controller("v1/companies")
@@ -27,8 +28,9 @@ export class CompaniesController {
   @Get(":id/inventory")
   async getInventory(
     @Param() params: CompanyParamDto,
+    @Query() query: ListCompanyInventoryDto,
     @CurrentPlayerHandle() playerHandle: string
   ) {
-    return this.companiesService.getInventory(params.id, playerHandle);
+    return this.companiesService.getInventory(params.id, playerHandle, query.regionId);
   }
 }

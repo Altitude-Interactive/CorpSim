@@ -5,7 +5,7 @@ import {
   Prisma,
   PrismaClient
 } from "@prisma/client";
-import { DomainInvariantError, NotFoundError } from "../domain/errors";
+import { DomainInvariantError, ForbiddenError, NotFoundError } from "../domain/errors";
 import {
   reserveCashForBuyOrder,
   reserveInventoryForSellOrder
@@ -14,6 +14,7 @@ import {
 export interface PlaceMarketOrderInput {
   companyId: string;
   itemId: string;
+  regionId?: string;
   side: OrderSide;
   quantity: number;
   unitPriceCents: bigint;
@@ -34,6 +35,10 @@ function validateOrderInput(input: PlaceMarketOrderInput): void {
 
   if (!input.itemId) {
     throw new DomainInvariantError("itemId is required");
+  }
+
+  if (input.regionId !== undefined && input.regionId.length === 0) {
+    throw new DomainInvariantError("regionId must not be empty");
   }
 
   if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
@@ -115,7 +120,7 @@ export async function placeMarketOrderWithTx(
 
   const company = await tx.company.findUnique({
     where: { id: input.companyId },
-    select: { id: true, cashCents: true, reservedCashCents: true }
+    select: { id: true, cashCents: true, reservedCashCents: true, regionId: true }
   });
 
   if (!company) {
@@ -129,6 +134,11 @@ export async function placeMarketOrderWithTx(
 
   if (!item) {
     throw new NotFoundError(`item ${input.itemId} not found`);
+  }
+
+  const orderRegionId = input.regionId ?? company.regionId;
+  if (orderRegionId !== company.regionId) {
+    throw new ForbiddenError("company can place market orders only in its own region");
   }
 
   if (input.side === OrderSide.BUY) {
@@ -152,6 +162,7 @@ export async function placeMarketOrderWithTx(
       data: {
         companyId: input.companyId,
         itemId: input.itemId,
+        regionId: orderRegionId,
         side: input.side,
         quantity: input.quantity,
         remainingQuantity: input.quantity,
@@ -177,14 +188,16 @@ export async function placeMarketOrderWithTx(
 
   const inventory = await tx.inventory.findUnique({
     where: {
-      companyId_itemId: {
+      companyId_itemId_regionId: {
         companyId: input.companyId,
-        itemId: input.itemId
+        itemId: input.itemId,
+        regionId: orderRegionId
       }
     },
     select: {
       companyId: true,
       itemId: true,
+      regionId: true,
       quantity: true,
       reservedQuantity: true
     }
@@ -206,9 +219,10 @@ export async function placeMarketOrderWithTx(
 
   await tx.inventory.update({
     where: {
-      companyId_itemId: {
+      companyId_itemId_regionId: {
         companyId: inventory.companyId,
-        itemId: inventory.itemId
+        itemId: inventory.itemId,
+        regionId: inventory.regionId
       }
     },
     data: { reservedQuantity: inventoryState.reservedQuantity }
@@ -218,6 +232,7 @@ export async function placeMarketOrderWithTx(
     data: {
       companyId: input.companyId,
       itemId: input.itemId,
+      regionId: orderRegionId,
       side: input.side,
       quantity: input.quantity,
       remainingQuantity: input.quantity,
@@ -295,14 +310,16 @@ export async function cancelMarketOrderWithTx(
   if (existingOrder.side === OrderSide.SELL && existingOrder.reservedQuantity > 0) {
     const inventory = await tx.inventory.findUnique({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: existingOrder.companyId,
-          itemId: existingOrder.itemId
+          itemId: existingOrder.itemId,
+          regionId: existingOrder.regionId
         }
       },
       select: {
         companyId: true,
         itemId: true,
+        regionId: true,
         reservedQuantity: true
       }
     });
@@ -321,9 +338,10 @@ export async function cancelMarketOrderWithTx(
 
     await tx.inventory.update({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: inventory.companyId,
-          itemId: inventory.itemId
+          itemId: inventory.itemId,
+          regionId: inventory.regionId
         }
       },
       data: {

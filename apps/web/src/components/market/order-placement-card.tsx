@@ -63,6 +63,7 @@ export function OrderPlacementCard({
     await onSubmit({
       companyId: activeCompany.id,
       itemId,
+      regionId: activeCompany.regionId,
       side,
       priceCents,
       quantity
@@ -81,6 +82,11 @@ export function OrderPlacementCard({
             <p className="text-sm font-medium">
               {activeCompany ? `${activeCompany.code} - ${activeCompany.name}` : "No active company"}
             </p>
+            {activeCompany ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Trading region: {activeCompany.regionCode}
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

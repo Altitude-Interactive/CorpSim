@@ -3,6 +3,8 @@
 import { RefreshCcw } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ActiveCompanyCombobox } from "@/components/company/active-company-combobox";
+import { useActiveCompany } from "@/components/company/active-company-provider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusIndicator } from "./status-indicator";
 import { useWorldHealth } from "./world-health-provider";
@@ -13,6 +15,7 @@ const TITLES: Record<string, string> = {
   "/production": "Production",
   "/research": "Research",
   "/inventory": "Inventory",
+  "/logistics": "Logistics",
   "/contracts": "Contracts",
   "/finance": "Finance",
   "/analytics": "Analytics",
@@ -29,6 +32,7 @@ function formatTickLabel(currentTick: number | undefined) {
 export function TopBar() {
   const pathname = usePathname();
   const { health, apiStatus, refresh, isRefreshing } = useWorldHealth();
+  const { activeCompany } = useActiveCompany();
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
@@ -39,6 +43,9 @@ export function TopBar() {
         </div>
         <div className="flex items-center gap-3">
           <ActiveCompanyCombobox />
+          {activeCompany ? (
+            <Badge variant="info">{`Region ${activeCompany.regionCode}`}</Badge>
+          ) : null}
           <StatusIndicator status={apiStatus} />
           <Button
             variant="outline"

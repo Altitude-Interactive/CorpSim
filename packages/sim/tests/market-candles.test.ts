@@ -8,6 +8,7 @@ describe("market candle computation", () => {
       {
         id: "trade-2",
         itemId: "item-a",
+        regionId: "region-core",
         unitPriceCents: 105n,
         quantity: 2,
         createdAt: new Date("2026-02-08T20:00:01.000Z")
@@ -15,6 +16,7 @@ describe("market candle computation", () => {
       {
         id: "trade-1",
         itemId: "item-a",
+        regionId: "region-core",
         unitPriceCents: 100n,
         quantity: 3,
         createdAt: new Date("2026-02-08T20:00:00.000Z")
@@ -22,6 +24,7 @@ describe("market candle computation", () => {
       {
         id: "trade-3",
         itemId: "item-a",
+        regionId: "region-core",
         unitPriceCents: 90n,
         quantity: 5,
         createdAt: new Date("2026-02-08T20:00:02.000Z")
@@ -31,6 +34,7 @@ describe("market candle computation", () => {
     expect(candles).toEqual([
       {
         itemId: "item-a",
+        regionId: "region-core",
         tick: 5,
         openCents: 100n,
         highCents: 105n,
@@ -49,6 +53,7 @@ describe("market candle computation", () => {
       {
         id: "trade-1",
         itemId: "item-a",
+        regionId: "region-core",
         unitPriceCents: 100n,
         quantity: 1,
         createdAt: new Date("2026-02-08T20:00:00.000Z")
@@ -71,13 +76,15 @@ describe("market candle computation", () => {
     expect(upsert).toHaveBeenCalledTimes(2);
     expect(upsert).toHaveBeenNthCalledWith(1, {
       where: {
-        itemId_tick: {
+        itemId_regionId_tick: {
           itemId: "item-a",
+          regionId: "region-core",
           tick: 7
         }
       },
       create: {
         itemId: "item-a",
+        regionId: "region-core",
         tick: 7,
         openCents: 100n,
         highCents: 100n,
@@ -99,13 +106,15 @@ describe("market candle computation", () => {
     });
     expect(upsert).toHaveBeenNthCalledWith(2, {
       where: {
-        itemId_tick: {
+        itemId_regionId_tick: {
           itemId: "item-a",
+          regionId: "region-core",
           tick: 7
         }
       },
       create: {
         itemId: "item-a",
+        regionId: "region-core",
         tick: 7,
         openCents: 100n,
         highCents: 100n,

@@ -8,6 +8,7 @@ export async function resetSimulationData(prisma: PrismaClient): Promise<void> {
     await tx.researchNodeUnlockRecipe.deleteMany();
     await tx.researchNode.deleteMany();
     await tx.companyRecipe.deleteMany();
+    await tx.shipment.deleteMany();
     await tx.contractFulfillment.deleteMany();
     await tx.contract.deleteMany();
     await tx.trade.deleteMany();
@@ -20,6 +21,7 @@ export async function resetSimulationData(prisma: PrismaClient): Promise<void> {
     await tx.inventory.deleteMany();
     await tx.company.deleteMany();
     await tx.player.deleteMany();
+    await tx.region.deleteMany();
     await tx.item.deleteMany();
     await tx.worldTickState.deleteMany();
 

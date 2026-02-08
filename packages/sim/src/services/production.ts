@@ -264,7 +264,7 @@ export async function createProductionJobWithTx(
   const [company, recipe, companyRecipe] = await Promise.all([
     tx.company.findUnique({
       where: { id: input.companyId },
-      select: { id: true }
+      select: { id: true, regionId: true }
     }),
     tx.recipe.findUnique({
       where: { id: input.recipeId },
@@ -325,11 +325,13 @@ export async function createProductionJobWithTx(
       : await tx.inventory.findMany({
           where: {
             companyId: input.companyId,
-            itemId: { in: requiredItemIds }
+            itemId: { in: requiredItemIds },
+            regionId: company.regionId
           },
           select: {
             companyId: true,
             itemId: true,
+            regionId: true,
             quantity: true,
             reservedQuantity: true
           }
@@ -357,9 +359,10 @@ export async function createProductionJobWithTx(
   for (const requirement of requirements) {
     await tx.inventory.update({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: input.companyId,
-          itemId: requirement.itemId
+          itemId: requirement.itemId,
+          regionId: company.regionId
         }
       },
       data: {
@@ -380,6 +383,12 @@ export async function createProductionJobWithTx(
       dueTick: tick + recipe.durationTicks
     },
     include: {
+      company: {
+        select: {
+          id: true,
+          regionId: true
+        }
+      },
       recipe: {
         include: {
           outputItem: {
@@ -428,6 +437,12 @@ export async function cancelProductionJobWithTx(
   const job = await tx.productionJob.findUnique({
     where: { id: input.jobId },
     include: {
+      company: {
+        select: {
+          id: true,
+          regionId: true
+        }
+      },
       recipe: {
         include: {
           outputItem: {
@@ -469,11 +484,13 @@ export async function cancelProductionJobWithTx(
       : await tx.inventory.findMany({
           where: {
             companyId: job.companyId,
-            itemId: { in: requirements.map((entry) => entry.itemId) }
+            itemId: { in: requirements.map((entry) => entry.itemId) },
+            regionId: job.company.regionId
           },
           select: {
             companyId: true,
             itemId: true,
+            regionId: true,
             quantity: true,
             reservedQuantity: true
           }
@@ -501,9 +518,10 @@ export async function cancelProductionJobWithTx(
   for (const requirement of requirements) {
     await tx.inventory.update({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: job.companyId,
-          itemId: requirement.itemId
+          itemId: requirement.itemId,
+          regionId: job.company.regionId
         }
       },
       data: {
@@ -521,6 +539,12 @@ export async function cancelProductionJobWithTx(
       completedTick: tick
     },
     include: {
+      company: {
+        select: {
+          id: true,
+          regionId: true
+        }
+      },
       recipe: {
         include: {
           outputItem: {
@@ -561,6 +585,12 @@ export async function completeDueProductionJobs(
     },
     orderBy: [{ dueTick: "asc" }, { createdAt: "asc" }],
     include: {
+      company: {
+        select: {
+          id: true,
+          regionId: true
+        }
+      },
       recipe: {
         include: {
           outputItem: {
@@ -599,11 +629,13 @@ export async function completeDueProductionJobs(
         : await tx.inventory.findMany({
             where: {
               companyId: job.companyId,
-              itemId: { in: requirements.map((entry) => entry.itemId) }
+              itemId: { in: requirements.map((entry) => entry.itemId) },
+              regionId: job.company.regionId
             },
             select: {
               companyId: true,
               itemId: true,
+              regionId: true,
               quantity: true,
               reservedQuantity: true
             }
@@ -631,9 +663,10 @@ export async function completeDueProductionJobs(
     for (const requirement of requirements) {
       await tx.inventory.update({
         where: {
-          companyId_itemId: {
+          companyId_itemId_regionId: {
             companyId: job.companyId,
-            itemId: requirement.itemId
+            itemId: requirement.itemId,
+            regionId: job.company.regionId
           }
         },
         data: {
@@ -651,14 +684,16 @@ export async function completeDueProductionJobs(
 
     await tx.inventory.upsert({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: job.companyId,
-          itemId: job.recipe.outputItemId
+          itemId: job.recipe.outputItemId,
+          regionId: job.company.regionId
         }
       },
       create: {
         companyId: job.companyId,
         itemId: job.recipe.outputItemId,
+        regionId: job.company.regionId,
         quantity: outputQuantity,
         reservedQuantity: 0
       },

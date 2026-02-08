@@ -13,9 +13,11 @@ import {
   ItemCatalogItem,
   MarketOrder,
   MarketTrade,
+  RegionSummary,
   cancelMarketOrder,
   listItems,
   listMarketOrders,
+  listRegions,
   listMarketTrades,
   placeMarketOrder
 } from "@/lib/api";
@@ -75,6 +77,8 @@ export function MarketPage() {
   const { health, refresh: refreshHealth } = useWorldHealth();
 
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
+  const [regions, setRegions] = useState<RegionSummary[]>([]);
+  const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [orderFilters, setOrderFilters] = useState<OrderBookFilters>(INITIAL_ORDER_FILTERS);
   const [tradeFilters, setTradeFilters] = useState<TradeFilters>(INITIAL_TRADE_FILTERS);
 
@@ -89,16 +93,34 @@ export function MarketPage() {
   const [isCancellingOrderId, setIsCancellingOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadItems = useCallback(async () => {
-    const rows = await listItems();
-    setItems(rows);
-  }, []);
+  const loadCatalog = useCallback(async () => {
+    const [itemRows, regionRows] = await Promise.all([listItems(), listRegions()]);
+    setItems(itemRows);
+    setRegions(regionRows);
+    setSelectedRegionId((current) => {
+      if (current && regionRows.some((region) => region.id === current)) {
+        return current;
+      }
+      if (activeCompany?.regionId && regionRows.some((region) => region.id === activeCompany.regionId)) {
+        return activeCompany.regionId;
+      }
+      return regionRows[0]?.id ?? "";
+    });
+  }, [activeCompany?.regionId]);
 
-  const loadOrderBook = useCallback(async (filters: OrderBookFilters) => {
+  useEffect(() => {
+    if (!activeCompany?.regionId) {
+      return;
+    }
+    setSelectedRegionId(activeCompany.regionId);
+  }, [activeCompany?.regionId]);
+
+  const loadOrderBook = useCallback(async (filters: OrderBookFilters, regionId: string) => {
     setIsLoadingOrderBook(true);
     try {
       const parsedLimit = Number.parseInt(filters.limit, 10);
       const rows = await listMarketOrders({
+        regionId: regionId || undefined,
         itemId: filters.itemId || undefined,
         side: filters.side === "ALL" ? undefined : filters.side,
         companyId: filters.companyId || undefined,
@@ -113,7 +135,7 @@ export function MarketPage() {
     }
   }, []);
 
-  const loadMyOrders = useCallback(async () => {
+  const loadMyOrders = useCallback(async (regionId: string) => {
     if (!activeCompanyId) {
       setMyOrders([]);
       setIsLoadingMyOrders(false);
@@ -124,6 +146,7 @@ export function MarketPage() {
     try {
       const rows = await listMarketOrders({
         companyId: activeCompanyId,
+        regionId: regionId || undefined,
         limit: 200
       });
       setMyOrders(rows);
@@ -135,10 +158,11 @@ export function MarketPage() {
     }
   }, [activeCompanyId]);
 
-  const loadTrades = useCallback(async (filters: TradeFilters) => {
+  const loadTrades = useCallback(async (filters: TradeFilters, regionId: string) => {
     setIsLoadingTrades(true);
     try {
       const rows = await listMarketTrades({
+        regionId: regionId || undefined,
         itemId: filters.itemId || undefined,
         companyId: filters.myTradesOnly ? activeCompanyId ?? undefined : undefined,
         limit: DEFAULT_TRADE_LIMIT
@@ -154,26 +178,26 @@ export function MarketPage() {
 
   const refreshMarketData = useCallback(async () => {
     await Promise.all([
-      loadOrderBook(orderFilters),
-      loadMyOrders(),
-      loadTrades(tradeFilters)
+      loadOrderBook(orderFilters, selectedRegionId),
+      loadMyOrders(selectedRegionId),
+      loadTrades(tradeFilters, selectedRegionId)
     ]);
-  }, [loadMyOrders, loadOrderBook, loadTrades, orderFilters, tradeFilters]);
+  }, [loadMyOrders, loadOrderBook, loadTrades, orderFilters, tradeFilters, selectedRegionId]);
 
   useEffect(() => {
     void (async () => {
       try {
-        await loadItems();
+        await loadCatalog();
         await refreshMarketData();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Failed to initialize market page");
       }
     })();
-  }, [loadItems, refreshMarketData]);
+  }, [loadCatalog, refreshMarketData]);
 
   useEffect(() => {
-    void loadMyOrders();
-  }, [activeCompanyId, loadMyOrders]);
+    void loadMyOrders(selectedRegionId);
+  }, [activeCompanyId, loadMyOrders, selectedRegionId]);
 
   useEffect(() => {
     const tick = health?.currentTick;
@@ -190,17 +214,18 @@ export function MarketPage() {
 
   const submitOrderBookFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void loadOrderBook(orderFilters);
+    void loadOrderBook(orderFilters, selectedRegionId);
   };
 
   const submitTradesFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void loadTrades(tradeFilters);
+    void loadTrades(tradeFilters, selectedRegionId);
   };
 
   const handlePlaceOrder = async (input: {
     companyId: string;
     itemId: string;
+    regionId?: string;
     side: "BUY" | "SELL";
     priceCents: number;
     quantity: number;
@@ -279,6 +304,22 @@ export function MarketPage() {
           <CardContent>
             <form className="grid gap-3 md:grid-cols-5" onSubmit={submitOrderBookFilters}>
               <Select
+                value={selectedRegionId || "ALL"}
+                onValueChange={(value) => setSelectedRegionId(value === "ALL" ? "" : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Region" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All regions</SelectItem>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
                 value={orderFilters.side}
                 onValueChange={(value) =>
                   setOrderFilters((prev) => ({ ...prev, side: value as OrderBookFilters["side"] }))
@@ -334,12 +375,12 @@ export function MarketPage() {
           <CardTitle>Trades Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-3 md:grid-cols-[minmax(0,220px)_auto_auto]" onSubmit={submitTradesFilters}>
-            <Select
-              value={tradeFilters.itemId || "ALL"}
-              onValueChange={(value) =>
-                setTradeFilters((prev) => ({ ...prev, itemId: value === "ALL" ? "" : value }))
-              }
+            <form className="grid gap-3 md:grid-cols-[minmax(0,220px)_minmax(0,160px)_auto_auto]" onSubmit={submitTradesFilters}>
+              <Select
+                value={tradeFilters.itemId || "ALL"}
+                onValueChange={(value) =>
+                  setTradeFilters((prev) => ({ ...prev, itemId: value === "ALL" ? "" : value }))
+                }
             >
               <SelectTrigger>
                 <SelectValue placeholder="All items" />
@@ -350,12 +391,28 @@ export function MarketPage() {
                   <SelectItem value={item.id} key={item.id}>
                     {item.code} - {item.name}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <label className="flex items-center gap-2 rounded-md border border-border px-3 text-sm">
-              <input
-                type="checkbox"
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={selectedRegionId || "ALL"}
+                onValueChange={(value) => setSelectedRegionId(value === "ALL" ? "" : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Region" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All regions</SelectItem>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <label className="flex items-center gap-2 rounded-md border border-border px-3 text-sm">
+                <input
+                  type="checkbox"
                 checked={tradeFilters.myTradesOnly}
                 onChange={(event) =>
                   setTradeFilters((prev) => ({ ...prev, myTradesOnly: event.target.checked }))
@@ -365,6 +422,11 @@ export function MarketPage() {
             </label>
             <Button type="submit">Apply</Button>
           </form>
+          {selectedRegionId && activeCompany && selectedRegionId !== activeCompany.regionId ? (
+            <p className="mt-2 text-xs text-amber-300">
+              Viewing a non-home region. New orders still place in {activeCompany.regionCode}.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

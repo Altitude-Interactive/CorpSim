@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LineChart,
   PackageSearch,
+  Truck,
   TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/production", label: "Production", icon: Factory },
   { href: "/research", label: "Research", icon: FlaskConical },
   { href: "/inventory", label: "Inventory", icon: PackageSearch },
+  { href: "/logistics", label: "Logistics", icon: Truck },
   { href: "/contracts", label: "Contracts", icon: ClipboardList },
   { href: "/finance", label: "Finance", icon: CircleDollarSign },
   { href: "/analytics", label: "Analytics", icon: LineChart },

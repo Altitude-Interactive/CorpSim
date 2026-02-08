@@ -7,6 +7,10 @@ export class ListMarketTradesDto {
 
   @IsOptional()
   @IsString()
+  regionId?: string;
+
+  @IsOptional()
+  @IsString()
   companyId?: string;
 
   @IsOptional()

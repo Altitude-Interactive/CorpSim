@@ -146,18 +146,20 @@ export function planBotActions(
 
 function resolveReferencePrice(
   itemCode: string,
+  regionId: string,
   itemId: string,
-  bestBuyPriceByItemId: Map<string, bigint>,
-  bestSellPriceByItemId: Map<string, bigint>,
-  latestTradeByItemId: Map<string, bigint>
+  bestBuyPriceByRegionItem: Map<string, bigint>,
+  bestSellPriceByRegionItem: Map<string, bigint>,
+  latestTradeByRegionItem: Map<string, bigint>
 ): bigint {
-  const lastTrade = latestTradeByItemId.get(itemId);
+  const key = `${regionId}:${itemId}`;
+  const lastTrade = latestTradeByRegionItem.get(key);
   if (lastTrade !== undefined) {
     return lastTrade;
   }
 
-  const bestBuy = bestBuyPriceByItemId.get(itemId);
-  const bestSell = bestSellPriceByItemId.get(itemId);
+  const bestBuy = bestBuyPriceByRegionItem.get(key);
+  const bestSell = bestSellPriceByRegionItem.get(key);
 
   if (bestBuy !== undefined && bestSell !== undefined) {
     return (bestBuy + bestSell) / 2n;
@@ -202,6 +204,7 @@ export async function runBotsForTick(
     select: {
       id: true,
       code: true,
+      regionId: true,
       cashCents: true,
       reservedCashCents: true
     }
@@ -233,6 +236,7 @@ export async function runBotsForTick(
       select: {
         companyId: true,
         itemId: true,
+        regionId: true,
         quantity: true,
         reservedQuantity: true
       }
@@ -245,6 +249,7 @@ export async function runBotsForTick(
       },
       select: {
         companyId: true,
+        regionId: true,
         itemId: true,
         side: true
       }
@@ -255,6 +260,7 @@ export async function runBotsForTick(
         status: OrderStatus.OPEN
       },
       select: {
+        regionId: true,
         itemId: true,
         side: true,
         unitPriceCents: true
@@ -264,6 +270,7 @@ export async function runBotsForTick(
       where: { itemId: { in: itemIds } },
       orderBy: [{ tick: "desc" }, { createdAt: "desc" }],
       select: {
+        regionId: true,
         itemId: true,
         unitPriceCents: true
       }
@@ -271,56 +278,66 @@ export async function runBotsForTick(
   ]);
 
   const inventoryByKey = new Map(
-    inventories.map((entry) => [`${entry.companyId}:${entry.itemId}`, entry] as const)
+    inventories.map(
+      (entry) => [`${entry.companyId}:${entry.itemId}:${entry.regionId}`, entry] as const
+    )
   );
   const openOrderKeySet = new Set(
-    openOrders.map((entry) => `${entry.companyId}:${entry.itemId}:${entry.side}`)
+    openOrders.map((entry) => `${entry.companyId}:${entry.regionId}:${entry.itemId}:${entry.side}`)
   );
 
-  const bestBuyPriceByItemId = new Map<string, bigint>();
-  const bestSellPriceByItemId = new Map<string, bigint>();
+  const bestBuyPriceByRegionItem = new Map<string, bigint>();
+  const bestSellPriceByRegionItem = new Map<string, bigint>();
 
   for (const order of bookOrders) {
+    const key = `${order.regionId}:${order.itemId}`;
     if (order.side === OrderSide.BUY) {
-      const current = bestBuyPriceByItemId.get(order.itemId);
+      const current = bestBuyPriceByRegionItem.get(key);
       if (current === undefined || order.unitPriceCents > current) {
-        bestBuyPriceByItemId.set(order.itemId, order.unitPriceCents);
+        bestBuyPriceByRegionItem.set(key, order.unitPriceCents);
       }
       continue;
     }
 
-    const current = bestSellPriceByItemId.get(order.itemId);
+    const current = bestSellPriceByRegionItem.get(key);
     if (current === undefined || order.unitPriceCents < current) {
-      bestSellPriceByItemId.set(order.itemId, order.unitPriceCents);
+      bestSellPriceByRegionItem.set(key, order.unitPriceCents);
     }
   }
 
-  const latestTradeByItemId = new Map<string, bigint>();
+  const latestTradeByRegionItem = new Map<string, bigint>();
   for (const trade of latestTrades) {
-    if (!latestTradeByItemId.has(trade.itemId)) {
-      latestTradeByItemId.set(trade.itemId, trade.unitPriceCents);
+    const key = `${trade.regionId}:${trade.itemId}`;
+    if (!latestTradeByRegionItem.has(key)) {
+      latestTradeByRegionItem.set(key, trade.unitPriceCents);
     }
   }
 
-  const referencePriceByItemId = new Map<string, bigint>(
-    items.map((item) => [
-      item.id,
-      resolveReferencePrice(
-        item.code,
-        item.id,
-        bestBuyPriceByItemId,
-        bestSellPriceByItemId,
-        latestTradeByItemId
-      )
-    ])
-  );
+  const referencePriceByCompanyId = new Map<string, Map<string, bigint>>();
 
   const companySnapshots: BotCompanySnapshot[] = companies.map((company) => {
+    const referencePriceByItemId = new Map<string, bigint>(
+      items.map((item) => [
+        item.id,
+        resolveReferencePrice(
+          item.code,
+          company.regionId,
+          item.id,
+          bestBuyPriceByRegionItem,
+          bestSellPriceByRegionItem,
+          latestTradeByRegionItem
+        )
+      ])
+    );
+    referencePriceByCompanyId.set(company.id, referencePriceByItemId);
+
     const itemsForCompany = items.map((item) => {
-      const inventory = inventoryByKey.get(`${company.id}:${item.id}`);
+      const companyInventory = inventoryByKey.get(
+        `${company.id}:${item.id}:${company.regionId}`
+      );
       const availableInventory = Math.max(
         0,
-        (inventory?.quantity ?? 0) - (inventory?.reservedQuantity ?? 0)
+        (companyInventory?.quantity ?? 0) - (companyInventory?.reservedQuantity ?? 0)
       );
 
       return {
@@ -328,8 +345,12 @@ export async function runBotsForTick(
         itemCode: item.code,
         referencePriceCents: referencePriceByItemId.get(item.id) ?? 100n,
         availableInventory,
-        hasOpenBuyOrder: openOrderKeySet.has(`${company.id}:${item.id}:${OrderSide.BUY}`),
-        hasOpenSellOrder: openOrderKeySet.has(`${company.id}:${item.id}:${OrderSide.SELL}`)
+        hasOpenBuyOrder: openOrderKeySet.has(
+          `${company.id}:${company.regionId}:${item.id}:${OrderSide.BUY}`
+        ),
+        hasOpenSellOrder: openOrderKeySet.has(
+          `${company.id}:${company.regionId}:${item.id}:${OrderSide.SELL}`
+        )
       };
     });
 
@@ -368,7 +389,7 @@ export async function runBotsForTick(
       maxJobsPerTick: config.producerMaxJobsPerTick,
       cadenceTicks: config.producerCadenceTicks,
       minProfitBps: config.producerMinProfitBps,
-      referencePriceByItemId
+      referencePriceByItemId: referencePriceByCompanyId.get(companyId) ?? new Map()
     });
   }
 

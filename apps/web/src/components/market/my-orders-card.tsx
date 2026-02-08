@@ -22,6 +22,7 @@ export function MyOrdersCard({ orders, isLoading, onCancel }: MyOrdersCardProps)
             <TableRow>
               <TableHead>Order</TableHead>
               <TableHead>Item</TableHead>
+              <TableHead>Region</TableHead>
               <TableHead>Side</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Price</TableHead>
@@ -34,6 +35,7 @@ export function MyOrdersCard({ orders, isLoading, onCancel }: MyOrdersCardProps)
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-xs">{order.id}</TableCell>
                 <TableCell className="font-mono text-xs">{order.itemId}</TableCell>
+                <TableCell className="font-mono text-xs">{order.regionId}</TableCell>
                 <TableCell>
                   <SideBadge side={order.side} />
                 </TableCell>
@@ -61,7 +63,7 @@ export function MyOrdersCard({ orders, isLoading, onCancel }: MyOrdersCardProps)
             ))}
             {!isLoading && orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   No orders for the active company.
                 </TableCell>
               </TableRow>

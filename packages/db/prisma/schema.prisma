@@ -47,10 +47,17 @@ enum ContractStatus {
   CANCELLED
 }
 
+enum ShipmentStatus {
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
 enum LedgerEntryType {
   ORDER_RESERVE
   TRADE_SETTLEMENT
   CONTRACT_SETTLEMENT
+  SHIPMENT_FEE
   RESEARCH_PAYMENT
   PRODUCTION_COMPLETION
   PRODUCTION_COST
@@ -63,17 +70,20 @@ model Company {
   name              String
   isPlayer          Boolean      @default(false)
   ownerPlayerId     String?
+  regionId          String
   cashCents         BigInt
   reservedCashCents BigInt       @default(0)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   ownerPlayer       Player?      @relation(fields: [ownerPlayerId], references: [id], onDelete: SetNull)
+  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
   inventories       Inventory[]
   orders            MarketOrder[]
   productionJobs    ProductionJob[]
   companyRecipes    CompanyRecipe[]
   companyResearches CompanyResearch[]
   researchJobs      ResearchJob[]
+  shipments         Shipment[]
   ledgerEntries     LedgerEntry[]
   buyContracts      Contract[]    @relation("ContractBuyerCompany")
   sellContracts     Contract[]    @relation("ContractSellerCompany")
@@ -82,6 +92,7 @@ model Company {
   sellTrades        Trade[]      @relation("TradeSellerCompany")
 
   @@index([ownerPlayerId])
+  @@index([regionId])
 }
 
 model Player {
@@ -102,31 +113,74 @@ model Item {
   orders            MarketOrder[]
   trades            Trade[]
   candles           ItemTickCandle[]
+  shipments         Shipment[]
   outputRecipes     Recipe[]     @relation("RecipeOutput")
   recipeInputs      RecipeInput[]
   contracts         Contract[]
   contractFulfillments ContractFulfillment[]
 }
 
+model Region {
+  id                String      @id @default(cuid())
+  code              String      @unique
+  name              String
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  companies         Company[]
+  inventories       Inventory[]
+  marketOrders      MarketOrder[]
+  trades            Trade[]
+  itemTickCandles   ItemTickCandle[]
+  shipmentsFrom     Shipment[]  @relation("ShipmentFromRegion")
+  shipmentsTo       Shipment[]  @relation("ShipmentToRegion")
+}
+
 model Inventory {
   companyId         String
   itemId            String
+  regionId          String
   quantity          Int          @default(0)
   reservedQuantity  Int          @default(0)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
 
-  @@id([companyId, itemId])
+  @@id([companyId, itemId, regionId])
   @@index([companyId])
   @@index([itemId])
+  @@index([regionId])
+}
+
+model Shipment {
+  id                String         @id @default(cuid())
+  companyId         String
+  fromRegionId      String
+  toRegionId        String
+  itemId            String
+  quantity          Int
+  status            ShipmentStatus @default(IN_TRANSIT)
+  tickCreated       Int
+  tickArrives       Int
+  tickClosed        Int?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  company           Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  fromRegion        Region         @relation("ShipmentFromRegion", fields: [fromRegionId], references: [id], onDelete: Restrict)
+  toRegion          Region         @relation("ShipmentToRegion", fields: [toRegionId], references: [id], onDelete: Restrict)
+  item              Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, status, tickCreated])
+  @@index([status, tickArrives])
+  @@index([fromRegionId, toRegionId])
 }
 
 model MarketOrder {
   id                String       @id @default(cuid())
   companyId         String
   itemId            String
+  regionId          String
   side              OrderSide
   status            OrderStatus  @default(OPEN)
   quantity          Int
@@ -141,11 +195,13 @@ model MarketOrder {
   closedAt          DateTime?
   company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
   buyTrades         Trade[]      @relation("TradeBuyOrder")
   sellTrades        Trade[]      @relation("TradeSellOrder")
 
-  @@index([itemId, side, status, unitPriceCents, createdAt])
+  @@index([regionId, itemId, side, status, unitPriceCents, createdAt])
   @@index([companyId, status])
+  @@index([regionId, status, createdAt])
 }
 
 model Trade {
@@ -155,6 +211,7 @@ model Trade {
   buyerCompanyId    String
   sellerCompanyId   String
   itemId            String
+  regionId          String
   quantity          Int
   unitPriceCents    BigInt
   totalPriceCents   BigInt
@@ -165,10 +222,12 @@ model Trade {
   buyerCompany      Company      @relation("TradeBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Cascade)
   sellerCompany     Company      @relation("TradeSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: Cascade)
   item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
 
-  @@index([itemId, tick])
+  @@index([regionId, itemId, tick])
   @@index([buyerCompanyId, tick])
   @@index([sellerCompanyId, tick])
+  @@index([regionId, tick])
 }
 
 model Recipe {
@@ -373,6 +432,7 @@ model LedgerEntry {
 model ItemTickCandle {
   id          String   @id @default(cuid())
   itemId      String
+  regionId    String
   tick        Int
   openCents   BigInt
   highCents   BigInt
@@ -384,7 +444,9 @@ model ItemTickCandle {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region      Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
 
-  @@unique([itemId, tick])
-  @@index([itemId, tick])
+  @@unique([itemId, regionId, tick])
+  @@index([itemId, regionId, tick])
+  @@index([regionId, tick])
 }

@@ -57,6 +57,7 @@ pnpm web:dev
 ```
 
 Web is available on `http://localhost:3001` and reads API base URL from `NEXT_PUBLIC_API_URL`.
+For logistics fee preview in web UI, set `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS` and `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS` to match API env.
 
 ## Run Worker (Local)
 
@@ -86,8 +87,18 @@ Worker configuration env knobs:
 * `CONTRACT_TTL_TICKS` (default `50`)
 * `CONTRACT_ITEM_CODES` (default all seeded items)
 * `CONTRACT_PRICE_BAND_BPS` (default `500`)
+* `SHIPMENT_BASE_FEE_CENTS` (default `250`)
+* `SHIPMENT_FEE_PER_UNIT_CENTS` (default `15`)
 
 `/v1/world/health` includes invariant issues and always caps returned issues to 50 max.
+
+Regional Markets v2: market orders, trades, and candles are region-scoped (`regionId`). Inventory and production remain region-scoped, and logistics (`/v1/shipments`) is the transport path between regions.
+
+Market API region behavior:
+
+* `GET /v1/market/orders` and `GET /v1/market/trades` accept optional `regionId` (defaults to all regions).
+* `GET /v1/market/candles` and `GET /v1/market/analytics/summary` require `regionId`.
+* `POST /v1/market/orders` accepts optional `regionId`; if omitted, it uses `company.regionId`. Remote-region placement is rejected (`403`).
 
 ## Temporary Player Identity (Pre-Auth)
 

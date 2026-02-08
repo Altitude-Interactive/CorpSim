@@ -20,6 +20,7 @@ export function OrderBookCard({ orders, isLoading }: OrderBookCardProps) {
             <TableRow>
               <TableHead>Order</TableHead>
               <TableHead>Item</TableHead>
+              <TableHead>Region</TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Side</TableHead>
               <TableHead>Status</TableHead>
@@ -33,6 +34,7 @@ export function OrderBookCard({ orders, isLoading }: OrderBookCardProps) {
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-xs">{order.id}</TableCell>
                 <TableCell className="font-mono text-xs">{order.itemId}</TableCell>
+                <TableCell className="font-mono text-xs">{order.regionId}</TableCell>
                 <TableCell className="font-mono text-xs">{order.companyId}</TableCell>
                 <TableCell>
                   <SideBadge side={order.side} />
@@ -47,7 +49,7 @@ export function OrderBookCard({ orders, isLoading }: OrderBookCardProps) {
             ))}
             {!isLoading && orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   No orders found for selected filters.
                 </TableCell>
               </TableRow>

@@ -15,6 +15,8 @@ describe("contracts API integration", () => {
   let playerCompanyId: string;
   let botBuyerCompanyId: string;
   let botSellerCompanyId: string;
+  let playerRegionId: string;
+  let botBuyerRegionId: string;
   let ironOreId: string;
 
   beforeAll(async () => {
@@ -44,6 +46,18 @@ describe("contracts API integration", () => {
     botBuyerCompanyId = seeded.companyIds.botTrader;
     botSellerCompanyId = seeded.companyIds.botMiner;
     ironOreId = seeded.itemIds.ironOre;
+    const [playerCompany, botBuyerCompany] = await Promise.all([
+      prisma.company.findUniqueOrThrow({
+        where: { id: playerCompanyId },
+        select: { regionId: true }
+      }),
+      prisma.company.findUniqueOrThrow({
+        where: { id: botBuyerCompanyId },
+        select: { regionId: true }
+      })
+    ]);
+    playerRegionId = playerCompany.regionId;
+    botBuyerRegionId = botBuyerCompany.regionId;
   });
 
   afterAll(async () => {
@@ -105,18 +119,20 @@ describe("contracts API integration", () => {
         }),
         prisma.inventory.findUniqueOrThrow({
           where: {
-            companyId_itemId: {
+            companyId_itemId_regionId: {
               companyId: playerCompanyId,
-              itemId: ironOreId
+              itemId: ironOreId,
+              regionId: playerRegionId
             }
           },
           select: { quantity: true, reservedQuantity: true }
         }),
         prisma.inventory.findUnique({
           where: {
-            companyId_itemId: {
+            companyId_itemId_regionId: {
               companyId: botBuyerCompanyId,
-              itemId: ironOreId
+              itemId: ironOreId,
+              regionId: botBuyerRegionId
             }
           },
           select: { quantity: true }
@@ -160,18 +176,20 @@ describe("contracts API integration", () => {
       }),
       prisma.inventory.findUniqueOrThrow({
         where: {
-          companyId_itemId: {
+          companyId_itemId_regionId: {
             companyId: playerCompanyId,
-            itemId: ironOreId
+            itemId: ironOreId,
+            regionId: playerRegionId
           }
         },
         select: { quantity: true, reservedQuantity: true }
       }),
       prisma.inventory.findUniqueOrThrow({
         where: {
-          companyId_itemId: {
+          companyId_itemId_regionId: {
             companyId: botBuyerCompanyId,
-            itemId: ironOreId
+            itemId: ironOreId,
+            regionId: botBuyerRegionId
           }
         },
         select: { quantity: true }

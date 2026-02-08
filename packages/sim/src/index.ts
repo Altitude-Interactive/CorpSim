@@ -9,6 +9,8 @@ export * from "./services/players";
 export * from "./services/production";
 export * from "./services/research";
 export * from "./services/contracts";
+export * from "./services/regions";
+export * from "./services/shipments";
 export * from "./services/reset-simulation";
 export * from "./services/tick-engine";
 export * from "./bots/bot-runner";

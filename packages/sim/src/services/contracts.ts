@@ -365,7 +365,8 @@ export async function fulfillContract(prisma: PrismaClient, input: FulfillContra
             id: true,
             isPlayer: true,
             ownerPlayerId: true,
-            cashCents: true
+            cashCents: true,
+            regionId: true
           }
         }
       }
@@ -393,11 +394,25 @@ export async function fulfillContract(prisma: PrismaClient, input: FulfillContra
       throw new DomainInvariantError("contract buyer company must be an NPC company");
     }
 
+    const sellerCompany = await tx.company.findUnique({
+      where: { id: input.sellerCompanyId },
+      select: {
+        id: true,
+        cashCents: true,
+        regionId: true
+      }
+    });
+
+    if (!sellerCompany) {
+      throw new NotFoundError(`company ${input.sellerCompanyId} not found`);
+    }
+
     const sellerInventory = await tx.inventory.findUnique({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: input.sellerCompanyId,
-          itemId: contract.itemId
+          itemId: contract.itemId,
+          regionId: sellerCompany.regionId
         }
       },
       select: {
@@ -444,14 +459,16 @@ export async function fulfillContract(prisma: PrismaClient, input: FulfillContra
 
     await tx.inventory.upsert({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: contract.buyerCompanyId,
-          itemId: contract.itemId
+          itemId: contract.itemId,
+          regionId: contract.buyerCompany.regionId
         }
       },
       create: {
         companyId: contract.buyerCompanyId,
         itemId: contract.itemId,
+        regionId: contract.buyerCompany.regionId,
         quantity: input.quantity,
         reservedQuantity: 0
       },

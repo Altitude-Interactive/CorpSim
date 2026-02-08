@@ -15,6 +15,7 @@ function createOrder(input: {
   return {
     id: input.id,
     itemId: input.itemId ?? "item-1",
+    regionId: "region-core",
     companyId: input.companyId ?? "company-1",
     side: input.side,
     unitPriceCents: input.unitPriceCents,

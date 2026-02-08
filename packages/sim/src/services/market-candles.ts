@@ -4,6 +4,7 @@ import { DomainInvariantError } from "../domain/errors";
 export interface CandleTradeRow {
   id: string;
   itemId: string;
+  regionId: string;
   unitPriceCents: bigint;
   quantity: number;
   createdAt: Date;
@@ -11,6 +12,7 @@ export interface CandleTradeRow {
 
 export interface ComputedItemTickCandle {
   itemId: string;
+  regionId: string;
   tick: number;
   openCents: bigint;
   highCents: bigint;
@@ -39,6 +41,9 @@ function validateTradeRow(trade: CandleTradeRow): void {
   if (!trade.itemId) {
     throw new DomainInvariantError("trade itemId is required");
   }
+  if (!trade.regionId) {
+    throw new DomainInvariantError("trade regionId is required");
+  }
   if (trade.unitPriceCents <= 0n) {
     throw new DomainInvariantError("trade unitPriceCents must be positive");
   }
@@ -60,16 +65,17 @@ export function computeTickCandlesFromTrades(
   const grouped = new Map<string, CandleTradeRow[]>();
   for (const trade of trades) {
     validateTradeRow(trade);
-    const bucket = grouped.get(trade.itemId) ?? [];
+    const key = `${trade.regionId}:${trade.itemId}`;
+    const bucket = grouped.get(key) ?? [];
     bucket.push(trade);
-    grouped.set(trade.itemId, bucket);
+    grouped.set(key, bucket);
   }
 
   const candles: ComputedItemTickCandle[] = [];
-  const sortedItemIds = [...grouped.keys()].sort((left, right) => left.localeCompare(right));
+  const sortedKeys = [...grouped.keys()].sort((left, right) => left.localeCompare(right));
 
-  for (const itemId of sortedItemIds) {
-    const itemTrades = [...(grouped.get(itemId) ?? [])].sort(compareTradesByTime);
+  for (const key of sortedKeys) {
+    const itemTrades = [...(grouped.get(key) ?? [])].sort(compareTradesByTime);
     const first = itemTrades[0];
     const last = itemTrades[itemTrades.length - 1];
 
@@ -99,7 +105,8 @@ export function computeTickCandlesFromTrades(
 
     const vwap = (notional + BigInt(Math.floor(volume / 2))) / BigInt(volume);
     candles.push({
-      itemId,
+      itemId: first.itemId,
+      regionId: first.regionId,
       tick,
       openCents: first.unitPriceCents,
       highCents: high,
@@ -125,6 +132,7 @@ export async function upsertMarketCandlesForTick(
     select: {
       id: true,
       itemId: true,
+      regionId: true,
       unitPriceCents: true,
       quantity: true,
       createdAt: true
@@ -135,13 +143,15 @@ export async function upsertMarketCandlesForTick(
   for (const candle of candles) {
     await tx.itemTickCandle.upsert({
       where: {
-        itemId_tick: {
+        itemId_regionId_tick: {
           itemId: candle.itemId,
+          regionId: candle.regionId,
           tick: candle.tick
         }
       },
       create: {
         itemId: candle.itemId,
+        regionId: candle.regionId,
         tick: candle.tick,
         openCents: candle.openCents,
         highCents: candle.highCents,

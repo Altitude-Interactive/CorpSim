@@ -5,6 +5,10 @@ export class GetMarketAnalyticsSummaryDto {
   @MinLength(1)
   itemId!: string;
 
+  @IsString()
+  @MinLength(1)
+  regionId!: string;
+
   @IsOptional()
   @IsNumberString({ no_symbols: true })
   windowTicks?: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,9 +11,11 @@ import {
   ItemCatalogItem,
   MarketAnalyticsSummary,
   MarketCandle,
+  RegionSummary,
   getMarketAnalyticsSummary,
   listItems,
-  listMarketCandles
+  listMarketCandles,
+  listRegions
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { AnalyticsKpiCards } from "./analytics-kpi-cards";
@@ -41,9 +44,12 @@ function formatOptionalCents(value: string | null): string {
 
 export function AnalyticsPage() {
   const { health } = useWorldHealth();
+  const { activeCompany } = useActiveCompany();
 
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
+  const [regions, setRegions] = useState<RegionSummary[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [pointLimit, setPointLimit] = useState<number>(DEFAULT_POINTS);
   const [candles, setCandles] = useState<MarketCandle[]>([]);
   const [summary, setSummary] = useState<MarketAnalyticsSummary | null>(null);
@@ -55,19 +61,29 @@ export function AnalyticsPage() {
     [items, selectedItemId]
   );
 
-  const loadItems = useCallback(async () => {
-    const rows = await listItems();
-    setItems(rows);
+  const loadCatalog = useCallback(async () => {
+    const [itemRows, regionRows] = await Promise.all([listItems(), listRegions()]);
+    setItems(itemRows);
+    setRegions(regionRows);
     setSelectedItemId((current) => {
-      if (current && rows.some((item) => item.id === current)) {
+      if (current && itemRows.some((item) => item.id === current)) {
         return current;
       }
-      return rows[0]?.id ?? "";
+      return itemRows[0]?.id ?? "";
     });
-  }, []);
+    setSelectedRegionId((current) => {
+      if (current && regionRows.some((region) => region.id === current)) {
+        return current;
+      }
+      if (activeCompany?.regionId && regionRows.some((region) => region.id === activeCompany.regionId)) {
+        return activeCompany.regionId;
+      }
+      return regionRows[0]?.id ?? "";
+    });
+  }, [activeCompany?.regionId]);
 
   const loadAnalytics = useCallback(async () => {
-    if (!selectedItemId) {
+    if (!selectedItemId || !selectedRegionId) {
       setCandles([]);
       setSummary(null);
       setIsLoading(false);
@@ -79,9 +95,10 @@ export function AnalyticsPage() {
       const [candleRows, summaryRow] = await Promise.all([
         listMarketCandles({
           itemId: selectedItemId,
+          regionId: selectedRegionId,
           limit: pointLimit
         }),
-        getMarketAnalyticsSummary(selectedItemId, pointLimit)
+        getMarketAnalyticsSummary(selectedItemId, selectedRegionId, pointLimit)
       ]);
 
       setCandles(candleRows);
@@ -92,18 +109,24 @@ export function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [pointLimit, selectedItemId]);
+  }, [pointLimit, selectedItemId, selectedRegionId]);
 
   useEffect(() => {
-    void loadItems();
-  }, [loadItems]);
+    void loadCatalog();
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    if (activeCompany?.regionId) {
+      setSelectedRegionId(activeCompany.regionId);
+    }
+  }, [activeCompany?.regionId]);
 
   useEffect(() => {
     void loadAnalytics();
   }, [loadAnalytics]);
 
   useEffect(() => {
-    if (!selectedItemId || health?.currentTick === undefined) {
+    if (!selectedItemId || !selectedRegionId || health?.currentTick === undefined) {
       return;
     }
 
@@ -112,7 +135,7 @@ export function AnalyticsPage() {
     }, ANALYTICS_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
-  }, [health?.currentTick, loadAnalytics, selectedItemId]);
+  }, [health?.currentTick, loadAnalytics, selectedItemId, selectedRegionId]);
 
   return (
     <div className="space-y-4">
@@ -120,7 +143,7 @@ export function AnalyticsPage() {
         <CardHeader>
           <CardTitle>Market Analytics</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 lg:grid-cols-[340px_200px_minmax(0,1fr)]">
+        <CardContent className="grid gap-3 lg:grid-cols-[320px_180px_240px_minmax(0,1fr)]">
           <Select value={selectedItemId} onValueChange={setSelectedItemId}>
             <SelectTrigger>
               <SelectValue placeholder="Select item" />
@@ -146,10 +169,22 @@ export function AnalyticsPage() {
               <SelectItem value="200">200 points</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={selectedRegionId} onValueChange={setSelectedRegionId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Region" />
+            </SelectTrigger>
+            <SelectContent>
+              {regions.map((region) => (
+                <SelectItem key={region.id} value={region.id}>
+                  {region.code} - {region.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="self-center text-sm text-muted-foreground">
             {selectedItem ? `${selectedItem.code} - ${selectedItem.name}` : "No item selected"}
           </p>
-          {error ? <p className="text-sm text-red-300 lg:col-span-3">{error}</p> : null}
+          {error ? <p className="text-sm text-red-300 lg:col-span-4">{error}</p> : null}
         </CardContent>
       </Card>
 

@@ -8,6 +8,11 @@ export class ListMarketOrdersDto {
   itemId?: string;
 
   @IsOptional()
+  @IsString()
+  @MinLength(1)
+  regionId?: string;
+
+  @IsOptional()
   @IsEnum(OrderSide)
   side?: OrderSide;
 

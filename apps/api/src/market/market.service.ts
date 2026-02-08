@@ -14,6 +14,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 export interface MarketOrderFilterInput {
   itemId?: string;
+  regionId?: string;
   side?: "BUY" | "SELL";
   companyId?: string;
   limit?: number;
@@ -22,6 +23,7 @@ export interface MarketOrderFilterInput {
 export interface PlaceOrderInput {
   companyId: string;
   itemId: string;
+  regionId?: string;
   side: "BUY" | "SELL";
   priceCents: number;
   quantity: number;
@@ -29,12 +31,14 @@ export interface PlaceOrderInput {
 
 export interface MarketTradeFilterInput {
   itemId?: string;
+  regionId?: string;
   companyId?: string;
   limit?: number;
 }
 
 export interface MarketCandleFilterInput {
   itemId: string;
+  regionId: string;
   fromTick?: number;
   toTick?: number;
   limit?: number;
@@ -42,6 +46,7 @@ export interface MarketCandleFilterInput {
 
 export interface MarketAnalyticsSummaryInput {
   itemId: string;
+  regionId: string;
   windowTicks?: number;
 }
 
@@ -49,6 +54,7 @@ interface OrderLike {
   id: string;
   companyId: string;
   itemId: string;
+  regionId: string;
   side: "BUY" | "SELL";
   status: string;
   quantity: number;
@@ -67,6 +73,7 @@ interface TradeLike {
   id: string;
   tick: number;
   itemId: string;
+  regionId: string;
   buyerCompanyId: string;
   sellerCompanyId: string;
   unitPriceCents: bigint;
@@ -77,6 +84,7 @@ interface TradeLike {
 interface CandleLike {
   id: string;
   itemId: string;
+  regionId: string;
   tick: number;
   openCents: bigint;
   highCents: bigint;
@@ -94,6 +102,7 @@ function mapOrderToDto(order: OrderLike) {
     id: order.id,
     companyId: order.companyId,
     itemId: order.itemId,
+    regionId: order.regionId,
     side: order.side,
     status: order.status,
     quantity: order.quantity,
@@ -114,6 +123,7 @@ function mapTradeToDto(trade: TradeLike) {
     id: trade.id,
     tick: trade.tick,
     itemId: trade.itemId,
+    regionId: trade.regionId,
     buyerId: trade.buyerCompanyId,
     sellerId: trade.sellerCompanyId,
     priceCents: trade.unitPriceCents.toString(),
@@ -126,6 +136,7 @@ function mapCandleToDto(candle: CandleLike) {
   return {
     id: candle.id,
     itemId: candle.itemId,
+    regionId: candle.regionId,
     tick: candle.tick,
     openCents: candle.openCents.toString(),
     highCents: candle.highCents.toString(),
@@ -164,6 +175,7 @@ export class MarketService {
     const order = await placeMarketOrder(this.prisma, {
       companyId: input.companyId,
       itemId: input.itemId,
+      regionId: input.regionId,
       side: input.side,
       quantity: input.quantity,
       unitPriceCents: BigInt(input.priceCents)
@@ -195,6 +207,7 @@ export class MarketService {
 
     return {
       itemId: summary.itemId,
+      regionId: summary.regionId,
       fromTick: summary.fromTick,
       toTick: summary.toTick,
       candleCount: summary.candleCount,

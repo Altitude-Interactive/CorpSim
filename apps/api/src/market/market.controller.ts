@@ -100,6 +100,7 @@ export class MarketController {
   async listCandles(@Query() query: ListMarketCandlesDto) {
     return this.marketService.listCandles({
       itemId: query.itemId,
+      regionId: query.regionId,
       fromTick: parseOptionalTick(query.fromTick, "fromTick"),
       toTick: parseOptionalTick(query.toTick, "toTick"),
       limit: parseCandlesLimit(query.limit)
@@ -110,6 +111,7 @@ export class MarketController {
   async getAnalyticsSummary(@Query() query: GetMarketAnalyticsSummaryDto) {
     return this.marketService.getAnalyticsSummary({
       itemId: query.itemId,
+      regionId: query.regionId,
       windowTicks: parseWindowTicks(query.windowTicks)
     });
   }
@@ -121,6 +123,7 @@ export class MarketController {
   ) {
     return this.marketService.listOrders({
       itemId: query.itemId,
+      regionId: query.regionId,
       side: query.side,
       companyId: query.companyId,
       limit: parseLimit(query.limit)
@@ -131,6 +134,7 @@ export class MarketController {
   async listTrades(@Query() query: ListMarketTradesDto) {
     return this.marketService.listTrades({
       itemId: query.itemId,
+      regionId: query.regionId,
       companyId: query.companyId,
       limit: parseTradesLimit(query.limit)
     });
@@ -144,6 +148,7 @@ export class MarketController {
     return this.marketService.placeOrder({
       companyId: body.companyId,
       itemId: body.itemId,
+      regionId: body.regionId,
       side: body.side,
       priceCents: body.priceCents,
       quantity: body.quantity

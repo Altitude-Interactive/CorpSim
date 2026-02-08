@@ -10,6 +10,7 @@ import { scanSimulationInvariants } from "./invariants";
 
 export interface MarketOrderFilters {
   itemId?: string;
+  regionId?: string;
   side?: OrderSide;
   companyId?: string;
   limit?: number;
@@ -17,12 +18,14 @@ export interface MarketOrderFilters {
 
 export interface MarketTradeFilters {
   itemId?: string;
+  regionId?: string;
   companyId?: string;
   limit?: number;
 }
 
 export interface MarketCandleFilters {
   itemId: string;
+  regionId: string;
   fromTick?: number;
   toTick?: number;
   limit?: number;
@@ -30,11 +33,13 @@ export interface MarketCandleFilters {
 
 export interface MarketAnalyticsSummaryInput {
   itemId: string;
+  regionId: string;
   windowTicks?: number;
 }
 
 export interface MarketAnalyticsSummaryOutput {
   itemId: string;
+  regionId: string;
   fromTick: number;
   toTick: number;
   candleCount: number;
@@ -156,7 +161,14 @@ export async function listCompanies(prisma: PrismaClient) {
       code: true,
       name: true,
       isPlayer: true,
-      cashCents: true
+      cashCents: true,
+      region: {
+        select: {
+          id: true,
+          code: true,
+          name: true
+        }
+      }
     }
   });
 
@@ -165,7 +177,10 @@ export async function listCompanies(prisma: PrismaClient) {
     code: company.code,
     name: company.name,
     isBot: !company.isPlayer,
-    cashCents: company.cashCents
+    cashCents: company.cashCents,
+    regionId: company.region.id,
+    regionCode: company.region.code,
+    regionName: company.region.name
   }));
 }
 
@@ -179,6 +194,13 @@ export async function getCompanyById(prisma: PrismaClient, companyId: string) {
       isPlayer: true,
       cashCents: true,
       reservedCashCents: true,
+      region: {
+        select: {
+          id: true,
+          code: true,
+          name: true
+        }
+      },
       createdAt: true,
       updatedAt: true
     }
@@ -189,26 +211,41 @@ export async function getCompanyById(prisma: PrismaClient, companyId: string) {
   }
 
   return {
-    ...company,
+    id: company.id,
+    code: company.code,
+    name: company.name,
+    cashCents: company.cashCents,
+    reservedCashCents: company.reservedCashCents,
+    regionId: company.region.id,
+    regionCode: company.region.code,
+    regionName: company.region.name,
+    createdAt: company.createdAt,
+    updatedAt: company.updatedAt,
     isBot: !company.isPlayer
   };
 }
 
-export async function listCompanyInventory(prisma: PrismaClient, companyId: string) {
-  const companyExists = await prisma.company.findUnique({
+export async function listCompanyInventory(
+  prisma: PrismaClient,
+  companyId: string,
+  regionId?: string
+) {
+  const company = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { id: true }
+    select: { id: true, regionId: true }
   });
 
-  if (!companyExists) {
+  if (!company) {
     throw new NotFoundError(`company ${companyId} not found`);
   }
+  const effectiveRegionId = regionId ?? company.regionId;
 
   return prisma.inventory.findMany({
-    where: { companyId },
+    where: { companyId, regionId: effectiveRegionId },
     orderBy: { item: { code: "asc" } },
     select: {
       itemId: true,
+      regionId: true,
       quantity: true,
       reservedQuantity: true,
       item: {
@@ -234,6 +271,7 @@ export async function listMarketOrders(
   return prisma.marketOrder.findMany({
     where: {
       itemId: filters.itemId,
+      regionId: filters.regionId,
       side: filters.side,
       companyId: filters.companyId
     },
@@ -243,6 +281,7 @@ export async function listMarketOrders(
       id: true,
       companyId: true,
       itemId: true,
+      regionId: true,
       side: true,
       status: true,
       quantity: true,
@@ -272,6 +311,7 @@ export async function listMarketTrades(
   return prisma.trade.findMany({
     where: {
       itemId: filters.itemId,
+      regionId: filters.regionId,
       ...(filters.companyId
         ? {
             OR: [
@@ -287,6 +327,7 @@ export async function listMarketTrades(
       id: true,
       tick: true,
       itemId: true,
+      regionId: true,
       buyerCompanyId: true,
       sellerCompanyId: true,
       unitPriceCents: true,
@@ -302,6 +343,9 @@ export async function listMarketCandles(
 ) {
   if (!filters.itemId) {
     throw new DomainInvariantError("itemId is required");
+  }
+  if (!filters.regionId) {
+    throw new DomainInvariantError("regionId is required");
   }
 
   const limit = filters.limit ?? 200;
@@ -323,18 +367,28 @@ export async function listMarketCandles(
     throw new DomainInvariantError("fromTick cannot be greater than toTick");
   }
 
-  const itemExists = await prisma.item.findUnique({
-    where: { id: filters.itemId },
-    select: { id: true }
-  });
+  const [itemExists, regionExists] = await Promise.all([
+    prisma.item.findUnique({
+      where: { id: filters.itemId },
+      select: { id: true }
+    }),
+    prisma.region.findUnique({
+      where: { id: filters.regionId },
+      select: { id: true }
+    })
+  ]);
 
   if (!itemExists) {
     throw new NotFoundError(`item ${filters.itemId} not found`);
+  }
+  if (!regionExists) {
+    throw new NotFoundError(`region ${filters.regionId} not found`);
   }
 
   const rows = await prisma.itemTickCandle.findMany({
     where: {
       itemId: filters.itemId,
+      regionId: filters.regionId,
       tick: {
         gte: filters.fromTick,
         lte: filters.toTick
@@ -345,6 +399,7 @@ export async function listMarketCandles(
     select: {
       id: true,
       itemId: true,
+      regionId: true,
       tick: true,
       openCents: true,
       highCents: true,
@@ -368,15 +423,22 @@ export async function getMarketAnalyticsSummary(
   if (!input.itemId) {
     throw new DomainInvariantError("itemId is required");
   }
+  if (!input.regionId) {
+    throw new DomainInvariantError("regionId is required");
+  }
 
   const windowTicks = input.windowTicks ?? 200;
   if (!Number.isInteger(windowTicks) || windowTicks < 1 || windowTicks > 10_000) {
     throw new DomainInvariantError("windowTicks must be an integer between 1 and 10000");
   }
 
-  const [item, world] = await Promise.all([
+  const [item, region, world] = await Promise.all([
     prisma.item.findUnique({
       where: { id: input.itemId },
+      select: { id: true }
+    }),
+    prisma.region.findUnique({
+      where: { id: input.regionId },
       select: { id: true }
     }),
     prisma.worldTickState.findUnique({
@@ -388,6 +450,9 @@ export async function getMarketAnalyticsSummary(
   if (!item) {
     throw new NotFoundError(`item ${input.itemId} not found`);
   }
+  if (!region) {
+    throw new NotFoundError(`region ${input.regionId} not found`);
+  }
 
   const toTick = world?.currentTick ?? 0;
   const fromTick = Math.max(0, toTick - windowTicks + 1);
@@ -395,6 +460,7 @@ export async function getMarketAnalyticsSummary(
   const candles = await prisma.itemTickCandle.findMany({
     where: {
       itemId: input.itemId,
+      regionId: input.regionId,
       tick: {
         gte: fromTick,
         lte: toTick
@@ -415,6 +481,7 @@ export async function getMarketAnalyticsSummary(
   if (candles.length === 0) {
     return {
       itemId: input.itemId,
+      regionId: input.regionId,
       fromTick,
       toTick,
       candleCount: 0,
@@ -472,6 +539,7 @@ export async function getMarketAnalyticsSummary(
 
   return {
     itemId: input.itemId,
+    regionId: input.regionId,
     fromTick,
     toTick,
     candleCount: candles.length,

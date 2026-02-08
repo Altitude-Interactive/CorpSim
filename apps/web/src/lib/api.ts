@@ -54,6 +54,9 @@ export interface CompanySummary {
   name: string;
   isBot: boolean;
   cashCents: string;
+  regionId: string;
+  regionCode: string;
+  regionName: string;
 }
 
 export interface CompanyDetails extends CompanySummary {
@@ -71,16 +74,59 @@ export interface PlayerIdentity {
 
 export interface InventoryRow {
   itemId: string;
+  regionId: string;
   itemCode: string;
   itemName: string;
   quantity: number;
   reservedQuantity: number;
 }
 
+export interface RegionSummary {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ShipmentRecord {
+  id: string;
+  companyId: string;
+  fromRegionId: string;
+  toRegionId: string;
+  itemId: string;
+  quantity: number;
+  status: "IN_TRANSIT" | "DELIVERED" | "CANCELLED";
+  tickCreated: number;
+  tickArrives: number;
+  tickClosed: number | null;
+  createdAt: string;
+  updatedAt: string;
+  item: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  fromRegion: RegionSummary;
+  toRegion: RegionSummary;
+}
+
+export interface ListShipmentsFilters {
+  companyId?: string;
+  status?: ShipmentRecord["status"];
+  limit?: number;
+}
+
+export interface CreateShipmentInput {
+  companyId: string;
+  toRegionId: string;
+  itemId: string;
+  quantity: number;
+}
+
 export interface MarketOrder {
   id: string;
   companyId: string;
   itemId: string;
+  regionId: string;
   side: "BUY" | "SELL";
   status: string;
   quantity: number;
@@ -97,6 +143,7 @@ export interface MarketOrder {
 
 export interface MarketOrderFilters {
   itemId?: string;
+  regionId?: string;
   side?: "BUY" | "SELL";
   companyId?: string;
   limit?: number;
@@ -106,6 +153,7 @@ export interface MarketTrade {
   id: string;
   tick: number;
   itemId: string;
+  regionId: string;
   buyerId: string;
   sellerId: string;
   priceCents: string;
@@ -115,6 +163,7 @@ export interface MarketTrade {
 
 export interface MarketTradeFilters {
   itemId?: string;
+  regionId?: string;
   companyId?: string;
   limit?: number;
 }
@@ -122,6 +171,7 @@ export interface MarketTradeFilters {
 export interface MarketCandle {
   id: string;
   itemId: string;
+  regionId: string;
   tick: number;
   openCents: string;
   highCents: string;
@@ -136,6 +186,7 @@ export interface MarketCandle {
 
 export interface MarketCandleFilters {
   itemId: string;
+  regionId: string;
   fromTick?: number;
   toTick?: number;
   limit?: number;
@@ -143,6 +194,7 @@ export interface MarketCandleFilters {
 
 export interface MarketAnalyticsSummary {
   itemId: string;
+  regionId: string;
   fromTick: number;
   toTick: number;
   candleCount: number;
@@ -164,6 +216,7 @@ export interface ItemCatalogItem {
 export interface PlaceMarketOrderInput {
   companyId: string;
   itemId: string;
+  regionId?: string;
   side: "BUY" | "SELL";
   priceCents: number;
   quantity: number;
@@ -345,6 +398,7 @@ export type FinanceLedgerEntryType =
   | "ORDER_RESERVE"
   | "TRADE_SETTLEMENT"
   | "CONTRACT_SETTLEMENT"
+  | "SHIPMENT_FEE"
   | "RESEARCH_PAYMENT"
   | "PRODUCTION_COMPLETION"
   | "PRODUCTION_COST"
@@ -551,7 +605,10 @@ function parseCompanySummary(value: unknown): CompanySummary {
     code: readString(value.code, "code"),
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
-    cashCents: readString(value.cashCents, "cashCents")
+    cashCents: readString(value.cashCents, "cashCents"),
+    regionId: readString(value.regionId, "regionId"),
+    regionCode: readString(value.regionCode, "regionCode"),
+    regionName: readString(value.regionName, "regionName")
   };
 }
 
@@ -567,6 +624,9 @@ function parseCompanyDetails(value: unknown): CompanyDetails {
     isBot: readBoolean(value.isBot, "isBot"),
     cashCents: readString(value.cashCents, "cashCents"),
     reservedCashCents: readString(value.reservedCashCents, "reservedCashCents"),
+    regionId: readString(value.regionId, "regionId"),
+    regionCode: readString(value.regionCode, "regionCode"),
+    regionName: readString(value.regionName, "regionName"),
     createdAt: readString(value.createdAt, "createdAt"),
     updatedAt: readString(value.updatedAt, "updatedAt")
   };
@@ -592,10 +652,63 @@ function parseInventoryRow(value: unknown): InventoryRow {
 
   return {
     itemId: readString(value.itemId, "itemId"),
+    regionId: readString(value.regionId, "regionId"),
     itemCode: readString(value.itemCode, "itemCode"),
     itemName: readString(value.itemName, "itemName"),
     quantity: readNumber(value.quantity, "quantity"),
     reservedQuantity: readNumber(value.reservedQuantity, "reservedQuantity")
+  };
+}
+
+function parseRegionSummary(value: unknown): RegionSummary {
+  if (!isRecord(value)) {
+    throw new Error("Invalid region row");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    code: readString(value.code, "code"),
+    name: readString(value.name, "name")
+  };
+}
+
+function parseShipmentStatus(value: unknown): ShipmentRecord["status"] {
+  const status = readString(value, "status");
+  if (status !== "IN_TRANSIT" && status !== "DELIVERED" && status !== "CANCELLED") {
+    throw new Error("Invalid shipment status");
+  }
+  return status;
+}
+
+function parseShipmentRecord(value: unknown): ShipmentRecord {
+  if (!isRecord(value)) {
+    throw new Error("Invalid shipment row");
+  }
+  if (!isRecord(value.item)) {
+    throw new Error("Invalid shipment item");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    companyId: readString(value.companyId, "companyId"),
+    fromRegionId: readString(value.fromRegionId, "fromRegionId"),
+    toRegionId: readString(value.toRegionId, "toRegionId"),
+    itemId: readString(value.itemId, "itemId"),
+    quantity: readNumber(value.quantity, "quantity"),
+    status: parseShipmentStatus(value.status),
+    tickCreated: readNumber(value.tickCreated, "tickCreated"),
+    tickArrives: readNumber(value.tickArrives, "tickArrives"),
+    tickClosed:
+      value.tickClosed === null ? null : readNumber(value.tickClosed, "tickClosed"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt"),
+    item: {
+      id: readString(value.item.id, "item.id"),
+      code: readString(value.item.code, "item.code"),
+      name: readString(value.item.name, "item.name")
+    },
+    fromRegion: parseRegionSummary(value.fromRegion),
+    toRegion: parseRegionSummary(value.toRegion)
   };
 }
 
@@ -615,6 +728,7 @@ function parseMarketOrder(value: unknown): MarketOrder {
     id: readString(value.id, "id"),
     companyId: readString(value.companyId, "companyId"),
     itemId: readString(value.itemId, "itemId"),
+    regionId: readString(value.regionId, "regionId"),
     side,
     status: readString(value.status, "status"),
     quantity: readNumber(value.quantity, "quantity"),
@@ -643,6 +757,7 @@ function parseMarketTrade(value: unknown): MarketTrade {
     id: readString(value.id, "id"),
     tick: readNumber(value.tick, "tick"),
     itemId: readString(value.itemId, "itemId"),
+    regionId: readString(value.regionId, "regionId"),
     buyerId: readString(value.buyerId, "buyerId"),
     sellerId: readString(value.sellerId, "sellerId"),
     priceCents: readString(value.priceCents, "priceCents"),
@@ -659,6 +774,7 @@ function parseMarketCandle(value: unknown): MarketCandle {
   return {
     id: readString(value.id, "id"),
     itemId: readString(value.itemId, "itemId"),
+    regionId: readString(value.regionId, "regionId"),
     tick: readNumber(value.tick, "tick"),
     openCents: readString(value.openCents, "openCents"),
     highCents: readString(value.highCents, "highCents"),
@@ -679,6 +795,7 @@ function parseMarketAnalyticsSummary(value: unknown): MarketAnalyticsSummary {
 
   return {
     itemId: readString(value.itemId, "itemId"),
+    regionId: readString(value.regionId, "regionId"),
     fromTick: readNumber(value.fromTick, "fromTick"),
     toTick: readNumber(value.toTick, "toTick"),
     candleCount: readNumber(value.candleCount, "candleCount"),
@@ -979,6 +1096,7 @@ function parseFinanceLedgerEntryType(value: unknown): FinanceLedgerEntryType {
     entryType !== "ORDER_RESERVE" &&
     entryType !== "TRADE_SETTLEMENT" &&
     entryType !== "CONTRACT_SETTLEMENT" &&
+    entryType !== "SHIPMENT_FEE" &&
     entryType !== "RESEARCH_PAYMENT" &&
     entryType !== "PRODUCTION_COMPLETION" &&
     entryType !== "PRODUCTION_COST" &&
@@ -1070,16 +1188,63 @@ export async function listMyCompanies(): Promise<CompanySummary[]> {
   );
 }
 
-export async function listCompanyInventory(companyId: string): Promise<InventoryRow[]> {
-  return fetchJson(`/v1/companies/${companyId}/inventory`, (value) =>
+export async function listCompanyInventory(
+  companyId: string,
+  regionId?: string
+): Promise<InventoryRow[]> {
+  const params = new URLSearchParams();
+  if (regionId) {
+    params.set("regionId", regionId);
+  }
+  const query = params.toString();
+
+  return fetchJson(`/v1/companies/${companyId}/inventory${query ? `?${query}` : ""}`, (value) =>
     readArray(value, "inventory").map(parseInventoryRow)
   );
+}
+
+export async function listRegions(): Promise<RegionSummary[]> {
+  return fetchJson("/v1/regions", (value) => readArray(value, "regions").map(parseRegionSummary));
+}
+
+export async function listShipments(filters: ListShipmentsFilters = {}): Promise<ShipmentRecord[]> {
+  const params = new URLSearchParams();
+  if (filters.companyId) {
+    params.set("companyId", filters.companyId);
+  }
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+
+  const query = params.toString();
+  return fetchJson(`/v1/shipments${query ? `?${query}` : ""}`, (value) =>
+    readArray(value, "shipments").map(parseShipmentRecord)
+  );
+}
+
+export async function createShipment(input: CreateShipmentInput): Promise<ShipmentRecord> {
+  return fetchJson("/v1/shipments", parseShipmentRecord, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function cancelShipment(shipmentId: string): Promise<ShipmentRecord> {
+  return fetchJson(`/v1/shipments/${shipmentId}/cancel`, parseShipmentRecord, {
+    method: "POST"
+  });
 }
 
 export async function listMarketOrders(filters: MarketOrderFilters): Promise<MarketOrder[]> {
   const params = new URLSearchParams();
   if (filters.itemId) {
     params.set("itemId", filters.itemId);
+  }
+  if (filters.regionId) {
+    params.set("regionId", filters.regionId);
   }
   if (filters.side) {
     params.set("side", filters.side);
@@ -1113,6 +1278,9 @@ export async function listMarketTrades(filters: MarketTradeFilters): Promise<Mar
   if (filters.itemId) {
     params.set("itemId", filters.itemId);
   }
+  if (filters.regionId) {
+    params.set("regionId", filters.regionId);
+  }
   if (filters.companyId) {
     params.set("companyId", filters.companyId);
   }
@@ -1129,6 +1297,7 @@ export async function listMarketTrades(filters: MarketTradeFilters): Promise<Mar
 export async function listMarketCandles(filters: MarketCandleFilters): Promise<MarketCandle[]> {
   const params = new URLSearchParams();
   params.set("itemId", filters.itemId);
+  params.set("regionId", filters.regionId);
 
   if (filters.fromTick !== undefined) {
     params.set("fromTick", String(filters.fromTick));
@@ -1147,10 +1316,12 @@ export async function listMarketCandles(filters: MarketCandleFilters): Promise<M
 
 export async function getMarketAnalyticsSummary(
   itemId: string,
+  regionId: string,
   windowTicks = 200
 ): Promise<MarketAnalyticsSummary> {
   const params = new URLSearchParams();
   params.set("itemId", itemId);
+  params.set("regionId", regionId);
   params.set("windowTicks", String(windowTicks));
 
   return fetchJson(`/v1/market/analytics/summary?${params.toString()}`, parseMarketAnalyticsSummary);

@@ -10,6 +10,7 @@ import { DomainInvariantError, NotFoundError } from "../domain/errors";
 export interface MatchableOrder {
   id: string;
   itemId: string;
+  regionId: string;
   companyId: string;
   side: OrderSide;
   unitPriceCents: bigint;
@@ -20,6 +21,7 @@ export interface MatchableOrder {
 
 export interface MatchPlan {
   itemId: string;
+  regionId: string;
   buyOrderId: string;
   sellOrderId: string;
   quantity: number;
@@ -67,6 +69,18 @@ export function planOrderMatchesForItem(
   buys: MatchableOrder[],
   sells: MatchableOrder[]
 ): MatchPlan[] {
+  const buyRegionId = buys[0]?.regionId ?? null;
+  const sellRegionId = sells[0]?.regionId ?? null;
+  if (buyRegionId && buys.some((order) => order.regionId !== buyRegionId)) {
+    throw new DomainInvariantError("buy orders must share the same region");
+  }
+  if (sellRegionId && sells.some((order) => order.regionId !== sellRegionId)) {
+    throw new DomainInvariantError("sell orders must share the same region");
+  }
+  if (buyRegionId && sellRegionId && buyRegionId !== sellRegionId) {
+    return [];
+  }
+
   const orderedBuys = [...buys]
     .filter((order) => order.side === OrderSide.BUY && order.remainingQuantity > 0)
     .sort(compareBuyPriority)
@@ -93,6 +107,7 @@ export function planOrderMatchesForItem(
 
     matches.push({
       itemId: buy.itemId,
+      regionId: buy.regionId,
       buyOrderId: buy.id,
       sellOrderId: sell.id,
       quantity,
@@ -139,6 +154,9 @@ async function settleMatch(
   if (buyOrder.itemId !== sellOrder.itemId || buyOrder.itemId !== match.itemId) {
     throw new DomainInvariantError("matched orders must share same item");
   }
+  if (buyOrder.regionId !== sellOrder.regionId || buyOrder.regionId !== match.regionId) {
+    throw new DomainInvariantError("matched orders must share same region");
+  }
 
   if (buyOrder.remainingQuantity < match.quantity || sellOrder.remainingQuantity < match.quantity) {
     throw new DomainInvariantError("matched quantity exceeds order remaining quantity");
@@ -155,7 +173,7 @@ async function settleMatch(
     throw new DomainInvariantError("sell order reserved quantity cannot become negative");
   }
 
-  const [buyerCompany, sellerCompany, sellerInventory] = await Promise.all([
+  const [buyerCompany, sellerCompany] = await Promise.all([
     tx.company.findUnique({
       where: { id: buyOrder.companyId },
       select: { id: true, cashCents: true, reservedCashCents: true }
@@ -163,26 +181,29 @@ async function settleMatch(
     tx.company.findUnique({
       where: { id: sellOrder.companyId },
       select: { id: true, cashCents: true, reservedCashCents: true }
-    }),
-    tx.inventory.findUnique({
-      where: {
-        companyId_itemId: {
-          companyId: sellOrder.companyId,
-          itemId: sellOrder.itemId
-        }
-      },
-      select: {
-        companyId: true,
-        itemId: true,
-        quantity: true,
-        reservedQuantity: true
-      }
     })
   ]);
 
   if (!buyerCompany || !sellerCompany) {
     throw new NotFoundError("matched company no longer exists");
   }
+
+  const sellerInventory = await tx.inventory.findUnique({
+    where: {
+      companyId_itemId_regionId: {
+        companyId: sellOrder.companyId,
+        itemId: sellOrder.itemId,
+        regionId: sellOrder.regionId
+      }
+    },
+    select: {
+      companyId: true,
+      itemId: true,
+      regionId: true,
+      quantity: true,
+      reservedQuantity: true
+    }
+  });
 
   if (!sellerInventory) {
     throw new DomainInvariantError("seller inventory row not found");
@@ -239,9 +260,10 @@ async function settleMatch(
 
   await tx.inventory.update({
     where: {
-      companyId_itemId: {
+      companyId_itemId_regionId: {
         companyId: sellerInventory.companyId,
-        itemId: sellerInventory.itemId
+        itemId: sellerInventory.itemId,
+        regionId: sellerInventory.regionId
       }
     },
     data: {
@@ -252,14 +274,16 @@ async function settleMatch(
 
   await tx.inventory.upsert({
     where: {
-      companyId_itemId: {
+      companyId_itemId_regionId: {
         companyId: buyOrder.companyId,
-        itemId: buyOrder.itemId
+        itemId: buyOrder.itemId,
+        regionId: buyOrder.regionId
       }
     },
     create: {
       companyId: buyOrder.companyId,
       itemId: buyOrder.itemId,
+      regionId: buyOrder.regionId,
       quantity: match.quantity,
       reservedQuantity: 0
     },
@@ -300,6 +324,7 @@ async function settleMatch(
       buyerCompanyId: buyOrder.companyId,
       sellerCompanyId: sellOrder.companyId,
       itemId: buyOrder.itemId,
+      regionId: buyOrder.regionId,
       quantity: match.quantity,
       unitPriceCents: match.unitPriceCents,
       totalPriceCents: tradeNotional,
@@ -342,6 +367,7 @@ export async function runMarketMatchingForTick(
     select: {
       id: true,
       itemId: true,
+      regionId: true,
       companyId: true,
       side: true,
       unitPriceCents: true,
@@ -351,28 +377,23 @@ export async function runMarketMatchingForTick(
     }
   });
 
-  const orderGroups = new Map<
-    string,
-    {
-      buys: MatchableOrder[];
-      sells: MatchableOrder[];
-    }
-  >();
+  const orderGroups = new Map<string, { buys: MatchableOrder[]; sells: MatchableOrder[] }>();
 
   for (const order of openOrders) {
-    const group = orderGroups.get(order.itemId) ?? { buys: [], sells: [] };
+    const groupKey = `${order.regionId}:${order.itemId}`;
+    const group = orderGroups.get(groupKey) ?? { buys: [], sells: [] };
     if (order.side === OrderSide.BUY) {
       group.buys.push(order);
     } else {
       group.sells.push(order);
     }
-    orderGroups.set(order.itemId, group);
+    orderGroups.set(groupKey, group);
   }
 
-  const sortedItemIds = [...orderGroups.keys()].sort((left, right) => left.localeCompare(right));
+  const sortedGroupKeys = [...orderGroups.keys()].sort((left, right) => left.localeCompare(right));
 
-  for (const itemId of sortedItemIds) {
-    const group = orderGroups.get(itemId);
+  for (const groupKey of sortedGroupKeys) {
+    const group = orderGroups.get(groupKey);
     if (!group) {
       continue;
     }

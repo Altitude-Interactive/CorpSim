@@ -42,7 +42,14 @@ export async function listCompaniesOwnedByPlayer(prisma: PrismaClient, playerId:
       name: true,
       isPlayer: true,
       cashCents: true,
-      ownerPlayerId: true
+      ownerPlayerId: true,
+      region: {
+        select: {
+          id: true,
+          code: true,
+          name: true
+        }
+      }
     }
   });
 }
@@ -108,5 +115,27 @@ export async function assertProductionJobOwnedByPlayer(
 
   if (!owned) {
     throw new ForbiddenError("production job access is forbidden for current player");
+  }
+}
+
+export async function assertShipmentOwnedByPlayer(
+  prisma: PrismaClient,
+  playerId: string,
+  shipmentId: string
+): Promise<void> {
+  const owned = await prisma.shipment.findFirst({
+    where: {
+      id: shipmentId,
+      company: {
+        ownerPlayerId: playerId
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (!owned) {
+    throw new ForbiddenError("shipment access is forbidden for current player");
   }
 }

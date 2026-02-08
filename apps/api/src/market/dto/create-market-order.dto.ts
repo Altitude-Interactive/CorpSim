@@ -1,5 +1,5 @@
 import { OrderSide } from "@prisma/client";
-import { IsEnum, IsInt, IsNumber, IsString, Min, MinLength } from "class-validator";
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from "class-validator";
 
 export class CreateMarketOrderDto {
   @IsString()
@@ -9,6 +9,11 @@ export class CreateMarketOrderDto {
   @IsString()
   @MinLength(1)
   itemId!: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  regionId?: string;
 
   @IsEnum(OrderSide)
   side!: OrderSide;

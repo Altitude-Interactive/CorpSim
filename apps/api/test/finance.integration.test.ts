@@ -12,6 +12,7 @@ describe("finance API integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
+  let playerRegionId: string;
   let ironOreId: string;
   let otherCompanyId: string;
 
@@ -40,6 +41,11 @@ describe("finance API integration", () => {
     const seeded = await seedWorld(prisma, { reset: true });
     playerCompanyId = seeded.companyIds.player;
     ironOreId = seeded.itemIds.ironOre;
+    const playerCompany = await prisma.company.findUniqueOrThrow({
+      where: { id: playerCompanyId },
+      select: { regionId: true }
+    });
+    playerRegionId = playerCompany.regionId;
 
     const secondPlayer = await prisma.player.create({
       data: { handle: "SECOND" }
@@ -51,6 +57,7 @@ describe("finance API integration", () => {
         name: "Second Ledger Co",
         isPlayer: true,
         ownerPlayerId: secondPlayer.id,
+        regionId: playerRegionId,
         cashCents: 100_000n,
         reservedCashCents: 0n
       }

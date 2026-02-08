@@ -35,7 +35,10 @@ export class CompaniesService {
       code: company.code,
       name: company.name,
       isBot: !company.isPlayer,
-      cashCents: company.cashCents.toString()
+      cashCents: company.cashCents.toString(),
+      regionId: company.region.id,
+      regionCode: company.region.code,
+      regionName: company.region.name
     }));
   }
 
@@ -52,19 +55,23 @@ export class CompaniesService {
       isBot: company.isBot,
       cashCents: company.cashCents.toString(),
       reservedCashCents: company.reservedCashCents.toString(),
+      regionId: company.regionId,
+      regionCode: company.regionCode,
+      regionName: company.regionName,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt
     };
   }
 
-  async getInventory(companyId: string, playerHandle: string) {
+  async getInventory(companyId: string, playerHandle: string, regionId?: string) {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
 
-    const rows = await listCompanyInventory(this.prisma, companyId);
+    const rows = await listCompanyInventory(this.prisma, companyId, regionId);
 
     return rows.map((row) => ({
       itemId: row.itemId,
+      regionId: row.regionId,
       itemCode: row.item.code,
       itemName: row.item.name,
       quantity: row.quantity,

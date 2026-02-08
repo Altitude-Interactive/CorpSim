@@ -67,12 +67,43 @@ export async function seedWorld(
     }
   });
 
+  const coreRegion = await prisma.region.upsert({
+    where: { code: "CORE" },
+    update: { name: "Core" },
+    create: {
+      id: "region_core",
+      code: "CORE",
+      name: "Core"
+    }
+  });
+
+  await prisma.region.upsert({
+    where: { code: "INDUSTRIAL" },
+    update: { name: "Industrial" },
+    create: {
+      id: "region_industrial",
+      code: "INDUSTRIAL",
+      name: "Industrial"
+    }
+  });
+
+  await prisma.region.upsert({
+    where: { code: "FRONTIER" },
+    update: { name: "Frontier" },
+    create: {
+      id: "region_frontier",
+      code: "FRONTIER",
+      name: "Frontier"
+    }
+  });
+
   const playerCompany = await prisma.company.create({
     data: {
       code: "PLAYER_CO",
       name: "Player Company",
       isPlayer: true,
       ownerPlayerId: player.id,
+      regionId: coreRegion.id,
       cashCents: 1_000_000n,
       reservedCashCents: 0n
     }
@@ -83,6 +114,7 @@ export async function seedWorld(
       code: "BOT_MINER",
       name: "Atlas Mining Co",
       isPlayer: false,
+      regionId: coreRegion.id,
       cashCents: 800_000n,
       reservedCashCents: 0n
     }
@@ -93,6 +125,7 @@ export async function seedWorld(
       code: "BOT_SMELTER",
       name: "Northwind Smelting",
       isPlayer: false,
+      regionId: coreRegion.id,
       cashCents: 800_000n,
       reservedCashCents: 0n
     }
@@ -103,6 +136,7 @@ export async function seedWorld(
       code: "BOT_TRADER",
       name: "Summit Trading",
       isPlayer: false,
+      regionId: coreRegion.id,
       cashCents: 800_000n,
       reservedCashCents: 0n
     }
@@ -113,48 +147,56 @@ export async function seedWorld(
       {
         companyId: playerCompany.id,
         itemId: ironOre.id,
+        regionId: coreRegion.id,
         quantity: 120,
         reservedQuantity: 0
       },
       {
         companyId: playerCompany.id,
         itemId: ironIngot.id,
+        regionId: coreRegion.id,
         quantity: 40,
         reservedQuantity: 0
       },
       {
         companyId: botMiner.id,
         itemId: ironOre.id,
+        regionId: coreRegion.id,
         quantity: 500,
         reservedQuantity: 0
       },
       {
         companyId: botSmelter.id,
         itemId: ironIngot.id,
+        regionId: coreRegion.id,
         quantity: 220,
         reservedQuantity: 0
       },
       {
         companyId: botTrader.id,
         itemId: handTools.id,
+        regionId: coreRegion.id,
         quantity: 80,
         reservedQuantity: 0
       },
       {
         companyId: playerCompany.id,
         itemId: steelIngot.id,
+        regionId: coreRegion.id,
         quantity: 0,
         reservedQuantity: 0
       },
       {
         companyId: playerCompany.id,
         itemId: machineParts.id,
+        regionId: coreRegion.id,
         quantity: 0,
         reservedQuantity: 0
       },
       {
         companyId: playerCompany.id,
         itemId: toolKit.id,
+        regionId: coreRegion.id,
         quantity: 0,
         reservedQuantity: 0
       }

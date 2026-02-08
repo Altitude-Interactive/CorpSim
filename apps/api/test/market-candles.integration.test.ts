@@ -14,6 +14,8 @@ describe("market candles integration", () => {
   let playerCompanyId: string;
   let sellerCompanyId: string;
   let playerId: string;
+  let playerRegionId: string;
+  let sellerRegionId: string;
   let handToolsItemId: string;
 
   beforeAll(async () => {
@@ -44,13 +46,14 @@ describe("market candles integration", () => {
 
     const playerCompany = await prisma.company.findUniqueOrThrow({
       where: { id: playerCompanyId },
-      select: { ownerPlayerId: true }
+      select: { ownerPlayerId: true, regionId: true }
     });
 
     if (!playerCompany.ownerPlayerId) {
       throw new Error("seeded player company must be owned by PLAYER");
     }
     playerId = playerCompany.ownerPlayerId;
+    playerRegionId = playerCompany.regionId;
 
     const sellerCompany = await prisma.company.create({
       data: {
@@ -58,17 +61,20 @@ describe("market candles integration", () => {
         name: "Player Candle Seller",
         isPlayer: true,
         ownerPlayerId: playerId,
+        regionId: playerRegionId,
         cashCents: 500_000n,
         reservedCashCents: 0n
       }
     });
 
     sellerCompanyId = sellerCompany.id;
+    sellerRegionId = sellerCompany.regionId;
 
     await prisma.inventory.create({
       data: {
         companyId: sellerCompanyId,
         itemId: handToolsItemId,
+        regionId: sellerRegionId,
         quantity: 30,
         reservedQuantity: 0
       }
@@ -111,6 +117,7 @@ describe("market candles integration", () => {
       .get("/v1/market/candles")
       .query({
         itemId: handToolsItemId,
+        regionId: playerRegionId,
         fromTick: "1",
         toTick: "1",
         limit: "200"
@@ -121,6 +128,7 @@ describe("market candles integration", () => {
     expect(candlesResponse.body).toHaveLength(1);
     expect(candlesResponse.body[0]).toMatchObject({
       itemId: handToolsItemId,
+      regionId: playerRegionId,
       tick: 1,
       openCents: "100",
       highCents: "100",
@@ -135,12 +143,14 @@ describe("market candles integration", () => {
       .get("/v1/market/analytics/summary")
       .query({
         itemId: handToolsItemId,
+        regionId: playerRegionId,
         windowTicks: "200"
       })
       .expect(200);
 
     expect(summaryResponse.body).toMatchObject({
       itemId: handToolsItemId,
+      regionId: playerRegionId,
       candleCount: 1,
       lastPriceCents: "100",
       highCents: "100",
@@ -150,5 +160,14 @@ describe("market candles integration", () => {
       vwapCents: "100"
     });
     expect(summaryResponse.body.changePctBps).toBe(0);
+
+    const candleCount = await prisma.itemTickCandle.count({
+      where: {
+        itemId: handToolsItemId,
+        regionId: playerRegionId,
+        tick: 1
+      }
+    });
+    expect(candleCount).toBe(1);
   });
 });

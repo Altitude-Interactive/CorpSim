@@ -12,6 +12,8 @@ describe("market write API integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
+  let playerRegionId: string;
+  let industrialRegionId: string;
   let ironOreId: string;
 
   beforeAll(async () => {
@@ -39,6 +41,17 @@ describe("market write API integration", () => {
     const seeded = await seedWorld(prisma, { reset: true });
     playerCompanyId = seeded.companyIds.player;
     ironOreId = seeded.itemIds.ironOre;
+    const playerCompany = await prisma.company.findUniqueOrThrow({
+      where: { id: playerCompanyId },
+      select: { regionId: true }
+    });
+    playerRegionId = playerCompany.regionId;
+    industrialRegionId = (
+      await prisma.region.findUniqueOrThrow({
+        where: { code: "INDUSTRIAL" },
+        select: { id: true }
+      })
+    ).id;
   });
 
   afterAll(async () => {
@@ -68,6 +81,7 @@ describe("market write API integration", () => {
       companyId: playerCompanyId,
       itemId: ironOreId,
       side: "BUY",
+      regionId: playerRegionId,
       status: "OPEN",
       quantity: 4,
       remainingQuantity: 4,
@@ -113,12 +127,27 @@ describe("market write API integration", () => {
       .expect(400);
   });
 
+  it("rejects placing an order in another region with 403", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/market/orders")
+      .send({
+        companyId: playerCompanyId,
+        itemId: ironOreId,
+        regionId: industrialRegionId,
+        side: "BUY",
+        priceCents: 100,
+        quantity: 1
+      })
+      .expect(403);
+  });
+
   it("places SELL order and reserves inventory", async () => {
     const beforeInventory = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { reservedQuantity: true }
@@ -137,9 +166,10 @@ describe("market write API integration", () => {
 
     const afterInventory = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { reservedQuantity: true }
@@ -224,9 +254,10 @@ describe("market write API integration", () => {
 
     const inventoryAfterFirstCancel = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { reservedQuantity: true }
@@ -237,9 +268,10 @@ describe("market write API integration", () => {
 
     const inventoryAfterSecondCancel = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { reservedQuantity: true }

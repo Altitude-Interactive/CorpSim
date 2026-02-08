@@ -5,8 +5,9 @@ import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { InventoryRow, listCompanyInventory } from "@/lib/api";
+import { InventoryRow, RegionSummary, listCompanyInventory, listRegions } from "@/lib/api";
 
 const INVENTORY_REFRESH_DEBOUNCE_MS = 500;
 
@@ -14,6 +15,8 @@ export function InventoryPage() {
   const { activeCompany, activeCompanyId } = useActiveCompany();
   const { health } = useWorldHealth();
   const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [regions, setRegions] = useState<RegionSummary[]>([]);
+  const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [showReserved, setShowReserved] = useState(true);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +30,8 @@ export function InventoryPage() {
 
     setIsLoading(true);
     try {
-      const nextRows = await listCompanyInventory(activeCompanyId);
+      const regionId = selectedRegionId || activeCompany?.regionId;
+      const nextRows = await listCompanyInventory(activeCompanyId, regionId);
       setRows(nextRows);
       setError(null);
     } catch (caught) {
@@ -35,7 +39,36 @@ export function InventoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeCompanyId]);
+  }, [activeCompanyId, activeCompany?.regionId, selectedRegionId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadRegions = async () => {
+      try {
+        const regionRows = await listRegions();
+        if (!mounted) {
+          return;
+        }
+        setRegions(regionRows);
+      } catch {
+        // Ignore region fetch failures here; inventory fallback still works.
+      }
+    };
+
+    void loadRegions();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeCompany?.regionId) {
+      setSelectedRegionId("");
+      return;
+    }
+
+    setSelectedRegionId(activeCompany.regionId);
+  }, [activeCompany?.regionId, activeCompanyId]);
 
   useEffect(() => {
     void loadInventory();
@@ -84,14 +117,32 @@ export function InventoryPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={showReserved}
-                onChange={(event) => setShowReserved(event.target.checked)}
-              />
-              Show reserved
-            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                value={selectedRegionId}
+                onValueChange={(value) => setSelectedRegionId(value)}
+                disabled={!activeCompanyId}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.code} - {region.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={showReserved}
+                  onChange={(event) => setShowReserved(event.target.checked)}
+                />
+                Show reserved
+              </label>
+            </div>
           </div>
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
         </CardContent>

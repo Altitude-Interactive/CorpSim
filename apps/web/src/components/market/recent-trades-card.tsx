@@ -19,6 +19,7 @@ export function RecentTradesCard({ trades, isLoading }: RecentTradesCardProps) {
             <TableRow>
               <TableHead>Tick</TableHead>
               <TableHead>Item</TableHead>
+              <TableHead>Region</TableHead>
               <TableHead>Buyer</TableHead>
               <TableHead>Seller</TableHead>
               <TableHead>Price</TableHead>
@@ -31,6 +32,7 @@ export function RecentTradesCard({ trades, isLoading }: RecentTradesCardProps) {
               <TableRow key={trade.id}>
                 <TableCell className="tabular-nums">{trade.tick}</TableCell>
                 <TableCell className="font-mono text-xs">{trade.itemId}</TableCell>
+                <TableCell className="font-mono text-xs">{trade.regionId}</TableCell>
                 <TableCell className="font-mono text-xs">{trade.buyerId}</TableCell>
                 <TableCell className="font-mono text-xs">{trade.sellerId}</TableCell>
                 <TableCell className="tabular-nums">{trade.priceCents}</TableCell>
@@ -42,7 +44,7 @@ export function RecentTradesCard({ trades, isLoading }: RecentTradesCardProps) {
             ))}
             {!isLoading && trades.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   No recent trades found.
                 </TableCell>
               </TableRow>

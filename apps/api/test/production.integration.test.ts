@@ -12,6 +12,7 @@ describe("production API integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
+  let playerRegionId: string;
   let ironOreId: string;
   let ironIngotId: string;
   let smeltRecipeId: string;
@@ -40,6 +41,11 @@ describe("production API integration", () => {
   beforeEach(async () => {
     const seeded = await seedWorld(prisma, { reset: true });
     playerCompanyId = seeded.companyIds.player;
+    const playerCompany = await prisma.company.findUniqueOrThrow({
+      where: { id: playerCompanyId },
+      select: { regionId: true }
+    });
+    playerRegionId = playerCompany.regionId;
     ironOreId = seeded.itemIds.ironOre;
     ironIngotId = seeded.itemIds.ironIngot;
 
@@ -57,18 +63,20 @@ describe("production API integration", () => {
   it("creates production job, advances ticks, and completes with inventory + ledger updates", async () => {
     const beforeOre = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
     });
     const beforeIngots = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironIngotId
+          itemId: ironIngotId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true }
@@ -97,9 +105,10 @@ describe("production API integration", () => {
 
     const reservedAfterCreate = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
@@ -132,18 +141,20 @@ describe("production API integration", () => {
 
     const afterOre = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
     });
     const afterIngots = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironIngotId
+          itemId: ironIngotId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true }
@@ -170,9 +181,10 @@ describe("production API integration", () => {
   it("cancels production jobs and releases reserved inputs idempotently", async () => {
     const beforeOre = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
@@ -191,9 +203,10 @@ describe("production API integration", () => {
 
     const reservedAfterCreate = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
@@ -210,9 +223,10 @@ describe("production API integration", () => {
 
     const afterCancel = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
@@ -229,9 +243,10 @@ describe("production API integration", () => {
 
     const afterSecondCancel = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: ironOreId
+          itemId: ironOreId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }

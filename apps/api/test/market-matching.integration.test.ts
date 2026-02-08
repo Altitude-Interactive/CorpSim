@@ -14,6 +14,8 @@ describe("market matching and settlement integration", () => {
   let playerCompanyId: string;
   let sellerCompanyId: string;
   let playerId: string;
+  let playerRegionId: string;
+  let sellerRegionId: string;
   let handToolsItemId: string;
 
   beforeAll(async () => {
@@ -44,13 +46,14 @@ describe("market matching and settlement integration", () => {
 
     const playerCompany = await prisma.company.findUniqueOrThrow({
       where: { id: playerCompanyId },
-      select: { ownerPlayerId: true }
+      select: { ownerPlayerId: true, regionId: true }
     });
 
     if (!playerCompany.ownerPlayerId) {
       throw new Error("seeded player company must be owned by PLAYER");
     }
     playerId = playerCompany.ownerPlayerId;
+    playerRegionId = playerCompany.regionId;
 
     const sellerCompany = await prisma.company.create({
       data: {
@@ -58,17 +61,20 @@ describe("market matching and settlement integration", () => {
         name: "Player Seller Co",
         isPlayer: true,
         ownerPlayerId: playerId,
+        regionId: playerRegionId,
         cashCents: 500_000n,
         reservedCashCents: 0n
       }
     });
 
     sellerCompanyId = sellerCompany.id;
+    sellerRegionId = sellerCompany.regionId;
 
     await prisma.inventory.create({
       data: {
         companyId: sellerCompanyId,
         itemId: handToolsItemId,
+        regionId: sellerRegionId,
         quantity: 20,
         reservedQuantity: 0
       }
@@ -90,9 +96,10 @@ describe("market matching and settlement integration", () => {
     });
     const sellerInventoryBefore = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: sellerCompanyId,
-          itemId: handToolsItemId
+          itemId: handToolsItemId,
+          regionId: sellerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
@@ -133,6 +140,7 @@ describe("market matching and settlement integration", () => {
     expect(trade?.quantity).toBe(6);
     expect(trade?.unitPriceCents).toBe(100n);
     expect(trade?.totalPriceCents).toBe(600n);
+    expect(trade?.regionId).toBe(playerRegionId);
     const tradeId = trade?.id;
     expect(tradeId).toBeDefined();
     if (!tradeId) {
@@ -163,18 +171,20 @@ describe("market matching and settlement integration", () => {
     });
     const sellerInventoryAfter = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: sellerCompanyId,
-          itemId: handToolsItemId
+          itemId: handToolsItemId,
+          regionId: sellerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
     });
     const buyerInventoryAfter = await prisma.inventory.findUniqueOrThrow({
       where: {
-        companyId_itemId: {
+        companyId_itemId_regionId: {
           companyId: playerCompanyId,
-          itemId: handToolsItemId
+          itemId: handToolsItemId,
+          regionId: playerRegionId
         }
       },
       select: { quantity: true, reservedQuantity: true }
@@ -210,5 +220,69 @@ describe("market matching and settlement integration", () => {
     expect(sellLedger?.deltaCashCents).toBe(600n);
     expect(sellLedger?.deltaReservedCashCents).toBe(0n);
     expect(sellLedger?.balanceAfterCents).toBe(sellerAfter.cashCents);
+  });
+
+  it("does not match orders across different regions", async () => {
+    const industrialRegionId = (
+      await prisma.region.findUniqueOrThrow({
+        where: { code: "INDUSTRIAL" },
+        select: { id: true }
+      })
+    ).id;
+
+    const industrialSeller = await prisma.company.create({
+      data: {
+        code: "PLAYER_SELLER_IND",
+        name: "Player Seller Industrial",
+        isPlayer: true,
+        ownerPlayerId: playerId,
+        regionId: industrialRegionId,
+        cashCents: 500_000n,
+        reservedCashCents: 0n
+      }
+    });
+
+    await prisma.inventory.create({
+      data: {
+        companyId: industrialSeller.id,
+        itemId: handToolsItemId,
+        regionId: industrialRegionId,
+        quantity: 20,
+        reservedQuantity: 0
+      }
+    });
+
+    await request(app.getHttpServer())
+      .post("/v1/market/orders")
+      .send({
+        companyId: industrialSeller.id,
+        itemId: handToolsItemId,
+        side: "SELL",
+        priceCents: 90,
+        quantity: 5
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post("/v1/market/orders")
+      .send({
+        companyId: playerCompanyId,
+        itemId: handToolsItemId,
+        side: "BUY",
+        priceCents: 120,
+        quantity: 5
+      })
+      .expect(201);
+
+    await request(app.getHttpServer()).post("/v1/world/advance").send({ ticks: 1 }).expect(201);
+
+    const tradeCount = await prisma.trade.count({
+      where: {
+        itemId: handToolsItemId,
+        tick: 1
+      }
+    });
+
+    expect(tradeCount).toBe(0);
   });
 });

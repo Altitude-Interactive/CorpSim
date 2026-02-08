@@ -26,7 +26,10 @@ export class PlayersService {
       code: company.code,
       name: company.name,
       isBot: !company.isPlayer,
-      cashCents: company.cashCents.toString()
+      cashCents: company.cashCents.toString(),
+      regionId: company.region.id,
+      regionCode: company.region.code,
+      regionName: company.region.name
     }));
   }
 }

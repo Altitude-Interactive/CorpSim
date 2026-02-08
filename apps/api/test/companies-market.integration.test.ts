@@ -12,6 +12,7 @@ describe("companies and market API integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
+  let playerRegionId: string;
   let ironOreId: string;
 
   beforeAll(async () => {
@@ -39,6 +40,11 @@ describe("companies and market API integration", () => {
     const seeded = await seedWorld(prisma, { reset: true });
     playerCompanyId = seeded.companyIds.player;
     ironOreId = seeded.itemIds.ironOre;
+    const playerCompany = await prisma.company.findUniqueOrThrow({
+      where: { id: playerCompanyId },
+      select: { regionId: true }
+    });
+    playerRegionId = playerCompany.regionId;
   });
 
   afterAll(async () => {
@@ -59,6 +65,43 @@ describe("companies and market API integration", () => {
       quantity: expect.any(Number),
       reservedQuantity: expect.any(Number)
     });
+  });
+
+  it("applies inventory region filter and defaults to company region", async () => {
+    const industrial = await prisma.region.findUniqueOrThrow({
+      where: { code: "INDUSTRIAL" },
+      select: { id: true }
+    });
+
+    await prisma.inventory.create({
+      data: {
+        companyId: playerCompanyId,
+        itemId: ironOreId,
+        regionId: industrial.id,
+        quantity: 7,
+        reservedQuantity: 0
+      }
+    });
+
+    const defaultRegionResponse = await request(app.getHttpServer())
+      .get(`/v1/companies/${playerCompanyId}/inventory`)
+      .expect(200);
+
+    expect(
+      defaultRegionResponse.body.every((row: { regionId: string }) => row.regionId === playerRegionId)
+    ).toBe(true);
+
+    const industrialResponse = await request(app.getHttpServer())
+      .get(`/v1/companies/${playerCompanyId}/inventory`)
+      .query({ regionId: industrial.id })
+      .expect(200);
+
+    expect(
+      industrialResponse.body.every((row: { regionId: string }) => row.regionId === industrial.id)
+    ).toBe(true);
+    expect(
+      industrialResponse.body.some((row: { itemId: string; quantity: number }) => row.itemId === ironOreId && row.quantity === 7)
+    ).toBe(true);
   });
 
   it("returns 403 for inventory of unknown or unowned company", async () => {
@@ -110,6 +153,14 @@ describe("companies and market API integration", () => {
     expect(byItem.body.length).toBeGreaterThan(0);
     expect(byItem.body.every((order: { itemId: string }) => order.itemId === sampleOrder.itemId)).toBe(true);
 
+    const byRegion = await request(app.getHttpServer())
+      .get("/v1/market/orders")
+      .query({ regionId: playerRegionId })
+      .expect(200);
+
+    expect(byRegion.body.length).toBeGreaterThan(0);
+    expect(byRegion.body.every((order: { regionId: string }) => order.regionId === playerRegionId)).toBe(true);
+
     const withLimit = await request(app.getHttpServer())
       .get("/v1/market/orders")
       .query({ limit: 1 })
@@ -130,13 +181,14 @@ describe("companies and market API integration", () => {
 
     const myTrades = await request(app.getHttpServer())
       .get("/v1/market/trades")
-      .query({ companyId: firstTrade.buyerId })
+      .query({ companyId: firstTrade.buyerId, regionId: playerRegionId })
       .expect(200);
 
     expect(
       myTrades.body.every(
-        (trade: { buyerId: string; sellerId: string }) =>
-          trade.buyerId === firstTrade.buyerId || trade.sellerId === firstTrade.buyerId
+        (trade: { buyerId: string; sellerId: string; regionId: string }) =>
+          (trade.buyerId === firstTrade.buyerId || trade.sellerId === firstTrade.buyerId) &&
+          trade.regionId === playerRegionId
       )
     ).toBe(true);
   });

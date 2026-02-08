@@ -9,6 +9,7 @@ import { upsertMarketCandlesForTick } from "./market-candles";
 import { runMarketMatchingForTick } from "./market-matching";
 import { completeDueProductionJobs } from "./production";
 import { completeDueResearchJobs } from "./research";
+import { deliverDueShipmentsForTick } from "./shipments";
 
 interface WorldState {
   id: number;
@@ -81,9 +82,10 @@ export async function advanceSimulationTicks(
       // 2) production completions
       // 3) research completions and recipe unlocks
       // 4) market matching and settlement
-      // 5) market candle aggregation (OHLC/VWAP/volume)
+      // 5) shipment deliveries
       // 6) contract lifecycle (expire and generate)
-      // 7) finalize world tick state
+      // 7) market candle aggregation (OHLC/VWAP/volume)
+      // 8) finalize world tick state
       if (options.runBots) {
         await runBotsForTick(tx, nextTick, options.botConfig);
       }
@@ -92,8 +94,9 @@ export async function advanceSimulationTicks(
       await completeDueResearchJobs(tx, nextTick);
       // Matching runs in tick processing, not in request path.
       await runMarketMatchingForTick(tx, nextTick);
-      await upsertMarketCandlesForTick(tx, nextTick);
+      await deliverDueShipmentsForTick(tx, nextTick);
       await runContractLifecycleForTick(tx, nextTick, options.contractConfig);
+      await upsertMarketCandlesForTick(tx, nextTick);
 
       const result = await tx.worldTickState.updateMany({
         where: {
