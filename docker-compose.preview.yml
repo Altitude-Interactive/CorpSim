@@ -3,13 +3,13 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: corpsim
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-corpsim}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
-      - pgdata_preview_v2:/var/lib/postgresql/data
+      - ${POSTGRES_VOLUME_NAME:-pgdata_preview_v2}:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d corpsim"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-corpsim}"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -45,7 +45,7 @@ services:
     command: ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema", "packages/db/prisma/schema.prisma"]
     restart: "no"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/corpsim
+      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,7 +69,7 @@ services:
     command: ["pnpm", "-C", "packages/db", "seed"]
     restart: "no"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/corpsim
+      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -96,9 +96,9 @@ services:
       NODE_ENV: production
       API_PORT: ${API_PORT:-4310}
       PORT: ${API_PORT:-4310}
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/corpsim
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      REDIS_HOST: ${PREVIEW_REDIS_HOST:-redis}
+      REDIS_PORT: ${PREVIEW_REDIS_PORT:-6379}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${WEB_PUBLIC_PORT:-4311}}
       SHIPMENT_BASE_FEE_CENTS: ${SHIPMENT_BASE_FEE_CENTS:-250}
       SHIPMENT_FEE_PER_UNIT_CENTS: ${SHIPMENT_FEE_PER_UNIT_CENTS:-15}
@@ -139,9 +139,9 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/corpsim
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
+      REDIS_HOST: ${PREVIEW_REDIS_HOST:-redis}
+      REDIS_PORT: ${PREVIEW_REDIS_PORT:-6379}
       TICK_INTERVAL_MS: ${TICK_INTERVAL_MS:-60000}
       SIMULATION_SPEED: ${SIMULATION_SPEED:-1}
       MAX_TICKS_PER_RUN: ${MAX_TICKS_PER_RUN:-10}
