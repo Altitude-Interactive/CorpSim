@@ -63,4 +63,21 @@ describe("world API integration", () => {
     expect(tickResponse.body.currentTick).toBe(1);
     expect(tickResponse.body.lockVersion).toBe(1);
   });
+
+  it("returns 409 when expected lock version does not match", async () => {
+    const before = await request(app.getHttpServer()).get("/v1/world/tick").expect(200);
+
+    await request(app.getHttpServer())
+      .post("/v1/world/advance")
+      .send({
+        ticks: 1,
+        expectedLockVersion: before.body.lockVersion + 1
+      })
+      .expect(409);
+
+    const after = await request(app.getHttpServer()).get("/v1/world/tick").expect(200);
+
+    expect(after.body.currentTick).toBe(before.body.currentTick);
+    expect(after.body.lockVersion).toBe(before.body.lockVersion);
+  });
 });

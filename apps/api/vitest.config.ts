@@ -9,6 +9,7 @@ export default defineConfig({
   root: __dirname,
   test: {
     include: ["test/**/*.test.ts"],
-    environment: "node"
+    environment: "node",
+    fileParallelism: false
   }
 });
