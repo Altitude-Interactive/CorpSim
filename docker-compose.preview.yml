@@ -118,6 +118,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+      start_period: 240s
 
   worker:
     build:
@@ -202,6 +203,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+      start_period: 60s
 
 volumes:
   pgdata_preview_v2:
