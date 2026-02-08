@@ -2,9 +2,9 @@
   "name": "@corpsim/web",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "node scripts/run-next.mjs dev",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "node scripts/run-next.mjs start",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

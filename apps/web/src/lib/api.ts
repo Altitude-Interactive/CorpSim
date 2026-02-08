@@ -1,6 +1,6 @@
 export const HEALTH_POLL_INTERVAL_MS = 3_000;
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const PLAYER_HANDLE_STORAGE_KEY = "corpsim.playerHandle";
 const DEFAULT_PLAYER_HANDLE = "PLAYER";
 
@@ -499,12 +499,20 @@ function resolvePlayerHandle(): string {
   return fromStorage && fromStorage.length > 0 ? fromStorage : DEFAULT_PLAYER_HANDLE;
 }
 
+function resolveApiBaseUrl(): string {
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_URL environment variable is required");
+  }
+
+  return API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+}
+
 async function fetchJson<T>(
   path: string,
   parser: (value: unknown) => T,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",

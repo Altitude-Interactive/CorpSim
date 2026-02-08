@@ -48,11 +48,11 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: ${API_PORT:-4310}
+      PORT: ${API_PORT:?API_PORT is required}
       DATABASE_URL: ${PREVIEW_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/corpsim}
       REDIS_HOST: ${PREVIEW_REDIS_HOST:-redis}
       REDIS_PORT: ${PREVIEW_REDIS_PORT:-6379}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${WEB_PUBLIC_PORT:-4311}}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
       SHIPMENT_BASE_FEE_CENTS: ${SHIPMENT_BASE_FEE_CENTS:-250}
       SHIPMENT_FEE_PER_UNIT_CENTS: ${SHIPMENT_FEE_PER_UNIT_CENTS:-15}
     depends_on:
@@ -63,9 +63,9 @@ services:
       migrate:
         condition: service_completed_successfully
     ports:
-      - "${API_PUBLIC_PORT:-4310}:${API_PORT:-4310}"
+      - "${API_PUBLIC_PORT:?API_PUBLIC_PORT is required}:${API_PORT:?API_PORT is required}"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${API_PORT:-4310}/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${API_PORT:?API_PORT is required}/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -113,8 +113,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: ${WEB_PORT:-4311}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:${API_PUBLIC_PORT:-4310}}
+      PORT: ${WEB_PORT:?WEB_PORT is required}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
       NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS: ${NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS:-250}
       NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS: ${NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS:-15}
     command: ["sh", "-lc", "pnpm -C apps/web exec next start -p $$PORT"]
@@ -122,9 +122,9 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${WEB_PUBLIC_PORT:-4311}:${WEB_PORT:-4311}"
+      - "${WEB_PUBLIC_PORT:?WEB_PUBLIC_PORT is required}:${WEB_PORT:?WEB_PORT is required}"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${WEB_PORT:-4311}').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${WEB_PORT:?WEB_PORT is required}').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 20

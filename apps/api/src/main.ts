@@ -1,11 +1,19 @@
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { ensureEnvironmentLoaded } from "../../../packages/db/src/env";
 import { AppModule } from "./app.module";
 import { HttpErrorFilter } from "./common/filters/http-error.filter";
 
+ensureEnvironmentLoaded();
+
 function resolvePort(): number {
-  const raw = process.env.PORT ?? process.env.API_PORT ?? "3000";
+  const raw = process.env.PORT ?? process.env.API_PORT;
+
+  if (!raw) {
+    throw new Error("PORT or API_PORT environment variable is required");
+  }
+
   const port = Number.parseInt(raw, 10);
 
   if (!Number.isInteger(port) || port <= 0) {
@@ -17,9 +25,14 @@ function resolvePort(): number {
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const corsOrigin = process.env.CORS_ORIGIN;
+
+  if (!corsOrigin) {
+    throw new Error("CORS_ORIGIN environment variable is required");
+  }
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? "http://localhost:3001",
+    origin: corsOrigin,
     credentials: false
   });
 

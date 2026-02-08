@@ -47,8 +47,7 @@ pnpm sim:reset
 pnpm api:dev
 ```
 
-API endpoints are served at `http://localhost:3000` (health check: `GET /health`).
-If port `3000` is occupied, run with `PORT=3001 pnpm api:dev`.
+API endpoint base URL is env-driven via `API_URL` and listens on `PORT` or `API_PORT` (required). Health check route: `GET /health`.
 
 ## Run Web (Local)
 
@@ -56,7 +55,7 @@ If port `3000` is occupied, run with `PORT=3001 pnpm api:dev`.
 pnpm web:dev
 ```
 
-Web is available on `http://localhost:3001` and reads API base URL from `NEXT_PUBLIC_API_URL`.
+Web port is env-driven via `WEB_PORT` or `PORT` (required), and API base URL is read from `NEXT_PUBLIC_API_URL` (required).
 For logistics fee preview in web UI, set `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS` and `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS` to match API env.
 
 ## Run Worker (Local)

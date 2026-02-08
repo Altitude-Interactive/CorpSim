@@ -55,10 +55,10 @@ pnpm worker:dev
 pnpm web:dev
 ```
 
-Default local URLs:
+Default local URLs are env-driven from `.env`:
 
-- API: `http://localhost:3000`
-- Web: `http://localhost:3001`
+- API: `API_URL` (e.g. `http://localhost:4310`)
+- Web: `APP_URL` (e.g. `http://localhost:4311`)
 
 ## 7) Verification gates
 
@@ -75,8 +75,8 @@ pnpm verify:full
 ## 8) Quick sanity checks
 
 ```bash
-curl http://localhost:3000/health
-curl http://localhost:3000/v1/world/health
+curl "$API_URL/health"
+curl "$API_URL/v1/world/health"
 ```
 
 ## 9) Keep your working tree reproducible
