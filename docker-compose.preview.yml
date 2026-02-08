@@ -114,7 +114,7 @@ services:
     ports:
       - "${API_PUBLIC_PORT:-4310}:${API_PORT:-4310}"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${API_PORT:-4310}/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"const net=require('node:net');const p=Number(process.env.API_PORT||process.env.PORT||4310);const s=net.createConnection({host:'127.0.0.1',port:p});const t=setTimeout(()=>{s.destroy();process.exit(1);},4000);s.on('connect',()=>{clearTimeout(t);s.end();process.exit(0);});s.on('error',()=>{clearTimeout(t);process.exit(1);});\""]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -198,7 +198,7 @@ services:
     ports:
       - "${WEB_PUBLIC_PORT:-4311}:${WEB_PORT:-4311}"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:${WEB_PORT:-4311}').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"const net=require('node:net');const p=Number(process.env.WEB_PORT||process.env.PORT||4311);const s=net.createConnection({host:'127.0.0.1',port:p});const t=setTimeout(()=>{s.destroy();process.exit(1);},4000);s.on('connect',()=>{clearTimeout(t);s.end();process.exit(0);});s.on('error',()=>{clearTimeout(t);process.exit(1);});\""]
       interval: 10s
       timeout: 5s
       retries: 20
