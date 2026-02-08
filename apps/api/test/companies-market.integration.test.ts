@@ -105,4 +105,39 @@ describe("companies and market API integration", () => {
 
     expect(withLimit.body.length).toBeLessThanOrEqual(1);
   });
+
+  it("returns recent trades and applies company filter", async () => {
+    const allTrades = await request(app.getHttpServer()).get("/v1/market/trades").expect(200);
+    expect(Array.isArray(allTrades.body)).toBe(true);
+
+    if (allTrades.body.length === 0) {
+      return;
+    }
+
+    const firstTrade = allTrades.body[0] as { buyerId: string; sellerId: string };
+
+    const myTrades = await request(app.getHttpServer())
+      .get("/v1/market/trades")
+      .query({ companyId: firstTrade.buyerId })
+      .expect(200);
+
+    expect(
+      myTrades.body.every(
+        (trade: { buyerId: string; sellerId: string }) =>
+          trade.buyerId === firstTrade.buyerId || trade.sellerId === firstTrade.buyerId
+      )
+    ).toBe(true);
+  });
+
+  it("returns item catalog", async () => {
+    const response = await request(app.getHttpServer()).get("/v1/items").expect(200);
+
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body.length).toBeGreaterThan(0);
+    expect(response.body[0]).toMatchObject({
+      id: expect.any(String),
+      code: expect.any(String),
+      name: expect.any(String)
+    });
+  });
 });

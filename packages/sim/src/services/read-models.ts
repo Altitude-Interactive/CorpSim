@@ -9,6 +9,12 @@ export interface MarketOrderFilters {
   limit?: number;
 }
 
+export interface MarketTradeFilters {
+  itemId?: string;
+  companyId?: string;
+  limit?: number;
+}
+
 export interface SimulationHealthSnapshot {
   currentTick: number;
   lockVersion: number;
@@ -38,6 +44,7 @@ export async function listCompanies(prisma: PrismaClient) {
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
+      code: true,
       name: true,
       isPlayer: true,
       cashCents: true
@@ -46,6 +53,7 @@ export async function listCompanies(prisma: PrismaClient) {
 
   return companies.map((company) => ({
     id: company.id,
+    code: company.code,
     name: company.name,
     isBot: !company.isPlayer,
     cashCents: company.cashCents
@@ -138,6 +146,54 @@ export async function listMarketOrders(
       createdAt: true,
       updatedAt: true,
       closedAt: true
+    }
+  });
+}
+
+export async function listMarketTrades(
+  prisma: PrismaClient,
+  filters: MarketTradeFilters = {}
+) {
+  const limit = filters.limit ?? 50;
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+    throw new DomainInvariantError("limit must be an integer between 1 and 200");
+  }
+
+  return prisma.trade.findMany({
+    where: {
+      itemId: filters.itemId,
+      ...(filters.companyId
+        ? {
+            OR: [
+              { buyerCompanyId: filters.companyId },
+              { sellerCompanyId: filters.companyId }
+            ]
+          }
+        : {})
+    },
+    orderBy: [{ tick: "desc" }, { createdAt: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      tick: true,
+      itemId: true,
+      buyerCompanyId: true,
+      sellerCompanyId: true,
+      unitPriceCents: true,
+      quantity: true,
+      createdAt: true
+    }
+  });
+}
+
+export async function listItems(prisma: PrismaClient) {
+  return prisma.item.findMany({
+    orderBy: [{ code: "asc" }],
+    select: {
+      id: true,
+      code: true,
+      name: true
     }
   });
 }

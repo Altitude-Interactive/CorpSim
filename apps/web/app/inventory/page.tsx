@@ -1,5 +1,5 @@
-import { InventoryView } from "@/components/views/inventory/inventory-view";
+import { InventoryPage } from "@/components/inventory/inventory-page";
 
-export default function InventoryPage() {
-  return <InventoryView />;
+export default function InventoryRoute() {
+  return <InventoryPage />;
 }

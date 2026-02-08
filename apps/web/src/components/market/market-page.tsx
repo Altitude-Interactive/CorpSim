@@ -1,0 +1,374 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useActiveCompany } from "@/components/company/active-company-provider";
+import { useWorldHealth } from "@/components/layout/world-health-provider";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
+import {
+  ApiClientError,
+  ItemCatalogItem,
+  MarketOrder,
+  MarketTrade,
+  cancelMarketOrder,
+  listItems,
+  listMarketOrders,
+  listMarketTrades,
+  placeMarketOrder
+} from "@/lib/api";
+import { MyOrdersCard } from "./my-orders-card";
+import { OrderBookCard } from "./order-book-card";
+import { OrderPlacementCard } from "./order-placement-card";
+import { RecentTradesCard } from "./recent-trades-card";
+
+const DEFAULT_ORDER_LIMIT = 100;
+const DEFAULT_TRADE_LIMIT = 50;
+const MARKET_REFRESH_DEBOUNCE_MS = 500;
+
+interface OrderBookFilters {
+  itemId: string;
+  side: "ALL" | "BUY" | "SELL";
+  companyId: string;
+  limit: string;
+}
+
+interface TradeFilters {
+  itemId: string;
+  myTradesOnly: boolean;
+}
+
+const INITIAL_ORDER_FILTERS: OrderBookFilters = {
+  itemId: "",
+  side: "ALL",
+  companyId: "",
+  limit: String(DEFAULT_ORDER_LIMIT)
+};
+
+const INITIAL_TRADE_FILTERS: TradeFilters = {
+  itemId: "",
+  myTradesOnly: false
+};
+
+function mapApiErrorToMessage(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.status === 400) {
+      return error.message;
+    }
+    if (error.status === 404) {
+      return "item/company not found";
+    }
+    if (error.status === 409) {
+      return "conflict, refresh and retry";
+    }
+    return error.message;
+  }
+
+  return error instanceof Error ? error.message : "Unexpected error";
+}
+
+export function MarketPage() {
+  const { showToast } = useToast();
+  const { activeCompanyId, activeCompany } = useActiveCompany();
+  const { health, refresh: refreshHealth } = useWorldHealth();
+
+  const [items, setItems] = useState<ItemCatalogItem[]>([]);
+  const [orderFilters, setOrderFilters] = useState<OrderBookFilters>(INITIAL_ORDER_FILTERS);
+  const [tradeFilters, setTradeFilters] = useState<TradeFilters>(INITIAL_TRADE_FILTERS);
+
+  const [orderBook, setOrderBook] = useState<MarketOrder[]>([]);
+  const [myOrders, setMyOrders] = useState<MarketOrder[]>([]);
+  const [trades, setTrades] = useState<MarketTrade[]>([]);
+
+  const [isLoadingOrderBook, setIsLoadingOrderBook] = useState(true);
+  const [isLoadingMyOrders, setIsLoadingMyOrders] = useState(true);
+  const [isLoadingTrades, setIsLoadingTrades] = useState(true);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isCancellingOrderId, setIsCancellingOrderId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadItems = useCallback(async () => {
+    const rows = await listItems();
+    setItems(rows);
+  }, []);
+
+  const loadOrderBook = useCallback(async (filters: OrderBookFilters) => {
+    setIsLoadingOrderBook(true);
+    try {
+      const parsedLimit = Number.parseInt(filters.limit, 10);
+      const rows = await listMarketOrders({
+        itemId: filters.itemId || undefined,
+        side: filters.side === "ALL" ? undefined : filters.side,
+        companyId: filters.companyId || undefined,
+        limit: Number.isInteger(parsedLimit) ? parsedLimit : DEFAULT_ORDER_LIMIT
+      });
+      setOrderBook(rows);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to load market orders");
+    } finally {
+      setIsLoadingOrderBook(false);
+    }
+  }, []);
+
+  const loadMyOrders = useCallback(async () => {
+    if (!activeCompanyId) {
+      setMyOrders([]);
+      setIsLoadingMyOrders(false);
+      return;
+    }
+
+    setIsLoadingMyOrders(true);
+    try {
+      const rows = await listMarketOrders({
+        companyId: activeCompanyId,
+        limit: 200
+      });
+      setMyOrders(rows);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to load company orders");
+    } finally {
+      setIsLoadingMyOrders(false);
+    }
+  }, [activeCompanyId]);
+
+  const loadTrades = useCallback(async (filters: TradeFilters) => {
+    setIsLoadingTrades(true);
+    try {
+      const rows = await listMarketTrades({
+        itemId: filters.itemId || undefined,
+        companyId: filters.myTradesOnly ? activeCompanyId ?? undefined : undefined,
+        limit: DEFAULT_TRADE_LIMIT
+      });
+      setTrades(rows);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to load trades");
+    } finally {
+      setIsLoadingTrades(false);
+    }
+  }, [activeCompanyId]);
+
+  const refreshMarketData = useCallback(async () => {
+    await Promise.all([
+      loadOrderBook(orderFilters),
+      loadMyOrders(),
+      loadTrades(tradeFilters)
+    ]);
+  }, [loadMyOrders, loadOrderBook, loadTrades, orderFilters, tradeFilters]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        await loadItems();
+        await refreshMarketData();
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Failed to initialize market page");
+      }
+    })();
+  }, [loadItems, refreshMarketData]);
+
+  useEffect(() => {
+    void loadMyOrders();
+  }, [activeCompanyId, loadMyOrders]);
+
+  useEffect(() => {
+    const tick = health?.currentTick;
+    if (tick === undefined) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      void refreshMarketData();
+    }, MARKET_REFRESH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timeout);
+  }, [health?.currentTick, refreshMarketData]);
+
+  const submitOrderBookFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void loadOrderBook(orderFilters);
+  };
+
+  const submitTradesFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void loadTrades(tradeFilters);
+  };
+
+  const handlePlaceOrder = async (input: {
+    companyId: string;
+    itemId: string;
+    side: "BUY" | "SELL";
+    priceCents: number;
+    quantity: number;
+  }) => {
+    setIsSubmittingOrder(true);
+    try {
+      await placeMarketOrder(input);
+      showToast({
+        title: "Order placed",
+        description: `${input.side} ${input.quantity} @ ${input.priceCents} cents`,
+        variant: "success"
+      });
+      await Promise.all([refreshMarketData(), refreshHealth()]);
+    } catch (caught) {
+      const message = mapApiErrorToMessage(caught);
+      showToast({
+        title: "Order placement failed",
+        description: message,
+        variant: "error"
+      });
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
+  const handleCancelOrder = async (order: MarketOrder) => {
+    setIsCancellingOrderId(order.id);
+    try {
+      const result = await cancelMarketOrder(order.id);
+
+      if (result.status !== "CANCELLED") {
+        showToast({
+          title: "Order already closed",
+          description: `Status is ${result.status}.`,
+          variant: "info"
+        });
+      } else {
+        showToast({
+          title: "Order cancelled",
+          description: order.id,
+          variant: "success"
+        });
+      }
+
+      await Promise.all([refreshMarketData(), refreshHealth()]);
+    } catch (caught) {
+      showToast({
+        title: "Cancel failed",
+        description: mapApiErrorToMessage(caught),
+        variant: "error"
+      });
+    } finally {
+      setIsCancellingOrderId(null);
+    }
+  };
+
+  const sortedItems = useMemo(
+    () => [...items].sort((left, right) => left.code.localeCompare(right.code)),
+    [items]
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <OrderPlacementCard
+          activeCompany={activeCompany}
+          items={sortedItems}
+          onSubmit={handlePlaceOrder}
+          isSubmitting={isSubmittingOrder}
+        />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Book Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-3 md:grid-cols-5" onSubmit={submitOrderBookFilters}>
+              <Select
+                value={orderFilters.side}
+                onValueChange={(value) =>
+                  setOrderFilters((prev) => ({ ...prev, side: value as OrderBookFilters["side"] }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Side" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All sides</SelectItem>
+                  <SelectItem value="BUY">BUY</SelectItem>
+                  <SelectItem value="SELL">SELL</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Item ID"
+                value={orderFilters.itemId}
+                onChange={(event) =>
+                  setOrderFilters((prev) => ({ ...prev, itemId: event.target.value }))
+                }
+              />
+              <Input
+                placeholder="Company ID"
+                value={orderFilters.companyId}
+                onChange={(event) =>
+                  setOrderFilters((prev) => ({ ...prev, companyId: event.target.value }))
+                }
+              />
+              <Input
+                placeholder="Limit"
+                value={orderFilters.limit}
+                onChange={(event) =>
+                  setOrderFilters((prev) => ({ ...prev, limit: event.target.value }))
+                }
+              />
+              <Button type="submit">Apply</Button>
+            </form>
+            {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
+          </CardContent>
+        </Card>
+      </div>
+
+      <OrderBookCard orders={orderBook} isLoading={isLoadingOrderBook} />
+
+      <MyOrdersCard
+        orders={myOrders}
+        isLoading={isLoadingMyOrders || Boolean(isCancellingOrderId)}
+        onCancel={handleCancelOrder}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Trades Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-3 md:grid-cols-[minmax(0,220px)_auto_auto]" onSubmit={submitTradesFilters}>
+            <Select
+              value={tradeFilters.itemId || "ALL"}
+              onValueChange={(value) =>
+                setTradeFilters((prev) => ({ ...prev, itemId: value === "ALL" ? "" : value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All items" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All items</SelectItem>
+                {sortedItems.map((item) => (
+                  <SelectItem value={item.id} key={item.id}>
+                    {item.code} - {item.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <label className="flex items-center gap-2 rounded-md border border-border px-3 text-sm">
+              <input
+                type="checkbox"
+                checked={tradeFilters.myTradesOnly}
+                onChange={(event) =>
+                  setTradeFilters((prev) => ({ ...prev, myTradesOnly: event.target.checked }))
+                }
+              />
+              My trades only
+            </label>
+            <Button type="submit">Apply</Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <RecentTradesCard trades={trades} isLoading={isLoadingTrades} />
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
-import { MarketView } from "@/components/views/market/market-view";
+import { MarketPage } from "@/components/market/market-page";
 
-export default function MarketPage() {
-  return <MarketView />;
+export default function MarketRoute() {
+  return <MarketPage />;
 }

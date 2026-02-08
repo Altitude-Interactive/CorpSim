@@ -1,5 +1,5 @@
-import { WorldView } from "@/components/views/world/world-view";
+import { WorldPage } from "@/components/world/world-page";
 
-export default function WorldPage() {
-  return <WorldView />;
+export default function WorldRoute() {
+  return <WorldPage />;
 }

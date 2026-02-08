@@ -4,6 +4,16 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 type JsonRecord = Record<string, unknown>;
 
+export class ApiClientError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiClientError";
+    this.status = status;
+  }
+}
+
 export interface InvariantIssue {
   code: string;
   entityType: "company" | "inventory";
@@ -38,6 +48,7 @@ export interface WorldTickState {
 
 export interface CompanySummary {
   id: string;
+  code: string;
   name: string;
   isBot: boolean;
   cashCents: string;
@@ -74,6 +85,37 @@ export interface MarketOrderFilters {
   side?: "BUY" | "SELL";
   companyId?: string;
   limit?: number;
+}
+
+export interface MarketTrade {
+  id: string;
+  tick: number;
+  itemId: string;
+  buyerId: string;
+  sellerId: string;
+  priceCents: string;
+  quantity: number;
+  createdAt: string;
+}
+
+export interface MarketTradeFilters {
+  itemId?: string;
+  companyId?: string;
+  limit?: number;
+}
+
+export interface ItemCatalogItem {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface PlaceMarketOrderInput {
+  companyId: string;
+  itemId: string;
+  side: "BUY" | "SELL";
+  priceCents: number;
+  quantity: number;
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -132,10 +174,15 @@ async function fetchJson<T>(
   const payload = (await response.json().catch(() => null)) as unknown;
 
   if (!response.ok) {
-    if (isRecord(payload) && typeof payload.message === "string") {
-      throw new Error(payload.message);
+    let message = `Request failed: ${response.status}`;
+    if (isRecord(payload)) {
+      if (typeof payload.message === "string") {
+        message = payload.message;
+      } else if (Array.isArray(payload.message)) {
+        message = payload.message.filter((entry) => typeof entry === "string").join(", ");
+      }
     }
-    throw new Error(`Request failed: ${response.status}`);
+    throw new ApiClientError(response.status, message);
   }
 
   return parser(payload);
@@ -212,6 +259,7 @@ function parseCompanySummary(value: unknown): CompanySummary {
 
   return {
     id: readString(value.id, "id"),
+    code: readString(value.code, "code"),
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
     cashCents: readString(value.cashCents, "cashCents")
@@ -268,6 +316,35 @@ function parseMarketOrders(value: unknown): MarketOrder[] {
   return readArray(value, "marketOrders").map(parseMarketOrder);
 }
 
+function parseMarketTrade(value: unknown): MarketTrade {
+  if (!isRecord(value)) {
+    throw new Error("Invalid market trade");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    tick: readNumber(value.tick, "tick"),
+    itemId: readString(value.itemId, "itemId"),
+    buyerId: readString(value.buyerId, "buyerId"),
+    sellerId: readString(value.sellerId, "sellerId"),
+    priceCents: readString(value.priceCents, "priceCents"),
+    quantity: readNumber(value.quantity, "quantity"),
+    createdAt: readString(value.createdAt, "createdAt")
+  };
+}
+
+function parseItemCatalogItem(value: unknown): ItemCatalogItem {
+  if (!isRecord(value)) {
+    throw new Error("Invalid item catalog row");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    code: readString(value.code, "code"),
+    name: readString(value.name, "name")
+  };
+}
+
 export async function getWorldHealth(): Promise<WorldHealth> {
   return fetchJson("/v1/world/health", parseWorldHealth);
 }
@@ -301,6 +378,45 @@ export async function listMarketOrders(filters: MarketOrderFilters): Promise<Mar
 
   const query = params.toString();
   return fetchJson(`/v1/market/orders${query ? `?${query}` : ""}`, parseMarketOrders);
+}
+
+export async function placeMarketOrder(input: PlaceMarketOrderInput): Promise<MarketOrder> {
+  return fetchJson(
+    "/v1/market/orders",
+    parseMarketOrder,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export async function cancelMarketOrder(orderId: string): Promise<MarketOrder> {
+  return fetchJson(`/v1/market/orders/${orderId}/cancel`, parseMarketOrder, {
+    method: "POST"
+  });
+}
+
+export async function listMarketTrades(filters: MarketTradeFilters): Promise<MarketTrade[]> {
+  const params = new URLSearchParams();
+  if (filters.itemId) {
+    params.set("itemId", filters.itemId);
+  }
+  if (filters.companyId) {
+    params.set("companyId", filters.companyId);
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+
+  const query = params.toString();
+  return fetchJson(`/v1/market/trades${query ? `?${query}` : ""}`, (value) =>
+    readArray(value, "marketTrades").map(parseMarketTrade)
+  );
+}
+
+export async function listItems(): Promise<ItemCatalogItem[]> {
+  return fetchJson("/v1/items", (value) => readArray(value, "items").map(parseItemCatalogItem));
 }
 
 export async function advanceWorld(ticks: number): Promise<WorldTickState> {

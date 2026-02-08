@@ -2,6 +2,7 @@
 
 import { RefreshCcw } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { ActiveCompanyCombobox } from "@/components/company/active-company-combobox";
 import { Button } from "@/components/ui/button";
 import { StatusIndicator } from "./status-indicator";
 import { useWorldHealth } from "./world-health-provider";
@@ -27,11 +28,12 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
       <div className="flex h-14 items-center justify-between gap-3 px-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-base font-semibold">{TITLES[pathname] ?? "CorpSim"}</h1>
           <p className="text-xs text-muted-foreground">{formatTickLabel(health?.currentTick)}</p>
         </div>
         <div className="flex items-center gap-3">
+          <ActiveCompanyCombobox />
           <StatusIndicator status={apiStatus} />
           <Button
             variant="outline"

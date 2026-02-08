@@ -13,6 +13,7 @@ import {
 import { CancelMarketOrderParamDto } from "./dto/cancel-market-order.dto";
 import { CreateMarketOrderDto } from "./dto/create-market-order.dto";
 import { ListMarketOrdersDto } from "./dto/list-market-orders.dto";
+import { ListMarketTradesDto } from "./dto/list-market-trades.dto";
 import { MarketService } from "./market.service";
 
 function parseLimit(value?: string): number {
@@ -24,6 +25,20 @@ function parseLimit(value?: string): number {
 
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 500) {
     throw new BadRequestException("limit must be an integer between 1 and 500");
+  }
+
+  return parsed;
+}
+
+function parseTradesLimit(value?: string): number {
+  if (value === undefined) {
+    return 50;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 200) {
+    throw new BadRequestException("limit must be an integer between 1 and 200");
   }
 
   return parsed;
@@ -44,6 +59,15 @@ export class MarketController {
       side: query.side,
       companyId: query.companyId,
       limit: parseLimit(query.limit)
+    });
+  }
+
+  @Get("trades")
+  async listTrades(@Query() query: ListMarketTradesDto) {
+    return this.marketService.listTrades({
+      itemId: query.itemId,
+      companyId: query.companyId,
+      limit: parseTradesLimit(query.limit)
     });
   }
 

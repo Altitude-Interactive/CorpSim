@@ -13,3 +13,18 @@ export function formatCents(value: string): string {
     maximumFractionDigits: 2
   })}`;
 }
+
+export function parseCurrencyToCents(value: string): number | null {
+  const normalized = value.trim().replace(/[$,\s]/g, "");
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  const cents = Math.round(parsed * 100);
+  return cents > 0 ? cents : null;
+}

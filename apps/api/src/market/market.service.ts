@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
   cancelMarketOrder,
+  listMarketTrades,
   listMarketOrders,
   placeMarketOrder
 } from "../../../../packages/sim/src";
@@ -21,6 +22,12 @@ export interface PlaceOrderInput {
   quantity: number;
 }
 
+export interface MarketTradeFilterInput {
+  itemId?: string;
+  companyId?: string;
+  limit?: number;
+}
+
 interface OrderLike {
   id: string;
   companyId: string;
@@ -37,6 +44,17 @@ interface OrderLike {
   createdAt: Date;
   updatedAt: Date;
   closedAt: Date | null;
+}
+
+interface TradeLike {
+  id: string;
+  tick: number;
+  itemId: string;
+  buyerCompanyId: string;
+  sellerCompanyId: string;
+  unitPriceCents: bigint;
+  quantity: number;
+  createdAt: Date;
 }
 
 function mapOrderToDto(order: OrderLike) {
@@ -56,6 +74,19 @@ function mapOrderToDto(order: OrderLike) {
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     closedAt: order.closedAt
+  };
+}
+
+function mapTradeToDto(trade: TradeLike) {
+  return {
+    id: trade.id,
+    tick: trade.tick,
+    itemId: trade.itemId,
+    buyerId: trade.buyerCompanyId,
+    sellerId: trade.sellerCompanyId,
+    priceCents: trade.unitPriceCents.toString(),
+    quantity: trade.quantity,
+    createdAt: trade.createdAt
   };
 }
 
@@ -87,5 +118,10 @@ export class MarketService {
   async cancelOrder(orderId: string) {
     const order = await cancelMarketOrder(this.prisma, { orderId });
     return mapOrderToDto(order);
+  }
+
+  async listTrades(filters: MarketTradeFilterInput) {
+    const trades = await listMarketTrades(this.prisma, filters);
+    return trades.map(mapTradeToDto);
   }
 }
