@@ -7,6 +7,10 @@ interface WorldState {
   lockVersion: number;
 }
 
+export interface AdvanceTickOptions {
+  expectedLockVersion?: number;
+}
+
 async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldState> {
   const existing = await tx.worldTickState.findUnique({
     where: { id: 1 },
@@ -84,15 +88,32 @@ async function completeDueProductionJobs(
 
 export async function advanceSimulationTicks(
   prisma: PrismaClient,
-  ticks: number
+  ticks: number,
+  options: AdvanceTickOptions = {}
 ): Promise<void> {
   if (!Number.isInteger(ticks) || ticks <= 0) {
     throw new DomainInvariantError("ticks must be a positive integer");
   }
 
+  if (
+    options.expectedLockVersion !== undefined &&
+    (!Number.isInteger(options.expectedLockVersion) || options.expectedLockVersion < 0)
+  ) {
+    throw new DomainInvariantError("expectedLockVersion must be a non-negative integer");
+  }
+
   for (let i = 0; i < ticks; i += 1) {
     await prisma.$transaction(async (tx) => {
       const world = await ensureWorldState(tx);
+
+      if (i === 0 && options.expectedLockVersion !== undefined) {
+        if (world.lockVersion !== options.expectedLockVersion) {
+          throw new OptimisticLockConflictError(
+            `expected lockVersion ${options.expectedLockVersion} but found ${world.lockVersion}`
+          );
+        }
+      }
+
       const nextTick = world.currentTick + 1;
 
       await completeDueProductionJobs(tx, nextTick);

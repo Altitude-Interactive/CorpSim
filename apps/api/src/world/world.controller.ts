@@ -44,7 +44,7 @@ export class WorldController {
 
   @Post("advance")
   async advance(@Body() body: AdvanceWorldDto) {
-    return this.worldService.advance(body.ticks);
+    return this.worldService.advance(body.ticks, body.expectedLockVersion);
   }
 
   @Post("reset")

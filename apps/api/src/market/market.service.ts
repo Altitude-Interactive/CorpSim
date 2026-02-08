@@ -5,6 +5,8 @@ import { PrismaService } from "../prisma/prisma.service";
 export interface MarketOrderFilterInput {
   itemId?: string;
   side?: "BUY" | "SELL";
+  companyId?: string;
+  limit?: number;
 }
 
 @Injectable()
@@ -19,9 +21,20 @@ export class MarketService {
     const orders = await listMarketOrders(this.prisma, filters);
 
     return orders.map((order) => ({
-      ...order,
+      id: order.id,
+      companyId: order.companyId,
+      itemId: order.itemId,
+      side: order.side,
+      status: order.status,
+      quantity: order.quantity,
+      remainingQuantity: order.remainingQuantity,
       unitPriceCents: order.unitPriceCents.toString(),
-      reservedCashCents: order.reservedCashCents.toString()
+      reservedCashCents: order.reservedCashCents.toString(),
+      reservedQuantity: order.reservedQuantity,
+      tickPlaced: order.tickPlaced,
+      tickClosed: order.tickClosed,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
     }));
   }
 }

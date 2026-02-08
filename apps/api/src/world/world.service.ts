@@ -25,8 +25,8 @@ export class WorldService {
     };
   }
 
-  async advance(ticks: number) {
-    await advanceSimulationTicks(this.prisma, ticks);
+  async advance(ticks: number, expectedLockVersion?: number) {
+    await advanceSimulationTicks(this.prisma, ticks, { expectedLockVersion });
     return this.getTickState();
   }
 

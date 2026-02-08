@@ -1,9 +1,11 @@
 import { OrderSide, PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../domain/errors";
+import { DomainInvariantError, NotFoundError } from "../domain/errors";
 
 export interface MarketOrderFilters {
   itemId?: string;
   side?: OrderSide;
+  companyId?: string;
+  limit?: number;
 }
 
 export async function listCompanies(prisma: PrismaClient) {
@@ -81,12 +83,20 @@ export async function listMarketOrders(
   prisma: PrismaClient,
   filters: MarketOrderFilters = {}
 ) {
+  const limit = filters.limit ?? 100;
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+    throw new DomainInvariantError("limit must be an integer between 1 and 500");
+  }
+
   return prisma.marketOrder.findMany({
     where: {
       itemId: filters.itemId,
-      side: filters.side
+      side: filters.side,
+      companyId: filters.companyId
     },
     orderBy: [{ createdAt: "desc" }],
+    take: limit,
     select: {
       id: true,
       companyId: true,
