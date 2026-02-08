@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Box,
+  CircleDollarSign,
+  ClipboardList,
   Factory,
+  FlaskConical,
   Globe,
   LayoutDashboard,
   PackageSearch,
@@ -16,7 +19,10 @@ const NAV_ITEMS = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/market", label: "Market", icon: TrendingUp },
   { href: "/production", label: "Production", icon: Factory },
+  { href: "/research", label: "Research", icon: FlaskConical },
   { href: "/inventory", label: "Inventory", icon: PackageSearch },
+  { href: "/contracts", label: "Contracts", icon: ClipboardList },
+  { href: "/finance", label: "Finance", icon: CircleDollarSign },
   { href: "/world", label: "World", icon: Globe }
 ];
 

@@ -56,6 +56,12 @@ export interface CompanySummary {
   cashCents: string;
 }
 
+export interface CompanyDetails extends CompanySummary {
+  reservedCashCents: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlayerIdentity {
   id: string;
   handle: string;
@@ -198,6 +204,161 @@ export interface CreateProductionJobInput {
   companyId: string;
   recipeId: string;
   quantity: number;
+}
+
+export type ResearchNodeStatus = "LOCKED" | "AVAILABLE" | "RESEARCHING" | "COMPLETED";
+
+export interface ResearchNodeRecipeUnlock {
+  recipeId: string;
+  recipeCode: string;
+  recipeName: string;
+}
+
+export interface ResearchNodePrerequisite {
+  nodeId: string;
+}
+
+export interface ResearchNode {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  costCashCents: string;
+  durationTicks: number;
+  status: ResearchNodeStatus;
+  tickStarted: number | null;
+  tickCompletes: number | null;
+  prerequisites: ResearchNodePrerequisite[];
+  unlockRecipes: ResearchNodeRecipeUnlock[];
+}
+
+export interface ResearchJob {
+  id: string;
+  companyId: string;
+  nodeId: string;
+  status: "RUNNING" | "COMPLETED" | "CANCELLED";
+  costCashCents: string;
+  tickStarted: number;
+  tickCompletes: number;
+  tickClosed: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ContractStatus =
+  | "OPEN"
+  | "ACCEPTED"
+  | "PARTIALLY_FULFILLED"
+  | "FULFILLED"
+  | "EXPIRED"
+  | "CANCELLED";
+
+export interface ContractRecord {
+  id: string;
+  buyerCompanyId: string;
+  sellerCompanyId: string | null;
+  itemId: string;
+  quantity: number;
+  remainingQuantity: number;
+  priceCents: string;
+  status: ContractStatus;
+  tickCreated: number;
+  tickExpires: number;
+  tickAccepted: number | null;
+  tickClosed: number | null;
+  createdAt: string;
+  updatedAt: string;
+  item: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  buyerCompany: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  sellerCompany: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
+}
+
+export interface ContractFulfillmentResult {
+  contract: ContractRecord;
+  fulfillment: {
+    id: string;
+    contractId: string;
+    sellerCompanyId: string;
+    itemId: string;
+    quantity: number;
+    priceCents: string;
+    tick: number;
+    createdAt: string;
+  };
+}
+
+export interface ListContractsFilters {
+  status?: ContractStatus;
+  itemId?: string;
+  limit?: number;
+}
+
+export type FinanceLedgerEntryType =
+  | "ORDER_RESERVE"
+  | "TRADE_SETTLEMENT"
+  | "CONTRACT_SETTLEMENT"
+  | "RESEARCH_PAYMENT"
+  | "PRODUCTION_COMPLETION"
+  | "PRODUCTION_COST"
+  | "MANUAL_ADJUSTMENT";
+
+export interface FinanceLedgerEntry {
+  id: string;
+  tick: number;
+  entryType: FinanceLedgerEntryType;
+  referenceType: string;
+  referenceId: string;
+  deltaCashCents: string;
+  deltaReservedCashCents: string;
+  balanceAfterCents: string;
+  createdAt: string;
+}
+
+export interface FinanceLedgerResult {
+  entries: FinanceLedgerEntry[];
+  nextCursor: string | null;
+}
+
+export interface FinanceLedgerFilters {
+  companyId: string;
+  fromTick?: number;
+  toTick?: number;
+  entryType?: FinanceLedgerEntryType;
+  referenceType?: string;
+  referenceId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface FinanceSummaryBreakdownRow {
+  entryType: FinanceLedgerEntryType;
+  deltaCashCents: string;
+  deltaReservedCashCents: string;
+  count: number;
+}
+
+export interface FinanceSummary {
+  startingCashCents: string;
+  endingCashCents: string;
+  totalDeltaCashCents: string;
+  totalDeltaReservedCashCents: string;
+  breakdownByEntryType: FinanceSummaryBreakdownRow[];
+  tradesCount: number;
+  ordersPlacedCount: number;
+  ordersCancelledCount: number;
+  productionsCompletedCount: number;
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -355,6 +516,23 @@ function parseCompanySummary(value: unknown): CompanySummary {
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
     cashCents: readString(value.cashCents, "cashCents")
+  };
+}
+
+function parseCompanyDetails(value: unknown): CompanyDetails {
+  if (!isRecord(value)) {
+    throw new Error("Invalid company payload");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    code: readString(value.code, "code"),
+    name: readString(value.name, "name"),
+    isBot: readBoolean(value.isBot, "isBot"),
+    cashCents: readString(value.cashCents, "cashCents"),
+    reservedCashCents: readString(value.reservedCashCents, "reservedCashCents"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt")
   };
 }
 
@@ -554,6 +732,241 @@ function parseProductionJob(value: unknown): ProductionJob {
   };
 }
 
+function parseResearchNodeStatus(value: unknown): ResearchNodeStatus {
+  const status = readString(value, "status");
+  if (status !== "LOCKED" && status !== "AVAILABLE" && status !== "RESEARCHING" && status !== "COMPLETED") {
+    throw new Error("Invalid research node status");
+  }
+  return status;
+}
+
+function parseResearchNode(value: unknown): ResearchNode {
+  if (!isRecord(value)) {
+    throw new Error("Invalid research node");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    code: readString(value.code, "code"),
+    name: readString(value.name, "name"),
+    description: readString(value.description, "description"),
+    costCashCents: readString(value.costCashCents, "costCashCents"),
+    durationTicks: readNumber(value.durationTicks, "durationTicks"),
+    status: parseResearchNodeStatus(value.status),
+    tickStarted:
+      value.tickStarted === null ? null : readNumber(value.tickStarted, "tickStarted"),
+    tickCompletes:
+      value.tickCompletes === null ? null : readNumber(value.tickCompletes, "tickCompletes"),
+    prerequisites: readArray(value.prerequisites, "prerequisites").map((entry) => {
+      if (!isRecord(entry)) {
+        throw new Error("Invalid research prerequisite");
+      }
+      return {
+        nodeId: readString(entry.nodeId, "prerequisite.nodeId")
+      };
+    }),
+    unlockRecipes: readArray(value.unlockRecipes, "unlockRecipes").map((entry) => {
+      if (!isRecord(entry)) {
+        throw new Error("Invalid unlock recipe row");
+      }
+      return {
+        recipeId: readString(entry.recipeId, "unlockRecipe.recipeId"),
+        recipeCode: readString(entry.recipeCode, "unlockRecipe.recipeCode"),
+        recipeName: readString(entry.recipeName, "unlockRecipe.recipeName")
+      };
+    })
+  };
+}
+
+function parseResearchJob(value: unknown): ResearchJob {
+  if (!isRecord(value)) {
+    throw new Error("Invalid research job payload");
+  }
+
+  const status = readString(value.status, "status");
+  if (status !== "RUNNING" && status !== "COMPLETED" && status !== "CANCELLED") {
+    throw new Error("Invalid research job status");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    companyId: readString(value.companyId, "companyId"),
+    nodeId: readString(value.nodeId, "nodeId"),
+    status,
+    costCashCents: readString(value.costCashCents, "costCashCents"),
+    tickStarted: readNumber(value.tickStarted, "tickStarted"),
+    tickCompletes: readNumber(value.tickCompletes, "tickCompletes"),
+    tickClosed: value.tickClosed === null ? null : readNumber(value.tickClosed, "tickClosed"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt")
+  };
+}
+
+function parseContractStatus(value: unknown): ContractStatus {
+  const status = readString(value, "status");
+  if (
+    status !== "OPEN" &&
+    status !== "ACCEPTED" &&
+    status !== "PARTIALLY_FULFILLED" &&
+    status !== "FULFILLED" &&
+    status !== "EXPIRED" &&
+    status !== "CANCELLED"
+  ) {
+    throw new Error("Invalid contract status");
+  }
+  return status;
+}
+
+function parseContractRecord(value: unknown): ContractRecord {
+  if (!isRecord(value)) {
+    throw new Error("Invalid contract row");
+  }
+  if (!isRecord(value.item)) {
+    throw new Error("Invalid contract item");
+  }
+  if (!isRecord(value.buyerCompany)) {
+    throw new Error("Invalid contract buyer company");
+  }
+
+  let sellerCompany: ContractRecord["sellerCompany"] = null;
+  if (value.sellerCompany !== null) {
+    if (!isRecord(value.sellerCompany)) {
+      throw new Error("Invalid contract seller company");
+    }
+    sellerCompany = {
+      id: readString(value.sellerCompany.id, "sellerCompany.id"),
+      code: readString(value.sellerCompany.code, "sellerCompany.code"),
+      name: readString(value.sellerCompany.name, "sellerCompany.name")
+    };
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    buyerCompanyId: readString(value.buyerCompanyId, "buyerCompanyId"),
+    sellerCompanyId:
+      value.sellerCompanyId === null ? null : readString(value.sellerCompanyId, "sellerCompanyId"),
+    itemId: readString(value.itemId, "itemId"),
+    quantity: readNumber(value.quantity, "quantity"),
+    remainingQuantity: readNumber(value.remainingQuantity, "remainingQuantity"),
+    priceCents: readString(value.priceCents, "priceCents"),
+    status: parseContractStatus(value.status),
+    tickCreated: readNumber(value.tickCreated, "tickCreated"),
+    tickExpires: readNumber(value.tickExpires, "tickExpires"),
+    tickAccepted:
+      value.tickAccepted === null ? null : readNumber(value.tickAccepted, "tickAccepted"),
+    tickClosed: value.tickClosed === null ? null : readNumber(value.tickClosed, "tickClosed"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt"),
+    item: {
+      id: readString(value.item.id, "item.id"),
+      code: readString(value.item.code, "item.code"),
+      name: readString(value.item.name, "item.name")
+    },
+    buyerCompany: {
+      id: readString(value.buyerCompany.id, "buyerCompany.id"),
+      code: readString(value.buyerCompany.code, "buyerCompany.code"),
+      name: readString(value.buyerCompany.name, "buyerCompany.name")
+    },
+    sellerCompany
+  };
+}
+
+function parseContractFulfillmentResult(value: unknown): ContractFulfillmentResult {
+  if (!isRecord(value)) {
+    throw new Error("Invalid contract fulfillment payload");
+  }
+  if (!isRecord(value.fulfillment)) {
+    throw new Error("Invalid contract fulfillment row");
+  }
+
+  return {
+    contract: parseContractRecord(value.contract),
+    fulfillment: {
+      id: readString(value.fulfillment.id, "fulfillment.id"),
+      contractId: readString(value.fulfillment.contractId, "fulfillment.contractId"),
+      sellerCompanyId: readString(value.fulfillment.sellerCompanyId, "fulfillment.sellerCompanyId"),
+      itemId: readString(value.fulfillment.itemId, "fulfillment.itemId"),
+      quantity: readNumber(value.fulfillment.quantity, "fulfillment.quantity"),
+      priceCents: readString(value.fulfillment.priceCents, "fulfillment.priceCents"),
+      tick: readNumber(value.fulfillment.tick, "fulfillment.tick"),
+      createdAt: readString(value.fulfillment.createdAt, "fulfillment.createdAt")
+    }
+  };
+}
+
+function parseFinanceLedgerEntryType(value: unknown): FinanceLedgerEntryType {
+  const entryType = readString(value, "entryType");
+  if (
+    entryType !== "ORDER_RESERVE" &&
+    entryType !== "TRADE_SETTLEMENT" &&
+    entryType !== "CONTRACT_SETTLEMENT" &&
+    entryType !== "RESEARCH_PAYMENT" &&
+    entryType !== "PRODUCTION_COMPLETION" &&
+    entryType !== "PRODUCTION_COST" &&
+    entryType !== "MANUAL_ADJUSTMENT"
+  ) {
+    throw new Error("Invalid finance ledger entry type");
+  }
+  return entryType;
+}
+
+function parseFinanceLedgerEntry(value: unknown): FinanceLedgerEntry {
+  if (!isRecord(value)) {
+    throw new Error("Invalid finance ledger entry");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    tick: readNumber(value.tick, "tick"),
+    entryType: parseFinanceLedgerEntryType(value.entryType),
+    referenceType: readString(value.referenceType, "referenceType"),
+    referenceId: readString(value.referenceId, "referenceId"),
+    deltaCashCents: readString(value.deltaCashCents, "deltaCashCents"),
+    deltaReservedCashCents: readString(value.deltaReservedCashCents, "deltaReservedCashCents"),
+    balanceAfterCents: readString(value.balanceAfterCents, "balanceAfterCents"),
+    createdAt: readString(value.createdAt, "createdAt")
+  };
+}
+
+function parseFinanceSummary(value: unknown): FinanceSummary {
+  if (!isRecord(value)) {
+    throw new Error("Invalid finance summary payload");
+  }
+
+  return {
+    startingCashCents: readString(value.startingCashCents, "startingCashCents"),
+    endingCashCents: readString(value.endingCashCents, "endingCashCents"),
+    totalDeltaCashCents: readString(value.totalDeltaCashCents, "totalDeltaCashCents"),
+    totalDeltaReservedCashCents: readString(
+      value.totalDeltaReservedCashCents,
+      "totalDeltaReservedCashCents"
+    ),
+    breakdownByEntryType: readArray(value.breakdownByEntryType, "breakdownByEntryType").map(
+      (row) => {
+        if (!isRecord(row)) {
+          throw new Error("Invalid finance summary breakdown row");
+        }
+        return {
+          entryType: parseFinanceLedgerEntryType(row.entryType),
+          deltaCashCents: readString(row.deltaCashCents, "breakdown.deltaCashCents"),
+          deltaReservedCashCents: readString(
+            row.deltaReservedCashCents,
+            "breakdown.deltaReservedCashCents"
+          ),
+          count: readNumber(row.count, "breakdown.count")
+        };
+      }
+    ),
+    tradesCount: readNumber(value.tradesCount, "tradesCount"),
+    ordersPlacedCount: readNumber(value.ordersPlacedCount, "ordersPlacedCount"),
+    ordersCancelledCount: readNumber(value.ordersCancelledCount, "ordersCancelledCount"),
+    productionsCompletedCount: readNumber(
+      value.productionsCompletedCount,
+      "productionsCompletedCount"
+    )
+  };
+}
+
 export async function getWorldHealth(): Promise<WorldHealth> {
   return fetchJson("/v1/world/health", parseWorldHealth);
 }
@@ -562,6 +975,10 @@ export async function listCompanies(): Promise<CompanySummary[]> {
   return fetchJson("/v1/companies", (value) =>
     readArray(value, "companies").map(parseCompanySummary)
   );
+}
+
+export async function getCompany(companyId: string): Promise<CompanyDetails> {
+  return fetchJson(`/v1/companies/${companyId}`, parseCompanyDetails);
 }
 
 export async function getMePlayer(): Promise<PlayerIdentity> {
@@ -669,6 +1086,133 @@ export async function cancelProductionJob(jobId: string): Promise<ProductionJob>
   return fetchJson(`/v1/production/jobs/${jobId}/cancel`, parseProductionJob, {
     method: "POST"
   });
+}
+
+export async function listResearch(companyId?: string): Promise<ResearchNode[]> {
+  const params = new URLSearchParams();
+  if (companyId) {
+    params.set("companyId", companyId);
+  }
+  const query = params.toString();
+
+  return fetchJson(`/v1/research${query ? `?${query}` : ""}`, (value) => {
+    if (!isRecord(value)) {
+      throw new Error("Invalid research list payload");
+    }
+    return readArray(value.nodes, "nodes").map(parseResearchNode);
+  });
+}
+
+export async function startResearchNode(nodeId: string, companyId?: string): Promise<ResearchJob> {
+  return fetchJson(`/v1/research/${nodeId}/start`, parseResearchJob, {
+    method: "POST",
+    body: JSON.stringify(companyId ? { companyId } : {})
+  });
+}
+
+export async function cancelResearchNode(nodeId: string, companyId?: string): Promise<ResearchJob> {
+  return fetchJson(`/v1/research/${nodeId}/cancel`, parseResearchJob, {
+    method: "POST",
+    body: JSON.stringify(companyId ? { companyId } : {})
+  });
+}
+
+export async function listContracts(
+  filters: ListContractsFilters = {}
+): Promise<ContractRecord[]> {
+  const params = new URLSearchParams();
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+  if (filters.itemId) {
+    params.set("itemId", filters.itemId);
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+
+  const query = params.toString();
+  return fetchJson(`/v1/contracts${query ? `?${query}` : ""}`, (value) =>
+    readArray(value, "contracts").map(parseContractRecord)
+  );
+}
+
+export async function acceptContract(
+  contractId: string,
+  sellerCompanyId: string
+): Promise<ContractRecord> {
+  return fetchJson(`/v1/contracts/${contractId}/accept`, parseContractRecord, {
+    method: "POST",
+    body: JSON.stringify({ sellerCompanyId })
+  });
+}
+
+export async function fulfillContract(
+  contractId: string,
+  sellerCompanyId: string,
+  quantity: number
+): Promise<ContractFulfillmentResult> {
+  return fetchJson(`/v1/contracts/${contractId}/fulfill`, parseContractFulfillmentResult, {
+    method: "POST",
+    body: JSON.stringify({ sellerCompanyId, quantity })
+  });
+}
+
+export async function listFinanceLedger(
+  filters: FinanceLedgerFilters
+): Promise<FinanceLedgerResult> {
+  const params = new URLSearchParams();
+  params.set("companyId", filters.companyId);
+
+  if (filters.fromTick !== undefined) {
+    params.set("fromTick", String(filters.fromTick));
+  }
+  if (filters.toTick !== undefined) {
+    params.set("toTick", String(filters.toTick));
+  }
+  if (filters.entryType) {
+    params.set("entryType", filters.entryType);
+  }
+  if (filters.referenceType) {
+    params.set("referenceType", filters.referenceType);
+  }
+  if (filters.referenceId) {
+    params.set("referenceId", filters.referenceId);
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+  if (filters.cursor) {
+    params.set("cursor", filters.cursor);
+  }
+
+  return fetchJson(`/v1/finance/ledger?${params.toString()}`, (value) => {
+    if (!isRecord(value)) {
+      throw new Error("Invalid finance ledger payload");
+    }
+
+    const nextCursorRaw = value.nextCursor;
+    const nextCursor =
+      nextCursorRaw === null || nextCursorRaw === undefined
+        ? null
+        : readString(nextCursorRaw, "nextCursor");
+
+    return {
+      entries: readArray(value.entries, "entries").map(parseFinanceLedgerEntry),
+      nextCursor
+    };
+  });
+}
+
+export async function getFinanceSummary(
+  companyId: string,
+  windowTicks = 100
+): Promise<FinanceSummary> {
+  const params = new URLSearchParams();
+  params.set("companyId", companyId);
+  params.set("windowTicks", String(windowTicks));
+
+  return fetchJson(`/v1/finance/summary?${params.toString()}`, parseFinanceSummary);
 }
 
 export async function advanceWorld(ticks: number): Promise<WorldTickState> {
