@@ -1,11 +1,11 @@
 module.exports = {
   root: true,
-  extends: [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended",
-    "next/core-web-vitals"
-  ],
+  extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   parser: "@typescript-eslint/parser",
   plugins: ["@typescript-eslint"],
-  ignorePatterns: ["dist", "build", ".next"]
+  env: {
+    node: true,
+    es2022: true
+  },
+  ignorePatterns: ["dist", "build", ".next", "node_modules"]
 };

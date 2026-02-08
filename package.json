@@ -7,8 +7,24 @@
   ],
   "scripts": {
     "dev": "echo Use app-specific dev commands",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test": "echo No tests yet"
+    "lint": "eslint . --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "sim:advance": "tsx scripts/sim-advance.ts",
+    "sim:reset": "tsx scripts/sim-reset.ts",
+    "sim:seed": "pnpm -C packages/db seed"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
+    "eslint": "^8.57.1",
+    "prisma": "^6.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }
