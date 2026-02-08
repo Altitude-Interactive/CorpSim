@@ -196,9 +196,16 @@ async function settleMatch(
     throw new DomainInvariantError("buyer company cannot satisfy matched cash transfer");
   }
 
+  const availableBefore = buyerCompany.cashCents - buyerCompany.reservedCashCents;
   const buyerNextCash = buyerCompany.cashCents - tradeNotional;
   const buyerNextReservedCash = buyerCompany.reservedCashCents - reserveReduction;
   const sellerNextCash = sellerCompany.cashCents + tradeNotional;
+  const buyerIsSeller = buyerCompany.id === sellerCompany.id;
+  const availableAfterRelease = availableBefore + reserveReduction;
+  const availableAfterTrade = buyerNextCash - buyerNextReservedCash;
+  const buyerTradeBalanceAfter = buyerIsSeller
+    ? buyerCompany.cashCents - buyerNextReservedCash
+    : availableAfterTrade;
 
   if (buyerNextReservedCash < 0n || buyerNextCash < 0n || buyerNextReservedCash > buyerNextCash) {
     throw new DomainInvariantError("buyer cash invariants violated during settlement");
@@ -209,8 +216,6 @@ async function settleMatch(
   const sellRemaining = sellOrder.remainingQuantity - match.quantity;
   const buyReservedCash = buyOrder.reservedCashCents - reserveReduction;
   const sellReservedQuantity = sellOrder.reservedQuantity - match.quantity;
-
-  const buyerIsSeller = buyerCompany.id === sellerCompany.id;
 
   if (buyerIsSeller) {
     await tx.company.update({
@@ -313,9 +318,18 @@ async function settleMatch(
       {
         companyId: buyOrder.companyId,
         tick,
+        entryType: LedgerEntryType.ORDER_RESERVE,
+        deltaCashCents: reserveReduction,
+        balanceAfterCents: availableAfterRelease,
+        referenceType: "MARKET_ORDER_BUY_RELEASE_FILL",
+        referenceId: buyOrder.id
+      },
+      {
+        companyId: buyOrder.companyId,
+        tick,
         entryType: LedgerEntryType.TRADE_SETTLEMENT,
         deltaCashCents: -tradeNotional,
-        balanceAfterCents: buyerIsSeller ? buyerCompany.cashCents : buyerNextCash,
+        balanceAfterCents: buyerTradeBalanceAfter,
         referenceType: "MARKET_TRADE_BUY",
         referenceId: trade.id
       },
