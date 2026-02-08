@@ -1,8 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
   assertCompanyOwnedByPlayer,
+  getMarketAnalyticsSummary,
   assertOrderOwnedByPlayer,
   cancelMarketOrder,
+  listMarketCandles,
   listMarketTrades,
   listMarketOrders,
   placeMarketOrder,
@@ -29,6 +31,18 @@ export interface MarketTradeFilterInput {
   itemId?: string;
   companyId?: string;
   limit?: number;
+}
+
+export interface MarketCandleFilterInput {
+  itemId: string;
+  fromTick?: number;
+  toTick?: number;
+  limit?: number;
+}
+
+export interface MarketAnalyticsSummaryInput {
+  itemId: string;
+  windowTicks?: number;
 }
 
 interface OrderLike {
@@ -58,6 +72,21 @@ interface TradeLike {
   unitPriceCents: bigint;
   quantity: number;
   createdAt: Date;
+}
+
+interface CandleLike {
+  id: string;
+  itemId: string;
+  tick: number;
+  openCents: bigint;
+  highCents: bigint;
+  lowCents: bigint;
+  closeCents: bigint;
+  volumeQty: number;
+  tradeCount: number;
+  vwapCents: bigint | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 function mapOrderToDto(order: OrderLike) {
@@ -90,6 +119,23 @@ function mapTradeToDto(trade: TradeLike) {
     priceCents: trade.unitPriceCents.toString(),
     quantity: trade.quantity,
     createdAt: trade.createdAt
+  };
+}
+
+function mapCandleToDto(candle: CandleLike) {
+  return {
+    id: candle.id,
+    itemId: candle.itemId,
+    tick: candle.tick,
+    openCents: candle.openCents.toString(),
+    highCents: candle.highCents.toString(),
+    lowCents: candle.lowCents.toString(),
+    closeCents: candle.closeCents.toString(),
+    volumeQty: candle.volumeQty,
+    tradeCount: candle.tradeCount,
+    vwapCents: candle.vwapCents === null ? null : candle.vwapCents.toString(),
+    createdAt: candle.createdAt,
+    updatedAt: candle.updatedAt
   };
 }
 
@@ -137,5 +183,28 @@ export class MarketService {
   async listTrades(filters: MarketTradeFilterInput) {
     const trades = await listMarketTrades(this.prisma, filters);
     return trades.map(mapTradeToDto);
+  }
+
+  async listCandles(filters: MarketCandleFilterInput) {
+    const candles = await listMarketCandles(this.prisma, filters);
+    return candles.map(mapCandleToDto);
+  }
+
+  async getAnalyticsSummary(input: MarketAnalyticsSummaryInput) {
+    const summary = await getMarketAnalyticsSummary(this.prisma, input);
+
+    return {
+      itemId: summary.itemId,
+      fromTick: summary.fromTick,
+      toTick: summary.toTick,
+      candleCount: summary.candleCount,
+      lastPriceCents: summary.lastPriceCents === null ? null : summary.lastPriceCents.toString(),
+      changePctBps: summary.changePctBps,
+      highCents: summary.highCents === null ? null : summary.highCents.toString(),
+      lowCents: summary.lowCents === null ? null : summary.lowCents.toString(),
+      avgVolumeQty: summary.avgVolumeQty,
+      totalVolumeQty: summary.totalVolumeQty,
+      vwapCents: summary.vwapCents === null ? null : summary.vwapCents.toString()
+    };
   }
 }
