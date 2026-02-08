@@ -40,3 +40,7 @@ CMD ["pnpm", "-C", "apps/worker", "start"]
 FROM runtime-base AS web
 
 CMD ["pnpm", "-C", "apps/web", "start"]
+
+FROM runtime-base AS runner
+
+CMD ["bash", "scripts/start-container.sh"]
