@@ -20,27 +20,11 @@ RUN pnpm install --frozen-lockfile
 ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/corpsim"
 RUN pnpm -C packages/db generate
 
-RUN pnpm -C apps/web build
-
-FROM base AS runtime-base
+FROM base AS runtime
 
 ENV NODE_ENV="production"
 WORKDIR /app
 
 COPY --from=build /app /app
 
-FROM runtime-base AS api
-
-CMD ["pnpm", "-C", "apps/api", "start"]
-
-FROM runtime-base AS worker
-
-CMD ["pnpm", "-C", "apps/worker", "start"]
-
-FROM runtime-base AS web
-
-CMD ["pnpm", "-C", "apps/web", "start"]
-
-FROM runtime-base AS runner
-
-CMD ["bash", "scripts/start-container.sh"]
+CMD ["bash", "scripts/start-backend.sh"]
