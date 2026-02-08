@@ -25,9 +25,33 @@ enum ProductionJobStatus {
   CANCELLED
 }
 
+enum CompanyResearchStatus {
+  LOCKED
+  AVAILABLE
+  RESEARCHING
+  COMPLETED
+}
+
+enum ResearchJobStatus {
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+enum ContractStatus {
+  OPEN
+  ACCEPTED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  EXPIRED
+  CANCELLED
+}
+
 enum LedgerEntryType {
   ORDER_RESERVE
   TRADE_SETTLEMENT
+  CONTRACT_SETTLEMENT
+  RESEARCH_PAYMENT
   PRODUCTION_COMPLETION
   PRODUCTION_COST
   MANUAL_ADJUSTMENT
@@ -47,7 +71,13 @@ model Company {
   inventories       Inventory[]
   orders            MarketOrder[]
   productionJobs    ProductionJob[]
+  companyRecipes    CompanyRecipe[]
+  companyResearches CompanyResearch[]
+  researchJobs      ResearchJob[]
   ledgerEntries     LedgerEntry[]
+  buyContracts      Contract[]    @relation("ContractBuyerCompany")
+  sellContracts     Contract[]    @relation("ContractSellerCompany")
+  contractFulfillments ContractFulfillment[] @relation("ContractFulfillmentSellerCompany")
   buyTrades         Trade[]      @relation("TradeBuyerCompany")
   sellTrades        Trade[]      @relation("TradeSellerCompany")
 
@@ -73,6 +103,8 @@ model Item {
   trades            Trade[]
   outputRecipes     Recipe[]     @relation("RecipeOutput")
   recipeInputs      RecipeInput[]
+  contracts         Contract[]
+  contractFulfillments ContractFulfillment[]
 }
 
 model Inventory {
@@ -150,6 +182,8 @@ model Recipe {
   outputItem        Item         @relation("RecipeOutput", fields: [outputItemId], references: [id], onDelete: Restrict)
   inputs            RecipeInput[]
   jobs              ProductionJob[]
+  companyRecipes    CompanyRecipe[]
+  unlockedByNodes   ResearchNodeUnlockRecipe[]
 }
 
 model RecipeInput {
@@ -180,6 +214,90 @@ model ProductionJob {
   @@index([companyId, status])
 }
 
+model CompanyRecipe {
+  companyId   String
+  recipeId    String
+  isUnlocked  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recipe      Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, recipeId])
+  @@index([companyId, isUnlocked])
+}
+
+model ResearchNode {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  name              String
+  description       String
+  costCashCents     BigInt
+  durationTicks     Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  unlockRecipes     ResearchNodeUnlockRecipe[]
+  prerequisites     ResearchPrerequisite[] @relation("ResearchNodePrerequisites")
+  requiredBy        ResearchPrerequisite[] @relation("ResearchNodeRequiredBy")
+  companyResearches CompanyResearch[]
+  researchJobs      ResearchJob[]
+}
+
+model ResearchNodeUnlockRecipe {
+  nodeId      String
+  recipeId    String
+  node        ResearchNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  recipe      Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([nodeId, recipeId])
+  @@index([recipeId])
+}
+
+model ResearchPrerequisite {
+  id                  String       @id @default(cuid())
+  nodeId              String
+  prerequisiteNodeId  String
+  node                ResearchNode @relation("ResearchNodePrerequisites", fields: [nodeId], references: [id], onDelete: Cascade)
+  prerequisiteNode    ResearchNode @relation("ResearchNodeRequiredBy", fields: [prerequisiteNodeId], references: [id], onDelete: Restrict)
+
+  @@unique([nodeId, prerequisiteNodeId])
+  @@index([prerequisiteNodeId])
+}
+
+model CompanyResearch {
+  id            String               @id @default(cuid())
+  companyId     String
+  nodeId        String
+  status        CompanyResearchStatus @default(LOCKED)
+  tickStarted   Int?
+  tickCompletes Int?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  company       Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  node          ResearchNode         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, nodeId])
+  @@index([companyId, status])
+}
+
+model ResearchJob {
+  id            String            @id @default(cuid())
+  companyId     String
+  nodeId        String
+  status        ResearchJobStatus @default(RUNNING)
+  costCashCents BigInt
+  tickStarted   Int
+  tickCompletes Int
+  tickClosed    Int?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  company       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  node          ResearchNode      @relation(fields: [nodeId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, status])
+  @@index([status, tickCompletes])
+}
+
 model WorldTickState {
   id                Int          @id @default(1)
   currentTick       Int          @default(0)
@@ -187,6 +305,49 @@ model WorldTickState {
   lastAdvancedAt    DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+}
+
+model Contract {
+  id                String         @id @default(cuid())
+  buyerCompanyId    String
+  sellerCompanyId   String?
+  itemId            String
+  quantity          Int
+  remainingQuantity Int
+  priceCents        BigInt
+  status            ContractStatus @default(OPEN)
+  tickCreated       Int
+  tickExpires       Int
+  tickAccepted      Int?
+  tickClosed        Int?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  buyerCompany      Company        @relation("ContractBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Restrict)
+  sellerCompany     Company?       @relation("ContractSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: SetNull)
+  item              Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  fulfillments      ContractFulfillment[]
+
+  @@index([status, tickExpires])
+  @@index([itemId, status, createdAt])
+  @@index([sellerCompanyId, status])
+}
+
+model ContractFulfillment {
+  id              String    @id @default(cuid())
+  contractId      String
+  sellerCompanyId String
+  itemId          String
+  quantity        Int
+  priceCents      BigInt
+  tick            Int
+  createdAt       DateTime  @default(now())
+  contract        Contract  @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  sellerCompany   Company   @relation("ContractFulfillmentSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: Restrict)
+  item            Item      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([contractId, tick])
+  @@index([sellerCompanyId, tick])
+  @@index([itemId, tick])
 }
 
 model LedgerEntry {

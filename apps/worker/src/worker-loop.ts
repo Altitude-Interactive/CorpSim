@@ -52,7 +52,8 @@ export async function runWorkerIteration(
       const before = await getWorldTickState(prisma);
       await advanceSimulationTicks(prisma, ticks, {
         runBots,
-        botConfig: config.botConfig
+        botConfig: config.botConfig,
+        contractConfig: config.contractConfig
       });
       const after = await getWorldTickState(prisma);
 

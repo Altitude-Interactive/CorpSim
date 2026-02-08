@@ -20,6 +20,12 @@ describe("worker iteration integration", () => {
       itemCodes: ["IRON_ORE", "IRON_INGOT", "HAND_TOOLS"],
       spreadBps: 500,
       maxNotionalPerTickCents: 50_000n
+    },
+    contractConfig: {
+      contractsPerTick: 2,
+      ttlTicks: 50,
+      itemCodes: ["IRON_ORE", "IRON_INGOT", "HAND_TOOLS"],
+      priceBandBps: 500
     }
   };
 
@@ -105,5 +111,22 @@ describe("worker iteration integration", () => {
     });
 
     expect(botProductionJobs.length).toBeGreaterThan(0);
+  });
+
+  it("creates open contracts over worker ticks", async () => {
+    for (let i = 0; i < 3; i += 1) {
+      await runWorkerIteration(prisma, config, {
+        ticksOverride: 1,
+        maxConflictRetries: 0
+      });
+    }
+
+    const openContracts = await prisma.contract.count({
+      where: {
+        status: "OPEN"
+      }
+    });
+
+    expect(openContracts).toBeGreaterThan(0);
   });
 });

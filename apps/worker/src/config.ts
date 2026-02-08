@@ -1,4 +1,8 @@
 import { BotRuntimeConfig, resolveBotRuntimeConfig } from "../../../packages/sim/src/bots/bot-runner";
+import {
+  ContractLifecycleConfig,
+  resolveContractLifecycleConfig
+} from "../../../packages/sim/src/services/contracts";
 
 export interface WorkerConfig {
   tickIntervalMs: number;
@@ -7,6 +11,7 @@ export interface WorkerConfig {
   invariantsCheckEveryTicks: number;
   onInvariantViolation: "stop" | "pause_bots" | "log_only";
   botConfig: Partial<BotRuntimeConfig>;
+  contractConfig: Partial<ContractLifecycleConfig>;
 }
 
 function parseIntegerEnv(name: string, fallback: number): number {
@@ -104,6 +109,12 @@ export function loadWorkerConfig(): WorkerConfig {
     producerCadenceTicks: parseIntegerEnv("BOT_PRODUCER_CADENCE_TICKS", 3),
     producerMinProfitBps: parseNonNegativeIntegerEnv("BOT_PRODUCER_MIN_PROFIT_BPS", 0)
   });
+  const contractConfig = resolveContractLifecycleConfig({
+    contractsPerTick: parseNonNegativeIntegerEnv("CONTRACTS_PER_TICK", 2),
+    ttlTicks: parseIntegerEnv("CONTRACT_TTL_TICKS", 50),
+    itemCodes: parseItemCodes(process.env.CONTRACT_ITEM_CODES),
+    priceBandBps: parseNonNegativeIntegerEnv("CONTRACT_PRICE_BAND_BPS", 500)
+  });
 
   return {
     tickIntervalMs: parseIntegerEnv("TICK_INTERVAL_MS", 60_000),
@@ -111,6 +122,7 @@ export function loadWorkerConfig(): WorkerConfig {
     maxTicksPerRun: parseIntegerEnv("MAX_TICKS_PER_RUN", 10),
     invariantsCheckEveryTicks: parseIntegerEnv("INVARIANTS_CHECK_EVERY_TICKS", 10),
     onInvariantViolation: parseInvariantPolicy(process.env.ON_INVARIANT_VIOLATION),
-    botConfig
+    botConfig,
+    contractConfig
   };
 }

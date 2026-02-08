@@ -82,6 +82,10 @@ Worker configuration env knobs:
 * `BOT_ITEMS` (default `IRON_ORE,IRON_INGOT,HAND_TOOLS`)
 * `BOT_SPREAD_BPS` (default `500`)
 * `BOT_MAX_NOTIONAL_PER_TICK_CENTS` (default `50000`)
+* `CONTRACTS_PER_TICK` (default `2`)
+* `CONTRACT_TTL_TICKS` (default `50`)
+* `CONTRACT_ITEM_CODES` (default all seeded items)
+* `CONTRACT_PRICE_BAND_BPS` (default `500`)
 
 `/v1/world/health` includes invariant issues and always caps returned issues to 50 max.
 

@@ -261,7 +261,7 @@ export async function createProductionJobWithTx(
 
   const tick = await resolveTick(tx, input.tick);
 
-  const [company, recipe] = await Promise.all([
+  const [company, recipe, companyRecipe] = await Promise.all([
     tx.company.findUnique({
       where: { id: input.companyId },
       select: { id: true }
@@ -289,6 +289,17 @@ export async function createProductionJobWithTx(
           }
         }
       }
+    }),
+    tx.companyRecipe.findUnique({
+      where: {
+        companyId_recipeId: {
+          companyId: input.companyId,
+          recipeId: input.recipeId
+        }
+      },
+      select: {
+        isUnlocked: true
+      }
     })
   ]);
 
@@ -297,6 +308,9 @@ export async function createProductionJobWithTx(
   }
   if (!recipe) {
     throw new NotFoundError(`recipe ${input.recipeId} not found`);
+  }
+  if (!companyRecipe?.isUnlocked) {
+    throw new DomainInvariantError(`recipe ${input.recipeId} is not unlocked for company ${input.companyId}`);
   }
   if (recipe.durationTicks < 0) {
     throw new DomainInvariantError("recipe durationTicks cannot be negative");

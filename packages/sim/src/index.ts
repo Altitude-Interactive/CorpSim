@@ -6,6 +6,8 @@ export * from "./services/invariants";
 export * from "./services/read-models";
 export * from "./services/players";
 export * from "./services/production";
+export * from "./services/research";
+export * from "./services/contracts";
 export * from "./services/reset-simulation";
 export * from "./services/tick-engine";
 export * from "./bots/bot-runner";

@@ -1,8 +1,13 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { BotRuntimeConfig, runBotsForTick } from "../bots/bot-runner";
 import { DomainInvariantError, OptimisticLockConflictError } from "../domain/errors";
+import {
+  ContractLifecycleConfig,
+  runContractLifecycleForTick
+} from "./contracts";
 import { runMarketMatchingForTick } from "./market-matching";
 import { completeDueProductionJobs } from "./production";
+import { completeDueResearchJobs } from "./research";
 
 interface WorldState {
   id: number;
@@ -14,6 +19,7 @@ export interface AdvanceTickOptions {
   expectedLockVersion?: number;
   runBots?: boolean;
   botConfig?: Partial<BotRuntimeConfig>;
+  contractConfig?: Partial<ContractLifecycleConfig>;
 }
 
 async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldState> {
@@ -72,15 +78,19 @@ export async function advanceSimulationTicks(
       // Tick pipeline order:
       // 1) bot actions (orders / production starts)
       // 2) production completions
-      // 3) market matching and settlement
-      // 4) finalize world tick state
+      // 3) research completions and recipe unlocks
+      // 4) market matching and settlement
+      // 5) contract lifecycle (expire and generate)
+      // 6) finalize world tick state
       if (options.runBots) {
         await runBotsForTick(tx, nextTick, options.botConfig);
       }
 
       await completeDueProductionJobs(tx, nextTick);
+      await completeDueResearchJobs(tx, nextTick);
       // Matching runs in tick processing, not in request path.
       await runMarketMatchingForTick(tx, nextTick);
+      await runContractLifecycleForTick(tx, nextTick, options.contractConfig);
 
       const result = await tx.worldTickState.updateMany({
         where: {
