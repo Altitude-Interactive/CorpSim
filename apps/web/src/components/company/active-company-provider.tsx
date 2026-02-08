@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { CompanySummary, listCompanies } from "@/lib/api";
+import { CompanySummary, listMyCompanies } from "@/lib/api";
 
 const ACTIVE_COMPANY_STORAGE_KEY = "corpsim.activeCompanyId";
 
@@ -53,7 +53,7 @@ export function ActiveCompanyProvider({ children }: { children: React.ReactNode 
   const refreshCompanies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const rows = await listCompanies();
+      const rows = await listMyCompanies();
       setCompanies(rows);
       setError(null);
       setActiveCompanyIdState((current) => {

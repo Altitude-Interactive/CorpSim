@@ -1,6 +1,8 @@
 export const HEALTH_POLL_INTERVAL_MS = 3_000;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const PLAYER_HANDLE_STORAGE_KEY = "corpsim.playerHandle";
+const DEFAULT_PLAYER_HANDLE = "PLAYER";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -52,6 +54,13 @@ export interface CompanySummary {
   name: string;
   isBot: boolean;
   cashCents: string;
+}
+
+export interface PlayerIdentity {
+  id: string;
+  handle: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface InventoryRow {
@@ -230,6 +239,15 @@ function readArray(value: unknown, field: string): unknown[] {
   return value;
 }
 
+function resolvePlayerHandle(): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_PLAYER_HANDLE;
+  }
+
+  const fromStorage = window.localStorage.getItem(PLAYER_HANDLE_STORAGE_KEY)?.trim();
+  return fromStorage && fromStorage.length > 0 ? fromStorage : DEFAULT_PLAYER_HANDLE;
+}
+
 async function fetchJson<T>(
   path: string,
   parser: (value: unknown) => T,
@@ -239,6 +257,7 @@ async function fetchJson<T>(
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "X-Player-Handle": resolvePlayerHandle(),
       ...(init?.headers ?? {})
     },
     cache: "no-store"
@@ -336,6 +355,19 @@ function parseCompanySummary(value: unknown): CompanySummary {
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
     cashCents: readString(value.cashCents, "cashCents")
+  };
+}
+
+function parsePlayerIdentity(value: unknown): PlayerIdentity {
+  if (!isRecord(value)) {
+    throw new Error("Invalid player payload");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    handle: readString(value.handle, "handle"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt")
   };
 }
 
@@ -528,6 +560,16 @@ export async function getWorldHealth(): Promise<WorldHealth> {
 
 export async function listCompanies(): Promise<CompanySummary[]> {
   return fetchJson("/v1/companies", (value) =>
+    readArray(value, "companies").map(parseCompanySummary)
+  );
+}
+
+export async function getMePlayer(): Promise<PlayerIdentity> {
+  return fetchJson("/v1/players/me", parsePlayerIdentity);
+}
+
+export async function listMyCompanies(): Promise<CompanySummary[]> {
+  return fetchJson("/v1/players/me/companies", (value) =>
     readArray(value, "companies").map(parseCompanySummary)
   );
 }

@@ -1,10 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ProductionJobStatus } from "@prisma/client";
 import {
+  assertCompanyOwnedByPlayer,
+  assertProductionJobOwnedByPlayer,
   cancelProductionJob,
   createProductionJob,
   listProductionJobs,
-  listRecipes
+  listRecipes,
+  resolvePlayerByHandle
 } from "../../../../packages/sim/src";
 import { PrismaService } from "../prisma/prisma.service";
 import { ProductionJobStatusFilter } from "./dto/list-production-jobs.dto";
@@ -152,7 +155,13 @@ export class ProductionService {
     }));
   }
 
-  async listJobs(filters: ProductionJobFilterInput) {
+  async listJobs(filters: ProductionJobFilterInput, playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+
+    if (filters.companyId) {
+      await assertCompanyOwnedByPlayer(this.prisma, player.id, filters.companyId);
+    }
+
     const jobs = await listProductionJobs(this.prisma, {
       companyId: filters.companyId,
       status: mapApiStatusToJobStatus(filters.status),
@@ -162,7 +171,10 @@ export class ProductionService {
     return jobs.map(mapJobToDto);
   }
 
-  async createJob(input: CreateProductionJobInput) {
+  async createJob(input: CreateProductionJobInput, playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
+
     const job = await createProductionJob(this.prisma, {
       companyId: input.companyId,
       recipeId: input.recipeId,
@@ -172,7 +184,10 @@ export class ProductionService {
     return mapJobToDto(job);
   }
 
-  async cancelJob(jobId: string) {
+  async cancelJob(jobId: string, playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    await assertProductionJobOwnedByPlayer(this.prisma, player.id, jobId);
+
     const job = await cancelProductionJob(this.prisma, { jobId });
     return mapJobToDto(job);
   }

@@ -12,6 +12,13 @@ export class NotFoundError extends DomainInvariantError {
   }
 }
 
+export class ForbiddenError extends DomainInvariantError {
+  constructor(message: string) {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
 export class OptimisticLockConflictError extends DomainInvariantError {
   constructor(message: string) {
     super(message);

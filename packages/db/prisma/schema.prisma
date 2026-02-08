@@ -38,16 +38,28 @@ model Company {
   code              String       @unique
   name              String
   isPlayer          Boolean      @default(false)
+  ownerPlayerId     String?
   cashCents         BigInt
   reservedCashCents BigInt       @default(0)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+  ownerPlayer       Player?      @relation(fields: [ownerPlayerId], references: [id], onDelete: SetNull)
   inventories       Inventory[]
   orders            MarketOrder[]
   productionJobs    ProductionJob[]
   ledgerEntries     LedgerEntry[]
   buyTrades         Trade[]      @relation("TradeBuyerCompany")
   sellTrades        Trade[]      @relation("TradeSellerCompany")
+
+  @@index([ownerPlayerId])
+}
+
+model Player {
+  id                String       @id @default(cuid())
+  handle            String       @unique
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  companies         Company[]
 }
 
 model Item {

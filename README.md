@@ -85,6 +85,15 @@ Worker configuration env knobs:
 
 `/v1/world/health` includes invariant issues and always caps returned issues to 50 max.
 
+## Temporary Player Identity (Pre-Auth)
+
+CorpSim currently uses a temporary identity model while full auth is not yet implemented.
+
+* API identity is resolved from `X-Player-Handle`.
+* If the header is missing, API falls back to `PLAYER`.
+* Ownership checks are enforced for company-scoped player actions (market writes, production writes, inventory reads).
+* This is a pre-auth phase foundation, not a final authentication system.
+
 ## Ledger Semantics
 
 CorpSim uses a total-cash model:

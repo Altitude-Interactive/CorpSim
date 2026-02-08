@@ -12,7 +12,8 @@ describe("market matching and settlement integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
-  let botTraderCompanyId: string;
+  let sellerCompanyId: string;
+  let playerId: string;
   let handToolsItemId: string;
 
   beforeAll(async () => {
@@ -39,8 +40,39 @@ describe("market matching and settlement integration", () => {
   beforeEach(async () => {
     const seeded = await seedWorld(prisma, { reset: true });
     playerCompanyId = seeded.companyIds.player;
-    botTraderCompanyId = seeded.companyIds.botTrader;
     handToolsItemId = seeded.itemIds.handTools;
+
+    const playerCompany = await prisma.company.findUniqueOrThrow({
+      where: { id: playerCompanyId },
+      select: { ownerPlayerId: true }
+    });
+
+    if (!playerCompany.ownerPlayerId) {
+      throw new Error("seeded player company must be owned by PLAYER");
+    }
+    playerId = playerCompany.ownerPlayerId;
+
+    const sellerCompany = await prisma.company.create({
+      data: {
+        code: "PLAYER_SELLER",
+        name: "Player Seller Co",
+        isPlayer: true,
+        ownerPlayerId: playerId,
+        cashCents: 500_000n,
+        reservedCashCents: 0n
+      }
+    });
+
+    sellerCompanyId = sellerCompany.id;
+
+    await prisma.inventory.create({
+      data: {
+        companyId: sellerCompanyId,
+        itemId: handToolsItemId,
+        quantity: 20,
+        reservedQuantity: 0
+      }
+    });
   });
 
   afterAll(async () => {
@@ -53,13 +85,13 @@ describe("market matching and settlement integration", () => {
       select: { cashCents: true, reservedCashCents: true }
     });
     const sellerBefore = await prisma.company.findUniqueOrThrow({
-      where: { id: botTraderCompanyId },
+      where: { id: sellerCompanyId },
       select: { cashCents: true }
     });
     const sellerInventoryBefore = await prisma.inventory.findUniqueOrThrow({
       where: {
         companyId_itemId: {
-          companyId: botTraderCompanyId,
+          companyId: sellerCompanyId,
           itemId: handToolsItemId
         }
       },
@@ -69,7 +101,7 @@ describe("market matching and settlement integration", () => {
     const sellOrderResponse = await request(app.getHttpServer())
       .post("/v1/market/orders")
       .send({
-        companyId: botTraderCompanyId,
+        companyId: sellerCompanyId,
         itemId: handToolsItemId,
         side: "SELL",
         priceCents: 100,
@@ -126,13 +158,13 @@ describe("market matching and settlement integration", () => {
       select: { cashCents: true, reservedCashCents: true }
     });
     const sellerAfter = await prisma.company.findUniqueOrThrow({
-      where: { id: botTraderCompanyId },
+      where: { id: sellerCompanyId },
       select: { cashCents: true }
     });
     const sellerInventoryAfter = await prisma.inventory.findUniqueOrThrow({
       where: {
         companyId_itemId: {
-          companyId: botTraderCompanyId,
+          companyId: sellerCompanyId,
           itemId: handToolsItemId
         }
       },

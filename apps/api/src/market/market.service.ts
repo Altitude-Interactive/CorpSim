@@ -1,9 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  assertCompanyOwnedByPlayer,
+  assertOrderOwnedByPlayer,
   cancelMarketOrder,
   listMarketTrades,
   listMarketOrders,
-  placeMarketOrder
+  placeMarketOrder,
+  resolvePlayerByHandle
 } from "../../../../packages/sim/src";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -98,12 +101,20 @@ export class MarketService {
     this.prisma = prisma;
   }
 
-  async listOrders(filters: MarketOrderFilterInput) {
+  async listOrders(filters: MarketOrderFilterInput, playerHandle: string) {
+    if (filters.companyId) {
+      const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+      await assertCompanyOwnedByPlayer(this.prisma, player.id, filters.companyId);
+    }
+
     const orders = await listMarketOrders(this.prisma, filters);
     return orders.map(mapOrderToDto);
   }
 
-  async placeOrder(input: PlaceOrderInput) {
+  async placeOrder(input: PlaceOrderInput, playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
+
     const order = await placeMarketOrder(this.prisma, {
       companyId: input.companyId,
       itemId: input.itemId,
@@ -115,7 +126,10 @@ export class MarketService {
     return mapOrderToDto(order);
   }
 
-  async cancelOrder(orderId: string) {
+  async cancelOrder(orderId: string, playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    await assertOrderOwnedByPlayer(this.prisma, player.id, orderId);
+
     const order = await cancelMarketOrder(this.prisma, { orderId });
     return mapOrderToDto(order);
   }

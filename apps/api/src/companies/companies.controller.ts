@@ -1,4 +1,5 @@
 import { Controller, Get, Inject, Param } from "@nestjs/common";
+import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
 import { CompanyParamDto } from "./dto/company-param.dto";
 import { CompaniesService } from "./companies.service";
 
@@ -21,7 +22,10 @@ export class CompaniesController {
   }
 
   @Get(":id/inventory")
-  async getInventory(@Param() params: CompanyParamDto) {
-    return this.companiesService.getInventory(params.id);
+  async getInventory(
+    @Param() params: CompanyParamDto,
+    @CurrentPlayerHandle() playerHandle: string
+  ) {
+    return this.companiesService.getInventory(params.id, playerHandle);
   }
 }

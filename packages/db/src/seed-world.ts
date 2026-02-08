@@ -40,11 +40,18 @@ export async function seedWorld(
     }
   });
 
+  const player = await prisma.player.create({
+    data: {
+      handle: "PLAYER"
+    }
+  });
+
   const playerCompany = await prisma.company.create({
     data: {
       code: "PLAYER_CO",
       name: "Player Company",
       isPlayer: true,
+      ownerPlayerId: player.id,
       cashCents: 1_000_000n,
       reservedCashCents: 0n
     }

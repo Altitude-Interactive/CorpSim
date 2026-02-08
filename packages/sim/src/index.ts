@@ -4,6 +4,7 @@ export * from "./services/market-orders";
 export * from "./services/market-matching";
 export * from "./services/invariants";
 export * from "./services/read-models";
+export * from "./services/players";
 export * from "./services/production";
 export * from "./services/reset-simulation";
 export * from "./services/tick-engine";

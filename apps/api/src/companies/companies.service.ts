@@ -1,8 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  assertCompanyOwnedByPlayer,
   getCompanyById,
+  listCompaniesOwnedByPlayer,
   listCompanies,
-  listCompanyInventory
+  listCompanyInventory,
+  resolvePlayerByHandle
 } from "../../../../packages/sim/src";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -23,6 +26,19 @@ export class CompaniesService {
     }));
   }
 
+  async listMyCompanies(playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const companies = await listCompaniesOwnedByPlayer(this.prisma, player.id);
+
+    return companies.map((company) => ({
+      id: company.id,
+      code: company.code,
+      name: company.name,
+      isBot: !company.isPlayer,
+      cashCents: company.cashCents.toString()
+    }));
+  }
+
   async getCompany(companyId: string) {
     const company = await getCompanyById(this.prisma, companyId);
 
@@ -38,7 +54,10 @@ export class CompaniesService {
     };
   }
 
-  async getInventory(companyId: string) {
+  async getInventory(companyId: string, playerHandle: string) {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
+
     const rows = await listCompanyInventory(this.prisma, companyId);
 
     return rows.map((row) => ({

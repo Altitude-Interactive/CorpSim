@@ -12,6 +12,7 @@ describe("companies and market API integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
+  let ironOreId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -37,6 +38,7 @@ describe("companies and market API integration", () => {
   beforeEach(async () => {
     const seeded = await seedWorld(prisma, { reset: true });
     playerCompanyId = seeded.companyIds.player;
+    ironOreId = seeded.itemIds.ironOre;
   });
 
   afterAll(async () => {
@@ -59,28 +61,38 @@ describe("companies and market API integration", () => {
     });
   });
 
-  it("returns 404 for inventory of unknown company", async () => {
-    await request(app.getHttpServer()).get("/v1/companies/does-not-exist/inventory").expect(404);
+  it("returns 403 for inventory of unknown or unowned company", async () => {
+    await request(app.getHttpServer()).get("/v1/companies/does-not-exist/inventory").expect(403);
   });
 
   it("returns market orders and applies filters", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/market/orders")
+      .send({
+        companyId: playerCompanyId,
+        itemId: ironOreId,
+        side: "BUY",
+        priceCents: 100,
+        quantity: 2
+      })
+      .expect(201);
+
     const allOrders = await request(app.getHttpServer()).get("/v1/market/orders").expect(200);
     expect(Array.isArray(allOrders.body)).toBe(true);
     expect(allOrders.body.length).toBeGreaterThan(0);
 
-    const sampleOrder = allOrders.body[0] as {
-      companyId: string;
-      itemId: string;
-      side: "BUY" | "SELL";
-    };
-
     const byCompany = await request(app.getHttpServer())
       .get("/v1/market/orders")
-      .query({ companyId: sampleOrder.companyId })
+      .query({ companyId: playerCompanyId })
       .expect(200);
 
     expect(byCompany.body.length).toBeGreaterThan(0);
-    expect(byCompany.body.every((order: { companyId: string }) => order.companyId === sampleOrder.companyId)).toBe(true);
+    expect(byCompany.body.every((order: { companyId: string }) => order.companyId === playerCompanyId)).toBe(true);
+
+    const sampleOrder = allOrders.body[0] as {
+      itemId: string;
+      side: "BUY" | "SELL";
+    };
 
     const bySide = await request(app.getHttpServer())
       .get("/v1/market/orders")

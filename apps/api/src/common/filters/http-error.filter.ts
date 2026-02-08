@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import {
   DomainInvariantError,
+  ForbiddenError,
   NotFoundError,
   OptimisticLockConflictError
 } from "../../../../../packages/sim/src/domain/errors";
@@ -29,6 +30,15 @@ export class HttpErrorFilter implements ExceptionFilter {
         statusCode: HttpStatus.NOT_FOUND,
         message: exception.message,
         error: "Not Found"
+      });
+      return;
+    }
+
+    if (exception instanceof ForbiddenError) {
+      response.status(HttpStatus.FORBIDDEN).json({
+        statusCode: HttpStatus.FORBIDDEN,
+        message: exception.message,
+        error: "Forbidden"
       });
       return;
     }
