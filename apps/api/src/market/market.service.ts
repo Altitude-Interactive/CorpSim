@@ -1,5 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { listMarketOrders } from "../../../../packages/sim/src";
+import {
+  cancelMarketOrder,
+  listMarketOrders,
+  placeMarketOrder
+} from "../../../../packages/sim/src";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface MarketOrderFilterInput {
@@ -7,6 +11,52 @@ export interface MarketOrderFilterInput {
   side?: "BUY" | "SELL";
   companyId?: string;
   limit?: number;
+}
+
+export interface PlaceOrderInput {
+  companyId: string;
+  itemId: string;
+  side: "BUY" | "SELL";
+  priceCents: number;
+  quantity: number;
+}
+
+interface OrderLike {
+  id: string;
+  companyId: string;
+  itemId: string;
+  side: "BUY" | "SELL";
+  status: string;
+  quantity: number;
+  remainingQuantity: number;
+  unitPriceCents: bigint;
+  reservedCashCents: bigint;
+  reservedQuantity: number;
+  tickPlaced: number;
+  tickClosed: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  closedAt: Date | null;
+}
+
+function mapOrderToDto(order: OrderLike) {
+  return {
+    id: order.id,
+    companyId: order.companyId,
+    itemId: order.itemId,
+    side: order.side,
+    status: order.status,
+    quantity: order.quantity,
+    remainingQuantity: order.remainingQuantity,
+    priceCents: order.unitPriceCents.toString(),
+    reservedCashCents: order.reservedCashCents.toString(),
+    reservedQuantity: order.reservedQuantity,
+    tickPlaced: order.tickPlaced,
+    tickClosed: order.tickClosed,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    closedAt: order.closedAt
+  };
 }
 
 @Injectable()
@@ -19,22 +69,23 @@ export class MarketService {
 
   async listOrders(filters: MarketOrderFilterInput) {
     const orders = await listMarketOrders(this.prisma, filters);
+    return orders.map(mapOrderToDto);
+  }
 
-    return orders.map((order) => ({
-      id: order.id,
-      companyId: order.companyId,
-      itemId: order.itemId,
-      side: order.side,
-      status: order.status,
-      quantity: order.quantity,
-      remainingQuantity: order.remainingQuantity,
-      unitPriceCents: order.unitPriceCents.toString(),
-      reservedCashCents: order.reservedCashCents.toString(),
-      reservedQuantity: order.reservedQuantity,
-      tickPlaced: order.tickPlaced,
-      tickClosed: order.tickClosed,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt
-    }));
+  async placeOrder(input: PlaceOrderInput) {
+    const order = await placeMarketOrder(this.prisma, {
+      companyId: input.companyId,
+      itemId: input.itemId,
+      side: input.side,
+      quantity: input.quantity,
+      unitPriceCents: BigInt(input.priceCents)
+    });
+
+    return mapOrderToDto(order);
+  }
+
+  async cancelOrder(orderId: string) {
+    const order = await cancelMarketOrder(this.prisma, { orderId });
+    return mapOrderToDto(order);
   }
 }

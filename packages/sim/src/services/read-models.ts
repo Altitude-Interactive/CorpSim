@@ -111,7 +111,8 @@ export async function listMarketOrders(
       tickPlaced: true,
       tickClosed: true,
       createdAt: true,
-      updatedAt: true
+      updatedAt: true,
+      closedAt: true
     }
   });
 }

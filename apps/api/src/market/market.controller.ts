@@ -1,4 +1,17 @@
-import { BadRequestException, Controller, Get, Inject, Query } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Query
+} from "@nestjs/common";
+import { CancelMarketOrderParamDto } from "./dto/cancel-market-order.dto";
+import { CreateMarketOrderDto } from "./dto/create-market-order.dto";
 import { ListMarketOrdersDto } from "./dto/list-market-orders.dto";
 import { MarketService } from "./market.service";
 
@@ -32,5 +45,22 @@ export class MarketController {
       companyId: query.companyId,
       limit: parseLimit(query.limit)
     });
+  }
+
+  @Post("orders")
+  async placeOrder(@Body() body: CreateMarketOrderDto) {
+    return this.marketService.placeOrder({
+      companyId: body.companyId,
+      itemId: body.itemId,
+      side: body.side,
+      priceCents: body.priceCents,
+      quantity: body.quantity
+    });
+  }
+
+  @Post("orders/:id/cancel")
+  @HttpCode(HttpStatus.OK)
+  async cancelOrder(@Param() params: CancelMarketOrderParamDto) {
+    return this.marketService.cancelOrder(params.id);
   }
 }
