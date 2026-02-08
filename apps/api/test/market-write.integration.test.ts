@@ -81,6 +81,7 @@ describe("market write API integration", () => {
       select: { reservedCashCents: true, cashCents: true }
     });
 
+    expect(afterCompany.cashCents).toBe(beforeCompany.cashCents);
     expect(afterCompany.reservedCashCents).toBe(
       beforeCompany.reservedCashCents + BigInt(reserveAmount)
     );
@@ -94,10 +95,9 @@ describe("market write API integration", () => {
     });
 
     expect(reserveLedger).not.toBeNull();
-    expect(reserveLedger?.deltaCashCents).toBe(-BigInt(reserveAmount));
-    expect(reserveLedger?.balanceAfterCents).toBe(
-      afterCompany.cashCents - afterCompany.reservedCashCents
-    );
+    expect(reserveLedger?.deltaCashCents).toBe(0n);
+    expect(reserveLedger?.deltaReservedCashCents).toBe(BigInt(reserveAmount));
+    expect(reserveLedger?.balanceAfterCents).toBe(afterCompany.cashCents);
   });
 
   it("fails BUY placement with 400 when funds are insufficient", async () => {
@@ -150,6 +150,10 @@ describe("market write API integration", () => {
 
   it("cancels BUY order, releases cash reserve, and is idempotent", async () => {
     const reserveAmount = 200 * 3;
+    const companyBeforeOrder = await prisma.company.findUniqueOrThrow({
+      where: { id: playerCompanyId },
+      select: { cashCents: true, reservedCashCents: true }
+    });
     const orderResponse = await request(app.getHttpServer())
       .post("/v1/market/orders")
       .send({
@@ -167,8 +171,9 @@ describe("market write API integration", () => {
 
     const companyAfterFirstCancel = await prisma.company.findUniqueOrThrow({
       where: { id: playerCompanyId },
-      select: { reservedCashCents: true }
+      select: { cashCents: true, reservedCashCents: true }
     });
+    expect(companyAfterFirstCancel.cashCents).toBe(companyBeforeOrder.cashCents);
     expect(companyAfterFirstCancel.reservedCashCents).toBe(0n);
 
     const firstCancelLedgerCount = await prisma.ledgerEntry.count({
@@ -186,7 +191,9 @@ describe("market write API integration", () => {
         referenceType: "MARKET_ORDER_BUY_RELEASE"
       }
     });
-    expect(releaseLedger?.deltaCashCents).toBe(BigInt(reserveAmount));
+    expect(releaseLedger?.deltaCashCents).toBe(0n);
+    expect(releaseLedger?.deltaReservedCashCents).toBe(-BigInt(reserveAmount));
+    expect(releaseLedger?.balanceAfterCents).toBe(companyAfterFirstCancel.cashCents);
 
     await request(app.getHttpServer()).post(`/v1/market/orders/${orderId}/cancel`).expect(200);
 

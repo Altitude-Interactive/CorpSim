@@ -50,4 +50,41 @@ pnpm api:dev
 API endpoints are served at `http://localhost:3000` (health check: `GET /health`).
 If port `3000` is occupied, run with `PORT=3001 pnpm api:dev`.
 
+## Run Worker (Local)
+
+```
+pnpm worker:dev
+```
+
+Run a single batch and exit:
+
+```
+pnpm worker:once -- --ticks 3
+```
+
+Worker configuration env knobs:
+
+* `TICK_INTERVAL_MS` (default `60000`)
+* `SIMULATION_SPEED` (default `1`)
+* `MAX_TICKS_PER_RUN` (default `10`)
+* `INVARIANTS_CHECK_EVERY_TICKS` (default `10`)
+* `ON_INVARIANT_VIOLATION` (`stop` | `pause_bots` | `log_only`, default `stop`)
+* `BOT_ENABLED` (default `true`)
+* `BOT_COUNT` (default `25`)
+* `BOT_ITEMS` (default `IRON_ORE,IRON_INGOT,HAND_TOOLS`)
+* `BOT_SPREAD_BPS` (default `500`)
+* `BOT_MAX_NOTIONAL_PER_TICK_CENTS` (default `50000`)
+
+`/v1/world/health` includes invariant issues and always caps returned issues to 50 max.
+
+## Ledger Semantics
+
+CorpSim uses a total-cash model:
+
+* `Company.cashCents` is total cash.
+* `Company.reservedCashCents` is cash reserved for open BUY orders.
+* `LedgerEntry.deltaCashCents` records changes to `cashCents` only.
+* `LedgerEntry.deltaReservedCashCents` records changes to `reservedCashCents` only.
+* `LedgerEntry.balanceAfterCents` is the post-event `cashCents` balance.
+
 Refer to AGENTS.md for development rules and architecture decisions.

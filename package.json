@@ -9,6 +9,8 @@
     "dev": "echo Use app-specific dev commands",
     "api:dev": "pnpm -C apps/api dev",
     "api:test": "vitest run --config apps/api/vitest.config.ts",
+    "worker:dev": "pnpm -C apps/worker dev",
+    "worker:once": "pnpm -C apps/worker once",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

@@ -42,6 +42,11 @@ export class WorldController {
     return this.worldService.getTickState();
   }
 
+  @Get("health")
+  async getHealth() {
+    return this.worldService.getHealth();
+  }
+
   @Post("advance")
   async advance(@Body() body: AdvanceWorldDto) {
     return this.worldService.advance(body.ticks, body.expectedLockVersion);

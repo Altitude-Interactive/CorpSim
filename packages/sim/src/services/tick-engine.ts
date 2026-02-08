@@ -1,6 +1,8 @@
-import { Prisma, PrismaClient, ProductionJobStatus } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
+import { BotRuntimeConfig, runBotsForTick } from "../bots/bot-runner";
 import { DomainInvariantError, OptimisticLockConflictError } from "../domain/errors";
 import { runMarketMatchingForTick } from "./market-matching";
+import { completeDueProductionJobs } from "./production";
 
 interface WorldState {
   id: number;
@@ -10,6 +12,8 @@ interface WorldState {
 
 export interface AdvanceTickOptions {
   expectedLockVersion?: number;
+  runBots?: boolean;
+  botConfig?: Partial<BotRuntimeConfig>;
 }
 
 async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldState> {
@@ -33,58 +37,6 @@ async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldStat
   });
 
   return created;
-}
-
-async function completeDueProductionJobs(
-  tx: Prisma.TransactionClient,
-  nextTick: number
-): Promise<void> {
-  const jobs = await tx.productionJob.findMany({
-    where: {
-      status: ProductionJobStatus.IN_PROGRESS,
-      dueTick: { lte: nextTick }
-    },
-    include: {
-      recipe: {
-        select: {
-          outputItemId: true,
-          outputQuantity: true
-        }
-      }
-    }
-  });
-
-  for (const job of jobs) {
-    const outputQuantity = job.recipe.outputQuantity * job.runs;
-
-    await tx.inventory.upsert({
-      where: {
-        companyId_itemId: {
-          companyId: job.companyId,
-          itemId: job.recipe.outputItemId
-        }
-      },
-      create: {
-        companyId: job.companyId,
-        itemId: job.recipe.outputItemId,
-        quantity: outputQuantity,
-        reservedQuantity: 0
-      },
-      update: {
-        quantity: {
-          increment: outputQuantity
-        }
-      }
-    });
-
-    await tx.productionJob.update({
-      where: { id: job.id },
-      data: {
-        status: ProductionJobStatus.COMPLETED,
-        completedTick: nextTick
-      }
-    });
-  }
 }
 
 export async function advanceSimulationTicks(
@@ -116,6 +68,15 @@ export async function advanceSimulationTicks(
       }
 
       const nextTick = world.currentTick + 1;
+
+      // Tick pipeline order:
+      // 1) bot actions (orders / production starts)
+      // 2) production completions
+      // 3) market matching and settlement
+      // 4) finalize world tick state
+      if (options.runBots) {
+        await runBotsForTick(tx, nextTick, options.botConfig);
+      }
 
       await completeDueProductionJobs(tx, nextTick);
       // Matching runs in tick processing, not in request path.

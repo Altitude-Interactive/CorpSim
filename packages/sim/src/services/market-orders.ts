@@ -25,6 +25,8 @@ export interface CancelMarketOrderInput {
   tick?: number;
 }
 
+export type SimulationTxClient = Prisma.TransactionClient;
+
 function validateOrderInput(input: PlaceMarketOrderInput): void {
   if (!input.companyId) {
     throw new DomainInvariantError("companyId is required");
@@ -77,6 +79,7 @@ async function createBuyReserveLedgerEntry(
     referenceId: string;
     tick: number;
     deltaCashCents: bigint;
+    deltaReservedCashCents: bigint;
     balanceAfterCents: bigint;
     referenceType: string;
   }
@@ -87,6 +90,7 @@ async function createBuyReserveLedgerEntry(
       tick: params.tick,
       entryType: LedgerEntryType.ORDER_RESERVE,
       deltaCashCents: params.deltaCashCents,
+      deltaReservedCashCents: params.deltaReservedCashCents,
       balanceAfterCents: params.balanceAfterCents,
       referenceType: params.referenceType,
       referenceId: params.referenceId
@@ -98,98 +102,222 @@ export async function placeMarketOrder(prisma: PrismaClient, input: PlaceMarketO
   validateOrderInput(input);
 
   return prisma.$transaction(async (tx) => {
-    const tick = await resolveTick(tx, input.tick);
+    return placeMarketOrderWithTx(tx, input);
+  });
+}
 
+export async function placeMarketOrderWithTx(
+  tx: SimulationTxClient,
+  input: PlaceMarketOrderInput
+) {
+  validateOrderInput(input);
+  const tick = await resolveTick(tx, input.tick);
+
+  const company = await tx.company.findUnique({
+    where: { id: input.companyId },
+    select: { id: true, cashCents: true, reservedCashCents: true }
+  });
+
+  if (!company) {
+    throw new NotFoundError(`company ${input.companyId} not found`);
+  }
+
+  const item = await tx.item.findUnique({
+    where: { id: input.itemId },
+    select: { id: true }
+  });
+
+  if (!item) {
+    throw new NotFoundError(`item ${input.itemId} not found`);
+  }
+
+  if (input.side === OrderSide.BUY) {
+    const cashState = reserveCashForBuyOrder(
+      {
+        cashCents: company.cashCents,
+        reservedCashCents: company.reservedCashCents
+      },
+      input.quantity,
+      input.unitPriceCents
+    );
+
+    const reservedCash = cashState.reservedCashCents - company.reservedCashCents;
+
+    await tx.company.update({
+      where: { id: company.id },
+      data: { reservedCashCents: cashState.reservedCashCents }
+    });
+
+    const order = await tx.marketOrder.create({
+      data: {
+        companyId: input.companyId,
+        itemId: input.itemId,
+        side: input.side,
+        quantity: input.quantity,
+        remainingQuantity: input.quantity,
+        unitPriceCents: input.unitPriceCents,
+        reservedCashCents: reservedCash,
+        reservedQuantity: 0,
+        tickPlaced: tick
+      }
+    });
+
+    await createBuyReserveLedgerEntry(tx, {
+      companyId: company.id,
+      referenceId: order.id,
+      tick,
+      deltaCashCents: 0n,
+      deltaReservedCashCents: reservedCash,
+      balanceAfterCents: company.cashCents,
+      referenceType: "MARKET_ORDER_BUY_RESERVE"
+    });
+
+    return order;
+  }
+
+  const inventory = await tx.inventory.findUnique({
+    where: {
+      companyId_itemId: {
+        companyId: input.companyId,
+        itemId: input.itemId
+      }
+    },
+    select: {
+      companyId: true,
+      itemId: true,
+      quantity: true,
+      reservedQuantity: true
+    }
+  });
+
+  if (!inventory) {
+    throw new DomainInvariantError(
+      `company ${input.companyId} has no inventory row for item ${input.itemId}`
+    );
+  }
+
+  const inventoryState = reserveInventoryForSellOrder(
+    {
+      quantity: inventory.quantity,
+      reservedQuantity: inventory.reservedQuantity
+    },
+    input.quantity
+  );
+
+  await tx.inventory.update({
+    where: {
+      companyId_itemId: {
+        companyId: inventory.companyId,
+        itemId: inventory.itemId
+      }
+    },
+    data: { reservedQuantity: inventoryState.reservedQuantity }
+  });
+
+  return tx.marketOrder.create({
+    data: {
+      companyId: input.companyId,
+      itemId: input.itemId,
+      side: input.side,
+      quantity: input.quantity,
+      remainingQuantity: input.quantity,
+      unitPriceCents: input.unitPriceCents,
+      reservedCashCents: 0n,
+      reservedQuantity: input.quantity,
+      tickPlaced: tick
+    }
+  });
+}
+
+export async function cancelMarketOrder(prisma: PrismaClient, input: CancelMarketOrderInput) {
+  validateCancelInput(input);
+
+  return prisma.$transaction(async (tx) => {
+    return cancelMarketOrderWithTx(tx, input);
+  });
+}
+
+export async function cancelMarketOrderWithTx(
+  tx: SimulationTxClient,
+  input: CancelMarketOrderInput
+) {
+  validateCancelInput(input);
+  const tick = await resolveTick(tx, input.tick);
+
+  const existingOrder = await tx.marketOrder.findUnique({
+    where: { id: input.orderId }
+  });
+
+  if (!existingOrder) {
+    throw new NotFoundError(`market order ${input.orderId} not found`);
+  }
+
+  if (existingOrder.status !== OrderStatus.OPEN) {
+    return existingOrder;
+  }
+
+  if (existingOrder.side === OrderSide.BUY && existingOrder.reservedCashCents > 0n) {
     const company = await tx.company.findUnique({
-      where: { id: input.companyId },
-      select: { id: true, cashCents: true, reservedCashCents: true }
+      where: { id: existingOrder.companyId },
+      select: {
+        id: true,
+        cashCents: true,
+        reservedCashCents: true
+      }
     });
 
     if (!company) {
-      throw new NotFoundError(`company ${input.companyId} not found`);
+      throw new NotFoundError(`company ${existingOrder.companyId} not found`);
     }
 
-    const item = await tx.item.findUnique({
-      where: { id: input.itemId },
-      select: { id: true }
+    const nextReservedCash = company.reservedCashCents - existingOrder.reservedCashCents;
+
+    if (nextReservedCash < 0n) {
+      throw new DomainInvariantError("company reserved cash cannot become negative");
+    }
+
+    await tx.company.update({
+      where: { id: company.id },
+      data: { reservedCashCents: nextReservedCash }
     });
 
-    if (!item) {
-      throw new NotFoundError(`item ${input.itemId} not found`);
-    }
+    await createBuyReserveLedgerEntry(tx, {
+      companyId: company.id,
+      referenceId: existingOrder.id,
+      tick,
+      deltaCashCents: 0n,
+      deltaReservedCashCents: -existingOrder.reservedCashCents,
+      balanceAfterCents: company.cashCents,
+      referenceType: "MARKET_ORDER_BUY_RELEASE"
+    });
+  }
 
-    if (input.side === OrderSide.BUY) {
-      const cashState = reserveCashForBuyOrder(
-        {
-          cashCents: company.cashCents,
-          reservedCashCents: company.reservedCashCents
-        },
-        input.quantity,
-        input.unitPriceCents
-      );
-
-      const reservedCash = cashState.reservedCashCents - company.reservedCashCents;
-      const availableAfter = company.cashCents - cashState.reservedCashCents;
-
-      await tx.company.update({
-        where: { id: company.id },
-        data: { reservedCashCents: cashState.reservedCashCents }
-      });
-
-      const order = await tx.marketOrder.create({
-        data: {
-          companyId: input.companyId,
-          itemId: input.itemId,
-          side: input.side,
-          quantity: input.quantity,
-          remainingQuantity: input.quantity,
-          unitPriceCents: input.unitPriceCents,
-          reservedCashCents: reservedCash,
-          reservedQuantity: 0,
-          tickPlaced: tick
-        }
-      });
-
-      await createBuyReserveLedgerEntry(tx, {
-        companyId: company.id,
-        referenceId: order.id,
-        tick,
-        deltaCashCents: -reservedCash,
-        balanceAfterCents: availableAfter,
-        referenceType: "MARKET_ORDER_BUY_RESERVE"
-      });
-
-      return order;
-    }
-
+  if (existingOrder.side === OrderSide.SELL && existingOrder.reservedQuantity > 0) {
     const inventory = await tx.inventory.findUnique({
       where: {
         companyId_itemId: {
-          companyId: input.companyId,
-          itemId: input.itemId
+          companyId: existingOrder.companyId,
+          itemId: existingOrder.itemId
         }
       },
       select: {
         companyId: true,
         itemId: true,
-        quantity: true,
         reservedQuantity: true
       }
     });
 
     if (!inventory) {
       throw new DomainInvariantError(
-        `company ${input.companyId} has no inventory row for item ${input.itemId}`
+        `company ${existingOrder.companyId} has no inventory row for item ${existingOrder.itemId}`
       );
     }
 
-    const inventoryState = reserveInventoryForSellOrder(
-      {
-        quantity: inventory.quantity,
-        reservedQuantity: inventory.reservedQuantity
-      },
-      input.quantity
-    );
+    const nextReservedQuantity = inventory.reservedQuantity - existingOrder.reservedQuantity;
+
+    if (nextReservedQuantity < 0) {
+      throw new DomainInvariantError("inventory reserved quantity cannot become negative");
+    }
 
     await tx.inventory.update({
       where: {
@@ -198,127 +326,20 @@ export async function placeMarketOrder(prisma: PrismaClient, input: PlaceMarketO
           itemId: inventory.itemId
         }
       },
-      data: { reservedQuantity: inventoryState.reservedQuantity }
-    });
-
-    return tx.marketOrder.create({
       data: {
-        companyId: input.companyId,
-        itemId: input.itemId,
-        side: input.side,
-        quantity: input.quantity,
-        remainingQuantity: input.quantity,
-        unitPriceCents: input.unitPriceCents,
-        reservedCashCents: 0n,
-        reservedQuantity: input.quantity,
-        tickPlaced: tick
+        reservedQuantity: nextReservedQuantity
       }
     });
-  });
-}
+  }
 
-export async function cancelMarketOrder(prisma: PrismaClient, input: CancelMarketOrderInput) {
-  validateCancelInput(input);
-
-  return prisma.$transaction(async (tx) => {
-    const tick = await resolveTick(tx, input.tick);
-
-    const existingOrder = await tx.marketOrder.findUnique({
-      where: { id: input.orderId }
-    });
-
-    if (!existingOrder) {
-      throw new NotFoundError(`market order ${input.orderId} not found`);
+  return tx.marketOrder.update({
+    where: { id: existingOrder.id },
+    data: {
+      status: OrderStatus.CANCELLED,
+      tickClosed: tick,
+      closedAt: new Date(),
+      reservedCashCents: 0n,
+      reservedQuantity: 0
     }
-
-    if (existingOrder.status !== OrderStatus.OPEN) {
-      return existingOrder;
-    }
-
-    if (existingOrder.side === OrderSide.BUY && existingOrder.reservedCashCents > 0n) {
-      const company = await tx.company.findUnique({
-        where: { id: existingOrder.companyId },
-        select: {
-          id: true,
-          cashCents: true,
-          reservedCashCents: true
-        }
-      });
-
-      if (!company) {
-        throw new NotFoundError(`company ${existingOrder.companyId} not found`);
-      }
-
-      const nextReservedCash = company.reservedCashCents - existingOrder.reservedCashCents;
-
-      if (nextReservedCash < 0n) {
-        throw new DomainInvariantError("company reserved cash cannot become negative");
-      }
-
-      await tx.company.update({
-        where: { id: company.id },
-        data: { reservedCashCents: nextReservedCash }
-      });
-
-      await createBuyReserveLedgerEntry(tx, {
-        companyId: company.id,
-        referenceId: existingOrder.id,
-        tick,
-        deltaCashCents: existingOrder.reservedCashCents,
-        balanceAfterCents: company.cashCents - nextReservedCash,
-        referenceType: "MARKET_ORDER_BUY_RELEASE"
-      });
-    }
-
-    if (existingOrder.side === OrderSide.SELL && existingOrder.reservedQuantity > 0) {
-      const inventory = await tx.inventory.findUnique({
-        where: {
-          companyId_itemId: {
-            companyId: existingOrder.companyId,
-            itemId: existingOrder.itemId
-          }
-        },
-        select: {
-          companyId: true,
-          itemId: true,
-          reservedQuantity: true
-        }
-      });
-
-      if (!inventory) {
-        throw new DomainInvariantError(
-          `company ${existingOrder.companyId} has no inventory row for item ${existingOrder.itemId}`
-        );
-      }
-
-      const nextReservedQuantity = inventory.reservedQuantity - existingOrder.reservedQuantity;
-
-      if (nextReservedQuantity < 0) {
-        throw new DomainInvariantError("inventory reserved quantity cannot become negative");
-      }
-
-      await tx.inventory.update({
-        where: {
-          companyId_itemId: {
-            companyId: inventory.companyId,
-            itemId: inventory.itemId
-          }
-        },
-        data: {
-          reservedQuantity: nextReservedQuantity
-        }
-      });
-    }
-
-    return tx.marketOrder.update({
-      where: { id: existingOrder.id },
-      data: {
-        status: OrderStatus.CANCELLED,
-        tickClosed: tick,
-        closedAt: new Date(),
-        reservedCashCents: 0n,
-        reservedQuantity: 0
-      }
-    });
   });
 }

@@ -1,11 +1,36 @@
 import { OrderSide, PrismaClient } from "@prisma/client";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
+import { scanSimulationInvariants } from "./invariants";
 
 export interface MarketOrderFilters {
   itemId?: string;
   side?: OrderSide;
   companyId?: string;
   limit?: number;
+}
+
+export interface SimulationHealthSnapshot {
+  currentTick: number;
+  lockVersion: number;
+  lastAdvancedAt: Date | null;
+  ordersOpenCount: number;
+  ordersTotalCount: number;
+  tradesLast100Count: number;
+  companiesCount: number;
+  botsCount: number;
+  sumCashCents: bigint;
+  sumReservedCashCents: bigint;
+  invariants: {
+    hasViolations: boolean;
+    truncated: boolean;
+    issues: Array<{
+      code: string;
+      entityType: "company" | "inventory";
+      companyId: string;
+      itemId?: string;
+      message: string;
+    }>;
+  };
 }
 
 export async function listCompanies(prisma: PrismaClient) {
@@ -115,4 +140,61 @@ export async function listMarketOrders(
       closedAt: true
     }
   });
+}
+
+export async function getSimulationHealth(
+  prisma: PrismaClient,
+  options: { invariantIssueLimit?: number } = {}
+): Promise<SimulationHealthSnapshot> {
+  const issueLimit = options.invariantIssueLimit ?? 20;
+
+  const [
+    world,
+    ordersOpenCount,
+    ordersTotalCount,
+    recentTrades,
+    companiesCount,
+    botsCount,
+    sums,
+    invariants
+  ] = await Promise.all([
+    prisma.worldTickState.findUnique({
+      where: { id: 1 },
+      select: { currentTick: true, lockVersion: true, lastAdvancedAt: true }
+    }),
+    prisma.marketOrder.count({
+      where: { status: "OPEN" }
+    }),
+    prisma.marketOrder.count(),
+    prisma.trade.findMany({
+      orderBy: [{ tick: "desc" }, { createdAt: "desc" }],
+      take: 100,
+      select: { id: true }
+    }),
+    prisma.company.count(),
+    prisma.company.count({
+      where: { isPlayer: false }
+    }),
+    prisma.company.aggregate({
+      _sum: {
+        cashCents: true,
+        reservedCashCents: true
+      }
+    }),
+    scanSimulationInvariants(prisma, issueLimit)
+  ]);
+
+  return {
+    currentTick: world?.currentTick ?? 0,
+    lockVersion: world?.lockVersion ?? 0,
+    lastAdvancedAt: world?.lastAdvancedAt ?? null,
+    ordersOpenCount,
+    ordersTotalCount,
+    tradesLast100Count: recentTrades.length,
+    companiesCount,
+    botsCount,
+    sumCashCents: sums._sum.cashCents ?? 0n,
+    sumReservedCashCents: sums._sum.reservedCashCents ?? 0n,
+    invariants
+  };
 }

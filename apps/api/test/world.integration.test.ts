@@ -52,6 +52,28 @@ describe("world API integration", () => {
     });
   });
 
+  it("returns simulation health shape", async () => {
+    const response = await request(app.getHttpServer()).get("/v1/world/health").expect(200);
+
+    expect(response.body).toMatchObject({
+      currentTick: expect.any(Number),
+      lockVersion: expect.any(Number),
+      lastAdvancedAt: null,
+      ordersOpenCount: expect.any(Number),
+      ordersTotalCount: expect.any(Number),
+      tradesLast100Count: expect.any(Number),
+      companiesCount: expect.any(Number),
+      botsCount: expect.any(Number),
+      sumCashCents: expect.any(String),
+      sumReservedCashCents: expect.any(String),
+      invariants: {
+        hasViolations: expect.any(Boolean),
+        truncated: expect.any(Boolean),
+        issues: expect.any(Array)
+      }
+    });
+  });
+
   it("advances world by one tick", async () => {
     await request(app.getHttpServer())
       .post("/v1/world/advance")

@@ -181,7 +181,11 @@ model LedgerEntry {
   companyId         String
   tick              Int
   entryType         LedgerEntryType
+  /// Delta on total cashCents.
   deltaCashCents    BigInt
+  /// Delta on reservedCashCents; positive reserves cash, negative releases it.
+  deltaReservedCashCents BigInt    @default(0)
+  /// cashCents balance after applying this entry.
   balanceAfterCents BigInt
   referenceType     String
   referenceId       String

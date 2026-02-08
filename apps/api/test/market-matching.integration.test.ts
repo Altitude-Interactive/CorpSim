@@ -166,22 +166,17 @@ describe("market matching and settlement integration", () => {
 
     const buyLedger = tradeLedgerRows.find((entry) => entry.referenceType === "MARKET_TRADE_BUY");
     const sellLedger = tradeLedgerRows.find((entry) => entry.referenceType === "MARKET_TRADE_SELL");
-    const reserveReleaseLedger = await prisma.ledgerEntry.findMany({
-      where: {
-        referenceId: buyOrder.id,
-        referenceType: "MARKET_ORDER_BUY_RELEASE_FILL"
-      }
-    });
 
     expect(buyLedger).toBeDefined();
     expect(sellLedger).toBeDefined();
-    expect(reserveReleaseLedger.length).toBeGreaterThan(0);
 
     expect(buyLedger?.entryType).toBe("TRADE_SETTLEMENT");
     expect(sellLedger?.entryType).toBe("TRADE_SETTLEMENT");
     expect(buyLedger?.deltaCashCents).toBe(-600n);
+    expect(buyLedger?.deltaReservedCashCents).toBe(-720n);
+    expect(buyLedger?.balanceAfterCents).toBe(buyerAfter.cashCents);
     expect(sellLedger?.deltaCashCents).toBe(600n);
-    expect(reserveReleaseLedger[0]?.entryType).toBe("ORDER_RESERVE");
-    expect(reserveReleaseLedger[0]?.deltaCashCents).toBe(720n);
+    expect(sellLedger?.deltaReservedCashCents).toBe(0n);
+    expect(sellLedger?.balanceAfterCents).toBe(sellerAfter.cashCents);
   });
 });
