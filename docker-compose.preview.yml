@@ -13,6 +13,10 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      corpsim_internal:
+        aliases:
+          - postgres
 
   redis:
     image: redis:7
@@ -25,6 +29,10 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      corpsim_internal:
+        aliases:
+          - redis
 
   migrate:
     build:
@@ -53,6 +61,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - corpsim_internal
 
   seed:
     build:
@@ -81,6 +91,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    networks:
+      - corpsim_internal
 
   backend:
     build:
@@ -132,6 +144,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 240s
+    networks:
+      - corpsim_internal
 
   worker:
     build:
@@ -186,6 +200,8 @@ services:
         condition: service_completed_successfully
       seed:
         condition: service_completed_successfully
+    networks:
+      - corpsim_internal
 
   frontend:
     build:
@@ -222,7 +238,14 @@ services:
       timeout: 5s
       retries: 20
       start_period: 60s
+    networks:
+      - corpsim_internal
 
 volumes:
   pgdata_preview_v2:
   redisdata:
+
+networks:
+  corpsim_internal:
+    name: ${COMPOSE_NETWORK_NAME:-corpsim-preview-internal}
+    driver: bridge
