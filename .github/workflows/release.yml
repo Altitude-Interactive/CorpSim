@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 concurrency:
   group: release-main
@@ -141,6 +142,40 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine image repository
+        if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
+        id: image
+        run: |
+          IMAGE_REPO="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "repo=$IMAGE_REPO" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push app image
+        if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/app.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.repo }}:${{ steps.version.outputs.tag }}
+            ${{ steps.image.outputs.repo }}:${{ steps.version.outputs.version }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=
+            NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250
+            NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15
 
       - name: Create annotated tag
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
