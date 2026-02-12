@@ -22,6 +22,7 @@ import {
   placeMarketOrder
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { getRegionLabel } from "@/lib/ui-copy";
 import { MyOrdersCard } from "./my-orders-card";
 import { OrderBookCard } from "./order-book-card";
 import { OrderPlacementCard } from "./order-placement-card";
@@ -287,6 +288,25 @@ export function MarketPage() {
     () => [...items].sort((left, right) => left.code.localeCompare(right.code)),
     [items]
   );
+  const regionNameById = useMemo(
+    () =>
+      Object.fromEntries(
+        regions.map((region) => [
+          region.id,
+          getRegionLabel({
+            code: region.code,
+            name: region.name
+          })
+        ])
+      ),
+    [regions]
+  );
+  const activeCompanyRegionLabel = activeCompany
+    ? getRegionLabel({
+      code: activeCompany.regionCode,
+      name: activeCompany.regionName
+    })
+    : null;
 
   return (
     <div className="space-y-4">
@@ -315,7 +335,7 @@ export function MarketPage() {
                   <SelectItem value="ALL">All regions</SelectItem>
                   {regions.map((region) => (
                     <SelectItem key={region.id} value={region.id}>
-                      {region.code}
+                      {getRegionLabel({ code: region.code, name: region.name })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -363,11 +383,16 @@ export function MarketPage() {
         </Card>
       </div>
 
-      <OrderBookCard orders={orderBook} isLoading={isLoadingOrderBook} />
+      <OrderBookCard
+        orders={orderBook}
+        isLoading={isLoadingOrderBook}
+        regionNameById={regionNameById}
+      />
 
       <MyOrdersCard
         orders={myOrders}
         isLoading={isLoadingMyOrders || Boolean(isCancellingOrderId)}
+        regionNameById={regionNameById}
         onCancel={handleCancelOrder}
       />
 
@@ -406,7 +431,7 @@ export function MarketPage() {
                   <SelectItem value="ALL">All regions</SelectItem>
                   {regions.map((region) => (
                     <SelectItem key={region.id} value={region.id}>
-                      {region.code}
+                      {getRegionLabel({ code: region.code, name: region.name })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -425,13 +450,17 @@ export function MarketPage() {
           </form>
           {selectedRegionId && activeCompany && selectedRegionId !== activeCompany.regionId ? (
             <p className="mt-2 text-xs text-amber-300">
-              Viewing a non-home region. New orders still place in {activeCompany.regionCode}.
+              Viewing a non-home region. New orders still place in {activeCompanyRegionLabel}.
             </p>
           ) : null}
         </CardContent>
       </Card>
 
-      <RecentTradesCard trades={trades} isLoading={isLoadingTrades} />
+      <RecentTradesCard
+        trades={trades}
+        isLoading={isLoadingTrades}
+        regionNameById={regionNameById}
+      />
     </div>
   );
 }

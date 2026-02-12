@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { advanceWorld, getWorldHealth, resetWorld, WorldHealth } from "@/lib/api";
 import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { UiStatusLevel, UI_COPY } from "@/lib/ui-copy";
 import { WorldInvariantsTable } from "./world-invariants-table";
 import { WorldKpiCards } from "./world-kpi-cards";
+import { WorldStatusHeader } from "./world-status-header";
 
 const DEV_MODE_STORAGE_KEY = "corpsim.devMode";
 
@@ -60,6 +63,18 @@ export function WorldPage() {
     return lastUpdatedAt.toLocaleString();
   }, [lastUpdatedAt]);
 
+  const statusLevel = useMemo<UiStatusLevel>(() => {
+    if (!health && healthError) {
+      return "red";
+    }
+
+    if (healthError || !health) {
+      return "yellow";
+    }
+
+    return "green";
+  }, [health, healthError]);
+
   const toggleDevMode = (next: boolean) => {
     setDevMode(next);
     if (typeof window !== "undefined") {
@@ -88,7 +103,7 @@ export function WorldPage() {
       await advanceWorld(parsed);
       setError(null);
       showToast({
-        title: "World advanced",
+        title: "Simulation advanced",
         description: `${formatCadenceCount(parsed)} applied`,
         variant: "success"
       });
@@ -119,7 +134,7 @@ export function WorldPage() {
       await resetWorld(true);
       setError(null);
       showToast({
-        title: "World reset",
+        title: "Simulation reset",
         description: "Simulation was reset and reseeded.",
         variant: "success"
       });
@@ -139,98 +154,96 @@ export function WorldPage() {
 
   return (
     <div className="space-y-4">
-      <Alert variant="warning">
-        <AlertTitle>Dev Controls</AlertTitle>
-        <AlertDescription>
-          World mutation actions are hidden unless Dev Mode is explicitly enabled.
-        </AlertDescription>
-      </Alert>
+      <WorldStatusHeader
+        health={health}
+        isLoading={isLoadingHealth}
+        statusLevel={statusLevel}
+        lastUpdatedLabel={lastUpdatedLabel}
+        showTechnicalCadence={devMode}
+        onRefresh={() => {
+          void loadWorldHealth();
+        }}
+      />
+
+      {healthError ? (
+        <Alert variant="destructive">
+          <AlertTitle>{UI_COPY.world.errors.syncIssueTitle}</AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>{healthError}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void loadWorldHealth();
+              }}
+              disabled={isLoadingHealth}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <WorldKpiCards health={health} isLoading={isLoadingHealth} showDiagnostics={devMode} />
+      <WorldInvariantsTable
+        invariants={health?.invariants ?? null}
+        isLoading={isLoadingHealth}
+        showTechnicalDetails={devMode}
+      />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Dev Mode</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>{UI_COPY.world.diagnostics.title}</CardTitle>
+          {devMode ? <Badge variant="warning">Enabled</Badge> : <Badge variant="muted">Disabled</Badge>}
         </CardHeader>
-        <CardContent className="flex items-center gap-3">
+        <CardContent className="space-y-3">
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={devMode}
               onChange={(event) => toggleDevMode(event.target.checked)}
             />
-            Enable Dev Mode
+            {UI_COPY.world.diagnostics.toggleLabel}
           </label>
-          <p className="text-xs text-muted-foreground">
-            {`Cadence is displayed as ${UI_CADENCE_TERMS.plural} in UI (internally stored as ticks).`}
-          </p>
-        </CardContent>
-      </Card>
+          <p className="text-xs text-muted-foreground">{UI_COPY.world.diagnostics.hint}</p>
 
-      {devMode ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>World Controls</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-3">
-            <Input
-              className="w-40"
-              value={ticksInput}
-              onChange={(event) => setTicksInput(event.target.value)}
-              placeholder={UI_CADENCE_TERMS.pluralTitle}
-            />
-            <Button onClick={() => void runAdvance()} disabled={isSubmitting}>
-              {`Advance ${UI_CADENCE_TERMS.pluralTitle}`}
-            </Button>
-            <Button variant="destructive" onClick={() => void runReset()} disabled={isSubmitting}>
-              Reset + Reseed
-            </Button>
-            {error ? <p className="text-sm text-red-300">{error}</p> : null}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <div>
-            <CardTitle>World Health Summary</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Last updated: {lastUpdatedLabel}</p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void loadWorldHealth();
-            }}
-            disabled={isLoadingHealth}
-          >
-            Refresh World Health
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {healthError ? (
-            <Alert variant="destructive">
-              <AlertTitle>World Health Sync Issue</AlertTitle>
-              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-                <span>{healthError}</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void loadWorldHealth();
-                  }}
-                  disabled={isLoadingHealth}
-                >
-                  Retry
+          {devMode ? (
+            <>
+              <p className="text-xs font-medium text-muted-foreground">
+                {UI_COPY.world.diagnostics.controlsTitle}
+              </p>
+              <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/20 p-3">
+                <Input
+                  className="w-40"
+                  value={ticksInput}
+                  onChange={(event) => setTicksInput(event.target.value)}
+                  placeholder={UI_CADENCE_TERMS.pluralTitle}
+                />
+                <Button onClick={() => void runAdvance()} disabled={isSubmitting}>
+                  {UI_COPY.world.diagnostics.advance}
                 </Button>
-              </AlertDescription>
-            </Alert>
+                <Button variant="destructive" onClick={() => void runReset()} disabled={isSubmitting}>
+                  {UI_COPY.world.diagnostics.reset}
+                </Button>
+                {error ? <p className="text-sm text-red-300">{error}</p> : null}
+              </div>
+              {health ? (
+                <details className="rounded-md border border-border bg-muted/20 p-3 text-xs">
+                  <summary className="cursor-pointer font-medium text-muted-foreground">
+                    Technical details
+                  </summary>
+                  <div className="mt-2 space-y-1 font-mono text-xs text-muted-foreground">
+                    <p>lockVersion: {health.lockVersion.toLocaleString()}</p>
+                    <p>currentTick: {health.currentTick.toLocaleString()}</p>
+                    <p>ordersTotalCount: {health.ordersTotalCount.toLocaleString()}</p>
+                  </div>
+                </details>
+              ) : null}
+            </>
           ) : null}
         </CardContent>
       </Card>
-
-      <WorldKpiCards health={health} isLoading={isLoadingHealth} />
-      <WorldInvariantsTable invariants={health?.invariants ?? null} isLoading={isLoadingHealth} />
     </div>
   );
 }

@@ -6,27 +6,39 @@ import { ActiveCompanyCombobox } from "@/components/company/active-company-combo
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InlineHelp } from "@/components/ui/inline-help";
 import { formatCadencePoint } from "@/lib/ui-terms";
+import { getRegionDescription, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 import { StatusIndicator } from "./status-indicator";
 import { useWorldHealth } from "./world-health-provider";
 
 const TITLES: Record<string, string> = {
-  "/overview": "Overview",
-  "/market": "Market",
-  "/production": "Production",
-  "/research": "Research",
-  "/inventory": "Inventory",
-  "/logistics": "Logistics",
-  "/contracts": "Contracts",
-  "/finance": "Finance",
-  "/analytics": "Analytics",
-  "/world": "World"
+  "/overview": UI_COPY.modules.overview,
+  "/market": UI_COPY.modules.market,
+  "/production": UI_COPY.modules.production,
+  "/research": UI_COPY.modules.research,
+  "/inventory": UI_COPY.modules.inventory,
+  "/logistics": UI_COPY.modules.logistics,
+  "/contracts": UI_COPY.modules.contracts,
+  "/finance": UI_COPY.modules.finance,
+  "/analytics": UI_COPY.modules.analytics,
+  "/world": UI_COPY.modules.world
 };
 
 export function TopBar() {
   const pathname = usePathname();
   const { health, apiStatus, refresh, isRefreshing } = useWorldHealth();
   const { activeCompany } = useActiveCompany();
+  const regionLabel = getRegionLabel({
+    code: activeCompany?.regionCode,
+    name: activeCompany?.regionName
+  });
+  const regionDescription = getRegionDescription({
+    code: activeCompany?.regionCode
+  });
+  const regionHelpText = regionDescription
+    ? `${regionDescription} ${UI_COPY.help.regionScope}`
+    : UI_COPY.help.regionScope;
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
@@ -38,7 +50,10 @@ export function TopBar() {
         <div className="flex items-center gap-3">
           <ActiveCompanyCombobox />
           {activeCompany ? (
-            <Badge variant="info">{`Region ${activeCompany.regionCode}`}</Badge>
+            <div className="inline-flex items-center gap-1">
+              <Badge variant="info" title={regionHelpText}>{`Region: ${regionLabel}`}</Badge>
+              <InlineHelp label={regionHelpText} />
+            </div>
           ) : null}
           <StatusIndicator status={apiStatus} />
           <Button

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InventoryRow, RegionSummary, listCompanyInventory, listRegions } from "@/lib/api";
+import { getRegionLabel } from "@/lib/ui-copy";
 
 const INVENTORY_REFRESH_DEBOUNCE_MS = 500;
 
@@ -129,7 +130,7 @@ export function InventoryPage() {
                 <SelectContent>
                   {regions.map((region) => (
                     <SelectItem key={region.id} value={region.id}>
-                      {region.code} - {region.name}
+                      {getRegionLabel({ code: region.code, name: region.name })}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -15,19 +15,20 @@ import {
   Truck,
   TrendingUp
 } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/overview", label: "Overview", icon: LayoutDashboard },
-  { href: "/market", label: "Market", icon: TrendingUp },
-  { href: "/production", label: "Production", icon: Factory },
-  { href: "/research", label: "Research", icon: FlaskConical },
-  { href: "/inventory", label: "Inventory", icon: PackageSearch },
-  { href: "/logistics", label: "Logistics", icon: Truck },
-  { href: "/contracts", label: "Contracts", icon: ClipboardList },
-  { href: "/finance", label: "Finance", icon: CircleDollarSign },
-  { href: "/analytics", label: "Analytics", icon: LineChart },
-  { href: "/world", label: "World", icon: Globe }
+  { href: "/overview", label: UI_COPY.modules.overview, icon: LayoutDashboard },
+  { href: "/market", label: UI_COPY.modules.market, icon: TrendingUp },
+  { href: "/production", label: UI_COPY.modules.production, icon: Factory },
+  { href: "/research", label: UI_COPY.modules.research, icon: FlaskConical },
+  { href: "/inventory", label: UI_COPY.modules.inventory, icon: PackageSearch },
+  { href: "/logistics", label: UI_COPY.modules.logistics, icon: Truck },
+  { href: "/contracts", label: UI_COPY.modules.contracts, icon: ClipboardList },
+  { href: "/finance", label: UI_COPY.modules.finance, icon: CircleDollarSign },
+  { href: "/analytics", label: UI_COPY.modules.analytics, icon: LineChart },
+  { href: "/world", label: UI_COPY.modules.world, icon: Globe }
 ];
 
 export function SidebarNav() {

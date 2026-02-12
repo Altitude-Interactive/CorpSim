@@ -9,9 +9,10 @@ interface MyOrdersCardProps {
   orders: MarketOrder[];
   isLoading: boolean;
   onCancel: (order: MarketOrder) => Promise<void>;
+  regionNameById: Record<string, string>;
 }
 
-export function MyOrdersCard({ orders, isLoading, onCancel }: MyOrdersCardProps) {
+export function MyOrdersCard({ orders, isLoading, onCancel, regionNameById }: MyOrdersCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -36,7 +37,7 @@ export function MyOrdersCard({ orders, isLoading, onCancel }: MyOrdersCardProps)
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-xs">{order.id}</TableCell>
                 <TableCell className="font-mono text-xs">{order.itemId}</TableCell>
-                <TableCell className="font-mono text-xs">{order.regionId}</TableCell>
+                <TableCell className="text-xs">{regionNameById[order.regionId] ?? order.regionId}</TableCell>
                 <TableCell>
                   <SideBadge side={order.side} />
                 </TableCell>

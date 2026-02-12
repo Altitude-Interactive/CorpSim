@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { getRegionLabel } from "@/lib/ui-copy";
 import { AnalyticsKpiCards } from "./analytics-kpi-cards";
 import { CandleVolumeChart } from "./candle-volume-chart";
 
@@ -177,7 +178,7 @@ export function AnalyticsPage() {
             <SelectContent>
               {regions.map((region) => (
                 <SelectItem key={region.id} value={region.id}>
-                  {region.code} - {region.name}
+                  {getRegionLabel({ code: region.code, name: region.name })}
                 </SelectItem>
               ))}
             </SelectContent>

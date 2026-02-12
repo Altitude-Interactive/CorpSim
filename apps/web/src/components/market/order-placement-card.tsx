@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { CompanySummary, ItemCatalogItem, PlaceMarketOrderInput } from "@/lib/api";
 import { parseCurrencyToCents } from "@/lib/format";
+import { getRegionLabel } from "@/lib/ui-copy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -84,7 +85,11 @@ export function OrderPlacementCard({
             </p>
             {activeCompany ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Trading region: {activeCompany.regionCode}
+                Trading region:{" "}
+                {getRegionLabel({
+                  code: activeCompany.regionCode,
+                  name: activeCompany.regionName
+                })}
               </p>
             ) : null}
           </div>

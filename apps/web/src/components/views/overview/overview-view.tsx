@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { formatCents, formatInt } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
@@ -40,29 +42,27 @@ export function OverviewView() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Invariants
+            System Integrity
             <Badge variant={health.invariants.hasViolations ? "danger" : "success"}>
-              {health.invariants.hasViolations ? "Violations" : "Healthy"}
+              {health.invariants.hasViolations ? "Issues detected" : "All checks passed"}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {health.invariants.issues.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No invariant violations detected.</p>
+            <p className="text-sm text-muted-foreground">No integrity issues detected.</p>
           ) : (
             <ul className="space-y-2">
               {health.invariants.issues.slice(0, 10).map((issue, index) => (
                 <li key={`${issue.code}-${index}`} className="rounded-md border border-border bg-muted/30 p-2">
-                  <p className="text-xs font-medium text-foreground">{issue.code}</p>
                   <p className="text-xs text-muted-foreground">{issue.message}</p>
-                  <p className="text-xs text-muted-foreground">
-                    company={issue.companyId}
-                    {issue.itemId ? ` item=${issue.itemId}` : ""}
-                  </p>
                 </li>
               ))}
             </ul>
           )}
+          <Button asChild variant="ghost" size="sm" className="h-auto px-0 text-xs">
+            <Link href="/world">Open World Status</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>

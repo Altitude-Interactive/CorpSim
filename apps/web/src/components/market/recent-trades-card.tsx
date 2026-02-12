@@ -7,9 +7,10 @@ import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 interface RecentTradesCardProps {
   trades: MarketTrade[];
   isLoading: boolean;
+  regionNameById: Record<string, string>;
 }
 
-export function RecentTradesCard({ trades, isLoading }: RecentTradesCardProps) {
+export function RecentTradesCard({ trades, isLoading, regionNameById }: RecentTradesCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -34,7 +35,7 @@ export function RecentTradesCard({ trades, isLoading }: RecentTradesCardProps) {
               <TableRow key={trade.id}>
                 <TableCell className="tabular-nums">{trade.tick}</TableCell>
                 <TableCell className="font-mono text-xs">{trade.itemId}</TableCell>
-                <TableCell className="font-mono text-xs">{trade.regionId}</TableCell>
+                <TableCell className="text-xs">{regionNameById[trade.regionId] ?? trade.regionId}</TableCell>
                 <TableCell className="font-mono text-xs">{trade.buyerId}</TableCell>
                 <TableCell className="font-mono text-xs">{trade.sellerId}</TableCell>
                 <TableCell className="tabular-nums">{formatCents(trade.priceCents)}</TableCell>

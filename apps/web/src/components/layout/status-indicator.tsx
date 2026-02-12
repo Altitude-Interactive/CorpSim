@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { getSystemStatusCopy, UI_COPY } from "@/lib/ui-copy";
 
 type StatusLevel = "green" | "yellow" | "red";
 
@@ -9,10 +10,12 @@ const statusStyles: Record<StatusLevel, string> = {
 };
 
 export function StatusIndicator({ status }: { status: StatusLevel }) {
+  const copy = getSystemStatusCopy(status);
+
   return (
-    <div className="inline-flex items-center gap-2">
+    <div className="inline-flex items-center gap-2" title={copy.description}>
       <span className={cn("h-2.5 w-2.5 rounded-full", statusStyles[status])} />
-      <span className="text-xs text-muted-foreground uppercase tracking-wide">API {status}</span>
+      <span className="text-xs text-muted-foreground">{`${UI_COPY.status.labelPrefix}: ${copy.label}`}</span>
     </div>
   );
 }

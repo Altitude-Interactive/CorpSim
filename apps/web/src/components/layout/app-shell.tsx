@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { UI_COPY } from "@/lib/ui-copy";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 import { useWorldHealth } from "./world-health-provider";
@@ -17,9 +18,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main className="flex-1 p-4 lg:p-6">
             {error ? (
               <Alert variant="destructive" className="mb-4">
-                <AlertTitle>API Sync Issue</AlertTitle>
+                <AlertTitle>{UI_COPY.world.errors.syncIssueTitle}</AlertTitle>
                 <AlertDescription>
-                  Live data refresh failed. Displaying the last known good state where available.
+                  {UI_COPY.world.errors.syncIssueDescription}
                 </AlertDescription>
               </Alert>
             ) : null}

@@ -7,9 +7,10 @@ import { SideBadge, StatusBadge } from "./market-badges";
 interface OrderBookCardProps {
   orders: MarketOrder[];
   isLoading: boolean;
+  regionNameById: Record<string, string>;
 }
 
-export function OrderBookCard({ orders, isLoading }: OrderBookCardProps) {
+export function OrderBookCard({ orders, isLoading, regionNameById }: OrderBookCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -35,7 +36,7 @@ export function OrderBookCard({ orders, isLoading }: OrderBookCardProps) {
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-xs">{order.id}</TableCell>
                 <TableCell className="font-mono text-xs">{order.itemId}</TableCell>
-                <TableCell className="font-mono text-xs">{order.regionId}</TableCell>
+                <TableCell className="text-xs">{regionNameById[order.regionId] ?? order.regionId}</TableCell>
                 <TableCell className="font-mono text-xs">{order.companyId}</TableCell>
                 <TableCell>
                   <SideBadge side={order.side} />
