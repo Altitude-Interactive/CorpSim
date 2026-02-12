@@ -34,8 +34,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             {children}
           </main>
-          <footer className="border-t border-border/60 px-4 py-2">
-            <AppVersionBadge />
+          <footer className="border-t border-border/60 px-4 py-2 lg:hidden">
+            <AppVersionBadge className="text-[11px]" />
           </footer>
         </div>
       </div>

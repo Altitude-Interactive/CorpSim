@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { getDisplayVersion } from "@/lib/version";
+import { cn } from "@/lib/utils";
 
-export function AppVersionBadge() {
+export function AppVersionBadge({ className }: { className?: string }) {
   const [version, setVersion] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,5 +36,5 @@ export function AppVersionBadge() {
     return null;
   }
 
-  return <p className="text-xs text-muted-foreground">CorpSim ERP v{version}</p>;
+  return <p className={cn("text-xs text-muted-foreground", className)}>CorpSim ERP v{version}</p>;
 }

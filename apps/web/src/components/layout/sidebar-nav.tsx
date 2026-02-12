@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
+import { AppVersionBadge } from "./app-version-badge";
 
 const NAV_ITEMS = [
   { href: "/overview", label: UI_COPY.modules.overview, icon: LayoutDashboard },
@@ -79,6 +80,7 @@ export function SidebarNav() {
           </span>
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
+        <AppVersionBadge className="px-3 pt-2 text-[11px]" />
       </div>
     </aside>
   );
