@@ -134,7 +134,7 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
         id={APP_CONTENT_ID}
         className={cn(
           "min-h-screen transition duration-200",
-          maintenanceEnabled && "pointer-events-none select-none blur-[2px] brightness-75"
+          maintenanceEnabled && "pointer-events-none select-none blur-[1px] brightness-60"
         )}
       >
         {children}

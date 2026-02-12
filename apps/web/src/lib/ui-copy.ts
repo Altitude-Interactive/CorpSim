@@ -113,17 +113,29 @@ interface RegionCopy {
 
 const REGION_COPY_BY_CODE: Record<string, RegionCopy> = {
   CORE: {
-    label: "Core Region",
-    description: "Balanced market access with stable supply and demand."
+    label: "Central Exchange",
+    description: "Balanced demand, reliable suppliers, and broad trading access."
   },
   INDUSTRIAL: {
-    label: "Industrial Region",
-    description: "Manufacturing-focused region with strong production throughput."
+    label: "Manufacturing District",
+    description: "Production-heavy corridor with deep fabrication capacity."
   },
   FRONTIER: {
-    label: "Frontier Region",
-    description: "Emerging region with higher volatility and route opportunities."
+    label: "Frontier Corridor",
+    description: "Emerging market with wider price swings and route upside."
   }
+};
+
+const REGION_ALIAS_TO_CODE: Record<string, keyof typeof REGION_COPY_BY_CODE> = {
+  CORE: "CORE",
+  CORE_REGION: "CORE",
+  CENTRAL_EXCHANGE: "CORE",
+  INDUSTRIAL: "INDUSTRIAL",
+  INDUSTRIAL_REGION: "INDUSTRIAL",
+  MANUFACTURING_DISTRICT: "INDUSTRIAL",
+  FRONTIER: "FRONTIER",
+  FRONTIER_REGION: "FRONTIER",
+  FRONTIER_CORRIDOR: "FRONTIER"
 };
 
 export interface RegionLike {
@@ -140,17 +152,42 @@ function titleCaseFromCode(code: string): string {
     .join(" ");
 }
 
+function normalizeRegionToken(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function resolveRegionCopy(region: RegionLike | null | undefined): RegionCopy | null {
+  const nameToken = region?.name ? normalizeRegionToken(region.name) : "";
+  const codeToken = region?.code ? normalizeRegionToken(region.code) : "";
+
+  const canonicalCode =
+    REGION_ALIAS_TO_CODE[nameToken] ??
+    REGION_ALIAS_TO_CODE[codeToken] ??
+    (REGION_COPY_BY_CODE[codeToken] ? (codeToken as keyof typeof REGION_COPY_BY_CODE) : undefined);
+
+  if (!canonicalCode) {
+    return null;
+  }
+
+  return REGION_COPY_BY_CODE[canonicalCode];
+}
+
 export function getRegionLabel(region: RegionLike | null | undefined): string {
   if (!region) {
     return UI_COPY.common.unknownRegion;
   }
 
+  const mapped = resolveRegionCopy(region);
+  if (mapped) {
+    return mapped.label;
+  }
+
   const name = region.name?.trim();
   if (name) {
-    const mappedFromName = REGION_COPY_BY_CODE[name.toUpperCase()];
-    if (mappedFromName) {
-      return mappedFromName.label;
-    }
     return name;
   }
 
@@ -163,17 +200,7 @@ export function getRegionLabel(region: RegionLike | null | undefined): string {
 }
 
 export function getRegionDescription(region: RegionLike | null | undefined): string | null {
-  const name = region?.name?.trim().toUpperCase();
-  if (name && REGION_COPY_BY_CODE[name]) {
-    return REGION_COPY_BY_CODE[name].description;
-  }
-
-  const code = region?.code?.trim().toUpperCase();
-  if (!code) {
-    return null;
-  }
-
-  return REGION_COPY_BY_CODE[code]?.description ?? null;
+  return resolveRegionCopy(region)?.description ?? null;
 }
 
 export function getSystemStatusCopy(status: UiStatusLevel) {

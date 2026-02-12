@@ -46,7 +46,7 @@ export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
     state.reason.trim().length > 0 ? state.reason : DEFAULT_MAINTENANCE_REASON;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-md">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-6 backdrop-blur-sm">
       <div
         ref={dialogRef}
         role="dialog"
