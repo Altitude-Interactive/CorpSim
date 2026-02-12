@@ -12,14 +12,36 @@ import {
 
 const FALLBACK_PRICE_CENTS_BY_ITEM_CODE = new Map<string, bigint>([
   ["IRON_ORE", 80n],
+  ["COAL", 55n],
+  ["COPPER_ORE", 95n],
   ["IRON_INGOT", 200n],
-  ["HAND_TOOLS", 350n]
+  ["COPPER_INGOT", 245n],
+  ["HAND_TOOLS", 350n],
+  ["STEEL_INGOT", 430n],
+  ["STEEL_BEAM", 940n],
+  ["FASTENERS", 150n],
+  ["MACHINE_PARTS", 1_250n],
+  ["TOOL_KIT", 2_100n],
+  ["POWER_UNIT", 2_550n],
+  ["CONVEYOR_MODULE", 4_250n],
+  ["INDUSTRIAL_PRESS", 11_500n]
 ]);
 
 const FALLBACK_QUANTITY_BY_ITEM_CODE = new Map<string, number>([
-  ["IRON_ORE", 20],
-  ["IRON_INGOT", 10],
-  ["HAND_TOOLS", 4]
+  ["IRON_ORE", 24],
+  ["COAL", 24],
+  ["COPPER_ORE", 18],
+  ["IRON_INGOT", 12],
+  ["COPPER_INGOT", 10],
+  ["HAND_TOOLS", 5],
+  ["STEEL_INGOT", 8],
+  ["STEEL_BEAM", 4],
+  ["FASTENERS", 20],
+  ["MACHINE_PARTS", 3],
+  ["TOOL_KIT", 2],
+  ["POWER_UNIT", 2],
+  ["CONVEYOR_MODULE", 1],
+  ["INDUSTRIAL_PRESS", 1]
 ]);
 
 export interface ContractLifecycleConfig {
@@ -57,6 +79,21 @@ export interface ContractLifecycleResult {
 export const DEFAULT_CONTRACT_LIFECYCLE_CONFIG: ContractLifecycleConfig = {
   contractsPerTick: 2,
   ttlTicks: 50,
+  itemCodes: [
+    "IRON_ORE",
+    "COAL",
+    "COPPER_ORE",
+    "IRON_INGOT",
+    "COPPER_INGOT",
+    "HAND_TOOLS",
+    "STEEL_INGOT",
+    "STEEL_BEAM",
+    "FASTENERS",
+    "MACHINE_PARTS",
+    "TOOL_KIT",
+    "POWER_UNIT",
+    "CONVEYOR_MODULE"
+  ],
   priceBandBps: 500
 };
 
@@ -77,7 +114,9 @@ function normalizeItemCodes(itemCodes?: string[]): string[] | undefined {
 export function resolveContractLifecycleConfig(
   overrides: Partial<ContractLifecycleConfig> = {}
 ): ContractLifecycleConfig {
-  const itemCodes = normalizeItemCodes(overrides.itemCodes);
+  const itemCodes = normalizeItemCodes(
+    overrides.itemCodes ?? DEFAULT_CONTRACT_LIFECYCLE_CONFIG.itemCodes
+  );
   const contractsPerTick =
     overrides.contractsPerTick ?? DEFAULT_CONTRACT_LIFECYCLE_CONFIG.contractsPerTick;
   const ttlTicks = overrides.ttlTicks ?? DEFAULT_CONTRACT_LIFECYCLE_CONFIG.ttlTicks;

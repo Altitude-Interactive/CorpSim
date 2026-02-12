@@ -49,14 +49,37 @@ export interface RunBotsResult {
 
 const DEFAULT_REFERENCE_PRICES = new Map<string, bigint>([
   ["IRON_ORE", 80n],
+  ["COAL", 55n],
+  ["COPPER_ORE", 95n],
   ["IRON_INGOT", 200n],
-  ["HAND_TOOLS", 350n]
+  ["COPPER_INGOT", 245n],
+  ["HAND_TOOLS", 350n],
+  ["STEEL_INGOT", 430n],
+  ["STEEL_BEAM", 940n],
+  ["FASTENERS", 150n],
+  ["MACHINE_PARTS", 1_250n],
+  ["TOOL_KIT", 2_100n],
+  ["POWER_UNIT", 2_550n],
+  ["CONVEYOR_MODULE", 4_250n],
+  ["INDUSTRIAL_PRESS", 11_500n]
 ]);
 
 export const DEFAULT_BOT_RUNTIME_CONFIG: BotRuntimeConfig = {
   enabled: false,
   botCount: 25,
-  itemCodes: ["IRON_ORE", "IRON_INGOT", "HAND_TOOLS"],
+  itemCodes: [
+    "IRON_ORE",
+    "COAL",
+    "COPPER_ORE",
+    "IRON_INGOT",
+    "COPPER_INGOT",
+    "HAND_TOOLS",
+    "STEEL_INGOT",
+    "STEEL_BEAM",
+    "FASTENERS",
+    "MACHINE_PARTS",
+    "TOOL_KIT"
+  ],
   spreadBps: 500,
   maxNotionalPerTickCents: 50_000n,
   targetQuantityPerSide: 5,

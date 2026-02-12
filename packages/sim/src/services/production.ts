@@ -186,10 +186,32 @@ function resolveFallbackItemPriceCents(itemCode: string): bigint {
   switch (itemCode) {
     case "IRON_ORE":
       return 80n;
+    case "COAL":
+      return 55n;
+    case "COPPER_ORE":
+      return 95n;
     case "IRON_INGOT":
       return 200n;
+    case "COPPER_INGOT":
+      return 245n;
     case "HAND_TOOLS":
       return 350n;
+    case "STEEL_INGOT":
+      return 430n;
+    case "STEEL_BEAM":
+      return 940n;
+    case "FASTENERS":
+      return 150n;
+    case "MACHINE_PARTS":
+      return 1_250n;
+    case "TOOL_KIT":
+      return 2_100n;
+    case "POWER_UNIT":
+      return 2_550n;
+    case "CONVEYOR_MODULE":
+      return 4_250n;
+    case "INDUSTRIAL_PRESS":
+      return 11_500n;
     default:
       return 100n;
   }
