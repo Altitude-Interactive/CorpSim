@@ -125,6 +125,12 @@ jobs:
             exit 1
           fi
 
+      - name: Configure git identity
+        if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.has_version_bump == 'true' && steps.tag.outputs.tag_available == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Create annotated tag
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.has_version_bump == 'true' && steps.tag.outputs.tag_available == 'true'
         env:
