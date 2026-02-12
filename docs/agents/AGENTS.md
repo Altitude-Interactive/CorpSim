@@ -82,9 +82,22 @@ SemVer classification examples:
 - MINOR: backward-compatible feature addition.
 - MAJOR: breaking API/contract change.
 
-## Golden rule #3 -- commit allowed, push/pull forbidden for agents
-Agents must create local commits when their task is finished. Agents must never run `git push` or `git pull`. Agents should always prefer individual specific commits rather than big commits changing a lot of files. Agents should use Conventional Commits 1.0.0 (https://www.conventionalcommits.org/en/v1.0.0/) for commits format. Agents should check git status at all times to know what the repository state is.
-Only the human operator is allowed to push to or pull from remotes.
+## Golden Rule #3 — Local Commits Only, No Remote Operations
+Agents must create **local commits** when their task is complete.
+
+Agents must **never run**:
+- `git push`
+- `git pull`
+
+### Commit Discipline
+- Prefer **small, focused commits** over large commits affecting many files.
+- All commits must follow the **Conventional Commits 1.0.0** specification
+  https://www.conventionalcommits.org/en/v1.0.0/
+- Agents must check repository state using `git status` before committing to ensure clarity and correctness.
+
+### Remote Restrictions
+Remote operations are strictly reserved for the human operator.
+Only the human operator may push to or pull from remotes.
 
 ## Core architecture rules (non-negotiable)
 
