@@ -1,13 +1,21 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UI_COPY } from "@/lib/ui-copy";
+import { AppVersionBadge } from "./app-version-badge";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 import { useWorldHealth } from "./world-health-provider";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { error } = useWorldHealth();
+  const isUnsupportedDevicePage = pathname === "/unsupported-device";
+
+  if (isUnsupportedDevicePage) {
+    return <div className="min-h-screen bg-background text-foreground">{children}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -26,6 +34,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             {children}
           </main>
+          <footer className="border-t border-border/60 px-4 py-2">
+            <AppVersionBadge />
+          </footer>
         </div>
       </div>
     </div>
