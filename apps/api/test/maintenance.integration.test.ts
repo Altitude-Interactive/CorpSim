@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "../../../packages/db/src/seed-world";
 import { AppModule } from "../src/app.module";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
@@ -36,6 +36,15 @@ describe("maintenance mode integration", () => {
   beforeEach(async () => {
     await seedWorld(prisma, { reset: true });
 
+    await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: false
+      })
+      .expect(201);
+  });
+
+  afterEach(async () => {
     await request(app.getHttpServer())
       .post("/ops/maintenance")
       .send({
