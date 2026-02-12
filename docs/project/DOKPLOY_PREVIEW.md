@@ -35,6 +35,11 @@ Minimum required:
 - `CORS_ORIGIN=https://<your-web-domain>`
 - `NEXT_PUBLIC_API_URL=https://<your-api-domain>`
 
+Release image settings (tag-first):
+
+- `APP_IMAGE_REPO=ghcr.io/<org-or-user>/corpsim`
+- `APP_IMAGE_TAG=v0.1.0` (use release tags like `v0.1.1`, avoid commit SHAs)
+
 Recommended worker settings:
 
 - `TICK_INTERVAL_MS=60000`

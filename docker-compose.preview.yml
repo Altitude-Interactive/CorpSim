@@ -24,6 +24,8 @@ x-app-build: &app_build
     NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS: ${NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS:-250}
     NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS: ${NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS:-15}
 
+x-app-image: &app_image ${APP_IMAGE_REPO:-corpsim-preview-app}:${APP_IMAGE_TAG:-latest}
+
 services:
   postgres:
     image: postgres:16
@@ -61,7 +63,7 @@ services:
           - redis
 
   backend:
-    image: ${APP_IMAGE_NAME:-corpsim-preview-app:latest}
+    image: *app_image
     build: *app_build
     restart: unless-stopped
     command:
@@ -100,7 +102,7 @@ services:
       - corpsim_internal
 
   migrate:
-    image: ${APP_IMAGE_NAME:-corpsim-preview-app:latest}
+    image: *app_image
     command:
       [
         "sh",
@@ -115,7 +117,7 @@ services:
       - corpsim_internal
 
   seed:
-    image: ${APP_IMAGE_NAME:-corpsim-preview-app:latest}
+    image: *app_image
     command:
       [
         "sh",
@@ -130,7 +132,7 @@ services:
       - corpsim_internal
 
   worker:
-    image: ${APP_IMAGE_NAME:-corpsim-preview-app:latest}
+    image: *app_image
     restart: unless-stopped
     command:
       [
@@ -171,7 +173,7 @@ services:
       - corpsim_internal
 
   frontend:
-    image: ${APP_IMAGE_NAME:-corpsim-preview-app:latest}
+    image: *app_image
     restart: unless-stopped
     command: ["pnpm", "--filter", "@corpsim/web", "start"]
     environment:
