@@ -138,9 +138,11 @@ export class MaintenanceService {
     const wroteToDatabase = await this.writeToDatabase(next);
     if (!wroteToDatabase) {
       await this.writeToFile(next);
+      return next;
     }
 
-    return next;
+    const persisted = await this.readFromDatabase();
+    return persisted ?? next;
   }
 
   private normalizeState(
