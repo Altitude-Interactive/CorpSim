@@ -72,7 +72,7 @@ function buildKpiItems(health: WorldHealth | null, showDiagnostics: boolean): Kp
   if (showDiagnostics) {
     items.push({
       key: "botsCount",
-      label: "Automation Companies",
+      label: "Automated Companies",
       value: health.botsCount.toLocaleString(),
       href: "/overview"
     });

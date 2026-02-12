@@ -46,7 +46,7 @@ export function WorldPage() {
       setHealthError(null);
       setLastUpdatedAt(new Date());
     } catch (caught) {
-      setHealthError(caught instanceof Error ? caught.message : "Failed to load world health");
+      setHealthError(caught instanceof Error ? caught.message : "Failed to load world status");
     } finally {
       setIsLoadingHealth(false);
     }
@@ -195,7 +195,7 @@ export function WorldPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>{UI_COPY.world.diagnostics.title}</CardTitle>
-          {devMode ? <Badge variant="warning">Enabled</Badge> : <Badge variant="muted">Disabled</Badge>}
+          {devMode ? <Badge variant="warning">On</Badge> : <Badge variant="muted">Off</Badge>}
         </CardHeader>
         <CardContent className="space-y-3">
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -231,12 +231,12 @@ export function WorldPage() {
               {health ? (
                 <details className="rounded-md border border-border bg-muted/20 p-3 text-xs">
                   <summary className="cursor-pointer font-medium text-muted-foreground">
-                    Technical details
+                    Diagnostic details
                   </summary>
                   <div className="mt-2 space-y-1 font-mono text-xs text-muted-foreground">
-                    <p>lockVersion: {health.lockVersion.toLocaleString()}</p>
-                    <p>currentTick: {health.currentTick.toLocaleString()}</p>
-                    <p>ordersTotalCount: {health.ordersTotalCount.toLocaleString()}</p>
+                    <p>Concurrency version: {health.lockVersion.toLocaleString()}</p>
+                    <p>Technical tick: {health.currentTick.toLocaleString()}</p>
+                    <p>Total order records: {health.ordersTotalCount.toLocaleString()}</p>
                   </div>
                 </details>
               ) : null}

@@ -3,14 +3,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { MarketTrade } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { UI_COPY } from "@/lib/ui-copy";
 
 interface RecentTradesCardProps {
   trades: MarketTrade[];
   isLoading: boolean;
   regionNameById: Record<string, string>;
+  itemNameById: Record<string, string>;
+  companyNameById: Record<string, string>;
 }
 
-export function RecentTradesCard({ trades, isLoading, regionNameById }: RecentTradesCardProps) {
+export function RecentTradesCard({
+  trades,
+  isLoading,
+  regionNameById,
+  itemNameById,
+  companyNameById
+}: RecentTradesCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -34,10 +43,18 @@ export function RecentTradesCard({ trades, isLoading, regionNameById }: RecentTr
             {trades.map((trade) => (
               <TableRow key={trade.id}>
                 <TableCell className="tabular-nums">{trade.tick}</TableCell>
-                <TableCell className="font-mono text-xs">{trade.itemId}</TableCell>
-                <TableCell className="text-xs">{regionNameById[trade.regionId] ?? trade.regionId}</TableCell>
-                <TableCell className="font-mono text-xs">{trade.buyerId}</TableCell>
-                <TableCell className="font-mono text-xs">{trade.sellerId}</TableCell>
+                <TableCell className="text-xs">
+                  {itemNameById[trade.itemId] ?? UI_COPY.common.unknownItem}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {regionNameById[trade.regionId] ?? UI_COPY.common.unknownRegion}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {companyNameById[trade.buyerId] ?? UI_COPY.common.unknownCompany}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {companyNameById[trade.sellerId] ?? UI_COPY.common.unknownCompany}
+                </TableCell>
                 <TableCell className="tabular-nums">{formatCents(trade.priceCents)}</TableCell>
                 <TableCell className="tabular-nums">{trade.quantity}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">

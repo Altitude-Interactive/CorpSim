@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractRecord } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { formatCodeLabel } from "@/lib/ui-copy";
 
 interface MyContractsTableProps {
   contracts: ContractRecord[];
@@ -57,9 +58,8 @@ export function MyContractsTable({
                 <TableRow key={contract.id}>
                   <TableCell>
                     <p>{contract.item.name}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{contract.item.code}</p>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{contract.status}</TableCell>
+                  <TableCell className="text-xs">{formatCodeLabel(contract.status)}</TableCell>
                   <TableCell>
                     <p className="mb-1 text-xs text-muted-foreground">
                       {contract.quantity - contract.remainingQuantity}/{contract.quantity}

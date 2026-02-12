@@ -7,19 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MarketOrder, listMarketOrders } from "@/lib/api";
+import { formatCodeLabel } from "@/lib/ui-copy";
+import { formatCents } from "@/lib/format";
 
 const DEFAULT_LIMIT = 100;
 
 interface MarketFiltersForm {
-  itemId: string;
-  companyId: string;
   side: "ALL" | "BUY" | "SELL";
   limit: string;
 }
 
 const INITIAL_FILTERS: MarketFiltersForm = {
-  itemId: "",
-  companyId: "",
   side: "ALL",
   limit: String(DEFAULT_LIMIT)
 };
@@ -35,8 +33,6 @@ export function MarketView() {
     try {
       const parsedLimit = Number.parseInt(activeFilters.limit, 10);
       const next = await listMarketOrders({
-        itemId: activeFilters.itemId || undefined,
-        companyId: activeFilters.companyId || undefined,
         side: activeFilters.side === "ALL" ? undefined : activeFilters.side,
         limit: Number.isInteger(parsedLimit) ? parsedLimit : DEFAULT_LIMIT
       });
@@ -65,12 +61,7 @@ export function MarketView() {
           <CardTitle>Market Orders</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-3 md:grid-cols-5" onSubmit={onSubmit}>
-            <Input
-              placeholder="Item ID"
-              value={filters.itemId}
-              onChange={(event) => setFilters((prev) => ({ ...prev, itemId: event.target.value }))}
-            />
+          <form className="grid gap-3 md:grid-cols-3" onSubmit={onSubmit}>
             <Select
               value={filters.side}
               onValueChange={(value) => setFilters((prev) => ({ ...prev, side: value as MarketFiltersForm["side"] }))}
@@ -80,15 +71,10 @@ export function MarketView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All sides</SelectItem>
-                <SelectItem value="BUY">BUY</SelectItem>
-                <SelectItem value="SELL">SELL</SelectItem>
+                <SelectItem value="BUY">{formatCodeLabel("BUY")}</SelectItem>
+                <SelectItem value="SELL">{formatCodeLabel("SELL")}</SelectItem>
               </SelectContent>
             </Select>
-            <Input
-              placeholder="Company ID"
-              value={filters.companyId}
-              onChange={(event) => setFilters((prev) => ({ ...prev, companyId: event.target.value }))}
-            />
             <Input
               placeholder="Limit"
               value={filters.limit}
@@ -105,9 +91,6 @@ export function MarketView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order</TableHead>
-                <TableHead>Item</TableHead>
-                <TableHead>Company</TableHead>
                 <TableHead>Side</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Price</TableHead>
@@ -118,19 +101,16 @@ export function MarketView() {
             <TableBody>
               {orders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-mono text-xs">{order.id}</TableCell>
-                  <TableCell className="font-mono text-xs">{order.itemId}</TableCell>
-                  <TableCell className="font-mono text-xs">{order.companyId}</TableCell>
-                  <TableCell>{order.side}</TableCell>
-                  <TableCell>{order.status}</TableCell>
-                  <TableCell className="tabular-nums">{order.priceCents}</TableCell>
+                  <TableCell>{formatCodeLabel(order.side)}</TableCell>
+                  <TableCell>{formatCodeLabel(order.status)}</TableCell>
+                  <TableCell className="tabular-nums">{formatCents(order.priceCents)}</TableCell>
                   <TableCell className="tabular-nums">{order.quantity}</TableCell>
                   <TableCell className="tabular-nums">{order.remainingQuantity}</TableCell>
                 </TableRow>
               ))}
               {!isLoading && orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No orders found for selected filters.
                   </TableCell>
                 </TableRow>

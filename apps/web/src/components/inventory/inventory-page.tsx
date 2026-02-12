@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InventoryRow, RegionSummary, listCompanyInventory, listRegions } from "@/lib/api";
-import { getRegionLabel } from "@/lib/ui-copy";
+import { getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 
 const INVENTORY_REFRESH_DEBOUNCE_MS = 500;
 
@@ -110,11 +110,11 @@ export function InventoryPage() {
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Active company:{" "}
-            {activeCompany ? `${activeCompany.code} - ${activeCompany.name}` : "No company selected"}
+            {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
           </p>
           <div className="grid gap-3 md:grid-cols-[minmax(0,320px)_auto] md:items-center">
             <Input
-              placeholder="Search item code or name"
+              placeholder="Search item name"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -155,7 +155,6 @@ export function InventoryPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Item</TableHead>
-                <TableHead>Code</TableHead>
                 <TableHead>Quantity</TableHead>
                 {showReserved ? <TableHead>Reserved</TableHead> : null}
                 <TableHead>Available</TableHead>
@@ -167,7 +166,6 @@ export function InventoryPage() {
                 return (
                   <TableRow key={row.itemId}>
                     <TableCell>{row.itemName}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.itemCode}</TableCell>
                     <TableCell className="tabular-nums">{row.quantity}</TableCell>
                     {showReserved ? (
                       <TableCell className="tabular-nums">{row.reservedQuantity}</TableCell>
@@ -179,7 +177,7 @@ export function InventoryPage() {
               {!isLoading && filteredRows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={showReserved ? 5 : 4}
+                    colSpan={showReserved ? 4 : 3}
                     className="text-center text-muted-foreground"
                   >
                     No inventory rows for current filters.

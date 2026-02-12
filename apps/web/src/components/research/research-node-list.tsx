@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatCents } from "@/lib/format";
 import { ResearchNode } from "@/lib/api";
 import { formatCadenceCount } from "@/lib/ui-terms";
+import { formatCodeLabel } from "@/lib/ui-copy";
 
 export interface ResearchTierGroup {
   tier: number;
@@ -61,7 +62,7 @@ export function ResearchNodeList({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Node</TableHead>
+                  <TableHead>Initiative</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Cost</TableHead>
                   <TableHead>Duration</TableHead>
@@ -80,11 +81,10 @@ export function ResearchNodeList({
                           onClick={() => onSelect(node.id)}
                         >
                           <p className="font-medium">{node.name}</p>
-                          <p className="font-mono text-xs text-muted-foreground">{node.code}</p>
                         </button>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={mapStatusVariant(node.status)}>{node.status}</Badge>
+                        <Badge variant={mapStatusVariant(node.status)}>{formatCodeLabel(node.status)}</Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">{formatCents(node.costCashCents)}</TableCell>
                       <TableCell className="tabular-nums">{formatCadenceCount(node.durationTicks)}</TableCell>

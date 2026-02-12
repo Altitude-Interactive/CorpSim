@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MarketOrder } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { UI_COPY } from "@/lib/ui-copy";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { SideBadge, StatusBadge } from "./market-badges";
 
 interface MyOrdersCardProps {
@@ -10,9 +12,16 @@ interface MyOrdersCardProps {
   isLoading: boolean;
   onCancel: (order: MarketOrder) => Promise<void>;
   regionNameById: Record<string, string>;
+  itemNameById: Record<string, string>;
 }
 
-export function MyOrdersCard({ orders, isLoading, onCancel, regionNameById }: MyOrdersCardProps) {
+export function MyOrdersCard({
+  orders,
+  isLoading,
+  onCancel,
+  regionNameById,
+  itemNameById
+}: MyOrdersCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -22,7 +31,7 @@ export function MyOrdersCard({ orders, isLoading, onCancel, regionNameById }: My
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order</TableHead>
+              <TableHead>{`Placed ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
               <TableHead>Item</TableHead>
               <TableHead>Region</TableHead>
               <TableHead>Side</TableHead>
@@ -35,9 +44,13 @@ export function MyOrdersCard({ orders, isLoading, onCancel, regionNameById }: My
           <TableBody>
             {orders.map((order) => (
               <TableRow key={order.id}>
-                <TableCell className="font-mono text-xs">{order.id}</TableCell>
-                <TableCell className="font-mono text-xs">{order.itemId}</TableCell>
-                <TableCell className="text-xs">{regionNameById[order.regionId] ?? order.regionId}</TableCell>
+                <TableCell className="tabular-nums">{order.tickPlaced.toLocaleString()}</TableCell>
+                <TableCell className="text-xs">
+                  {itemNameById[order.itemId] ?? UI_COPY.common.unknownItem}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {regionNameById[order.regionId] ?? UI_COPY.common.unknownRegion}
+                </TableCell>
                 <TableCell>
                   <SideBadge side={order.side} />
                 </TableCell>

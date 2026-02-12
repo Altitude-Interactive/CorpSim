@@ -19,6 +19,7 @@ import {
   listFinanceLedger
 } from "@/lib/api";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { formatCodeLabel, UI_COPY } from "@/lib/ui-copy";
 import { FinanceBreakdownTable } from "./finance-breakdown-table";
 import { FinanceLedgerTable } from "./finance-ledger-table";
 import { FinanceReconciliationPanel } from "./finance-reconciliation-panel";
@@ -98,7 +99,7 @@ function parsePositiveInt(value: string, field: string, fallback: number, max: n
 function mapFinanceApiError(error: unknown): string {
   if (error instanceof ApiClientError) {
     if (error.status === 403) {
-      return "Forbidden for selected company.";
+      return UI_COPY.common.unavailableForCompany;
     }
     return error.message;
   }
@@ -255,7 +256,7 @@ export function FinancePage() {
       await navigator.clipboard.writeText(value);
       showToast({
         title: `${label} copied`,
-        description: value,
+        description: UI_COPY.common.referenceCopied,
         variant: "success"
       });
     } catch {
@@ -302,38 +303,38 @@ export function FinancePage() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Entry type" />
+                <SelectValue placeholder={UI_COPY.finance.entryCategory} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All entry types</SelectItem>
+                <SelectItem value="ALL">{UI_COPY.finance.allEntryCategories}</SelectItem>
                 {ENTRY_TYPE_OPTIONS.map((entryType) => (
                   <SelectItem key={entryType} value={entryType}>
-                    {entryType}
+                    {formatCodeLabel(entryType)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Input
-              placeholder="referenceType"
+              placeholder={UI_COPY.finance.referenceCategory}
               value={form.referenceType}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, referenceType: event.target.value }))
               }
             />
             <Input
-              placeholder="referenceId contains..."
+              placeholder={UI_COPY.finance.referenceContains}
               value={form.referenceId}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, referenceId: event.target.value }))
               }
             />
             <Input
-              placeholder="limit (default 100, max 500)"
+              placeholder={UI_COPY.finance.rowLimit}
               value={form.limit}
               onChange={(event) => setForm((prev) => ({ ...prev, limit: event.target.value }))}
             />
             <Input
-              placeholder={`${UI_CADENCE_TERMS.windowField} (default 100, max 10000)`}
+              placeholder={`${UI_COPY.finance.windowSize} (default 100, max 10000)`}
               value={form.windowTicks}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, windowTicks: event.target.value }))
@@ -348,7 +349,7 @@ export function FinancePage() {
           </form>
           <p className="mt-3 text-xs text-muted-foreground">
             Active company:{" "}
-            {activeCompany ? `${activeCompany.code} - ${activeCompany.name}` : "No company selected"}
+            {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
           </p>
           {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
         </CardContent>
@@ -358,7 +359,7 @@ export function FinancePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Window Activity Counters</CardTitle>
+          <CardTitle>Activity Summary (Window)</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-4">
           <p className="text-sm text-muted-foreground">
@@ -373,7 +374,7 @@ export function FinancePage() {
             <span className="tabular-nums text-foreground">{counters.ordersCancelledCount}</span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Productions Completed:{" "}
+            Completed Production Runs:{" "}
             <span className="tabular-nums text-foreground">{counters.productionsCompletedCount}</span>
           </p>
         </CardContent>

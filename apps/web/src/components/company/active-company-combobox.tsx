@@ -23,8 +23,8 @@ export function ActiveCompanyCombobox() {
     try {
       await navigator.clipboard.writeText(activeCompany.id);
       showToast({
-        title: "Company ID copied",
-        description: activeCompany.id,
+        title: "Company details copied",
+        description: "Internal reference copied to clipboard.",
         variant: "success"
       });
     } catch {
@@ -45,7 +45,7 @@ export function ActiveCompanyCombobox() {
               {isLoading
                 ? "Loading companies..."
                 : activeCompany
-                  ? `${activeCompany.code} - ${activeCompany.name}`
+                  ? activeCompany.name
                   : "Select company"}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
@@ -60,7 +60,7 @@ export function ActiveCompanyCombobox() {
                 {companies.map((company) => (
                   <CommandItem
                     key={company.id}
-                    value={`${company.code} ${company.name} ${company.id}`}
+                    value={company.name}
                     onSelect={() => {
                       setActiveCompanyId(company.id);
                       setOpen(false);
@@ -73,9 +73,8 @@ export function ActiveCompanyCombobox() {
                       )}
                     />
                     <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <span className="truncate text-sm">{company.code}</span>
-                      <span className="truncate text-xs text-muted-foreground">{company.name}</span>
-                      {company.isBot ? <Badge variant="warning">Bot</Badge> : null}
+                      <span className="truncate text-sm">{company.name}</span>
+                      {company.isBot ? <Badge variant="warning">Automated</Badge> : null}
                     </div>
                   </CommandItem>
                 ))}
@@ -84,7 +83,7 @@ export function ActiveCompanyCombobox() {
           </Command>
         </PopoverContent>
       </Popover>
-      {activeCompany?.isBot ? <Badge variant="warning">Bot</Badge> : null}
+      {activeCompany?.isBot ? <Badge variant="warning">Automated</Badge> : null}
       <Button
         variant="outline"
         size="icon"
@@ -92,7 +91,7 @@ export function ActiveCompanyCombobox() {
           void copyActiveCompanyId();
         }}
         disabled={!activeCompany}
-        title="Copy active company ID"
+        title="Copy active company details"
       >
         <Copy className="h-3.5 w-3.5" />
       </Button>

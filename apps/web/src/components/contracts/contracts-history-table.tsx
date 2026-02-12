@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ContractRecord } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { formatCodeLabel } from "@/lib/ui-copy";
 
 interface ContractsHistoryTableProps {
   contracts: ContractRecord[];
@@ -34,9 +35,8 @@ export function ContractsHistoryTable({ contracts, isLoading }: ContractsHistory
               <TableRow key={contract.id}>
                 <TableCell>
                   <p>{contract.item.name}</p>
-                  <p className="font-mono text-xs text-muted-foreground">{contract.item.code}</p>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{contract.status}</TableCell>
+                <TableCell className="text-xs">{formatCodeLabel(contract.status)}</TableCell>
                 <TableCell className="tabular-nums">{contract.quantity}</TableCell>
                 <TableCell className="tabular-nums">{formatCents(contract.priceCents)}</TableCell>
                 <TableCell className="tabular-nums">{contract.tickAccepted ?? "-"}</TableCell>

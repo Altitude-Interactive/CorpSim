@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { ResearchNode } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { formatCodeLabel } from "@/lib/ui-copy";
 
 function mapStatusVariant(status: ResearchNode["status"]): "muted" | "info" | "warning" | "success" {
   switch (status) {
@@ -55,7 +56,7 @@ export function ResearchNodeDetails({
           <CardTitle>Research Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Select a research node to inspect details.</p>
+          <p className="text-sm text-muted-foreground">Select a research initiative to inspect details.</p>
         </CardContent>
       </Card>
     );
@@ -69,12 +70,11 @@ export function ResearchNodeDetails({
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle>{node.name}</CardTitle>
-          <Badge variant={mapStatusVariant(node.status)}>{node.status}</Badge>
+          <Badge variant={mapStatusVariant(node.status)}>{formatCodeLabel(node.status)}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <p className="font-mono text-xs text-muted-foreground">{node.code}</p>
           <p className="text-sm text-muted-foreground">{node.description}</p>
         </div>
         <Separator />
@@ -99,7 +99,7 @@ export function ResearchNodeDetails({
             <div className="space-y-1">
               {node.prerequisites.map((entry) => {
                 const prereqNode = nodeById.get(entry.nodeId);
-                const label = prereqNode ? `${prereqNode.code} - ${prereqNode.name}` : entry.nodeId;
+                const label = prereqNode ? prereqNode.name : "Required research";
                 const completed = prereqNode?.status === "COMPLETED";
                 return (
                   <div key={entry.nodeId} className="flex items-center justify-between gap-2">
@@ -122,8 +122,6 @@ export function ResearchNodeDetails({
             <ul className="space-y-1">
               {node.unlockRecipes.map((recipe) => (
                 <li key={recipe.recipeId} className="text-sm">
-                  <span className="font-mono text-xs text-muted-foreground">{recipe.recipeCode}</span>
-                  {" - "}
                   {recipe.recipeName}
                 </li>
               ))}

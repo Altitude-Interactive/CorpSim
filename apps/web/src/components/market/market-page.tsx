@@ -10,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toast";
 import {
   ApiClientError,
+  CompanySummary,
   ItemCatalogItem,
   MarketOrder,
   MarketTrade,
   RegionSummary,
   cancelMarketOrder,
+  listCompanies,
   listItems,
   listMarketOrders,
   listRegions,
@@ -22,7 +24,7 @@ import {
   placeMarketOrder
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
-import { getRegionLabel } from "@/lib/ui-copy";
+import { formatCodeLabel, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 import { MyOrdersCard } from "./my-orders-card";
 import { OrderBookCard } from "./order-book-card";
 import { OrderPlacementCard } from "./order-placement-card";
@@ -62,10 +64,10 @@ function mapApiErrorToMessage(error: unknown): string {
       return error.message;
     }
     if (error.status === 404) {
-      return "item/company not found";
+      return UI_COPY.common.recordNotFound;
     }
     if (error.status === 409) {
-      return "conflict, refresh and retry";
+      return UI_COPY.common.dataChangedRetry;
     }
     return error.message;
   }
@@ -79,6 +81,7 @@ export function MarketPage() {
   const { health, refresh: refreshHealth } = useWorldHealth();
 
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
+  const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [regions, setRegions] = useState<RegionSummary[]>([]);
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [orderFilters, setOrderFilters] = useState<OrderBookFilters>(INITIAL_ORDER_FILTERS);
@@ -96,9 +99,14 @@ export function MarketPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = useCallback(async () => {
-    const [itemRows, regionRows] = await Promise.all([listItems(), listRegions()]);
+    const [itemRows, regionRows, companyRows] = await Promise.all([
+      listItems(),
+      listRegions(),
+      listCompanies()
+    ]);
     setItems(itemRows);
     setRegions(regionRows);
+    setCompanies(companyRows);
     setSelectedRegionId((current) => {
       if (current && regionRows.some((region) => region.id === current)) {
         return current;
@@ -237,7 +245,7 @@ export function MarketPage() {
       await placeMarketOrder(input);
       showToast({
         title: "Order placed",
-        description: `${input.side} ${input.quantity} @ ${formatCents(String(input.priceCents))}`,
+        description: `${formatCodeLabel(input.side)} ${input.quantity} @ ${formatCents(String(input.priceCents))}`,
         variant: "success"
       });
       await Promise.all([refreshMarketData(), refreshHealth()]);
@@ -261,13 +269,13 @@ export function MarketPage() {
       if (result.status !== "CANCELLED") {
         showToast({
           title: "Order already closed",
-          description: `Status is ${result.status}.`,
+          description: `Status is ${formatCodeLabel(result.status)}.`,
           variant: "info"
         });
       } else {
         showToast({
           title: "Order cancelled",
-          description: order.id,
+          description: "The order was cancelled successfully.",
           variant: "success"
         });
       }
@@ -285,8 +293,12 @@ export function MarketPage() {
   };
 
   const sortedItems = useMemo(
-    () => [...items].sort((left, right) => left.code.localeCompare(right.code)),
+    () => [...items].sort((left, right) => left.name.localeCompare(right.name)),
     [items]
+  );
+  const sortedCompanies = useMemo(
+    () => [...companies].sort((left, right) => left.name.localeCompare(right.name)),
+    [companies]
   );
   const regionNameById = useMemo(
     () =>
@@ -300,6 +312,14 @@ export function MarketPage() {
         ])
       ),
     [regions]
+  );
+  const itemNameById = useMemo(
+    () => Object.fromEntries(items.map((item) => [item.id, item.name])),
+    [items]
+  );
+  const companyNameById = useMemo(
+    () => Object.fromEntries(companies.map((company) => [company.id, company.name])),
+    [companies]
   );
   const activeCompanyRegionLabel = activeCompany
     ? getRegionLabel({
@@ -323,7 +343,7 @@ export function MarketPage() {
             <CardTitle>Order Book Filters</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-3 md:grid-cols-5" onSubmit={submitOrderBookFilters}>
+            <form className="grid gap-3 md:grid-cols-6" onSubmit={submitOrderBookFilters}>
               <Select
                 value={selectedRegionId || "ALL"}
                 onValueChange={(value) => setSelectedRegionId(value === "ALL" ? "" : value)}
@@ -351,24 +371,46 @@ export function MarketPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All sides</SelectItem>
-                  <SelectItem value="BUY">BUY</SelectItem>
-                  <SelectItem value="SELL">SELL</SelectItem>
+                  <SelectItem value="BUY">{formatCodeLabel("BUY")}</SelectItem>
+                  <SelectItem value="SELL">{formatCodeLabel("SELL")}</SelectItem>
                 </SelectContent>
               </Select>
-              <Input
-                placeholder="Item ID"
-                value={orderFilters.itemId}
-                onChange={(event) =>
-                  setOrderFilters((prev) => ({ ...prev, itemId: event.target.value }))
+              <Select
+                value={orderFilters.itemId || "ALL"}
+                onValueChange={(value) =>
+                  setOrderFilters((prev) => ({ ...prev, itemId: value === "ALL" ? "" : value }))
                 }
-              />
-              <Input
-                placeholder="Company ID"
-                value={orderFilters.companyId}
-                onChange={(event) =>
-                  setOrderFilters((prev) => ({ ...prev, companyId: event.target.value }))
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All items" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All items</SelectItem>
+                  {sortedItems.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={orderFilters.companyId || "ALL"}
+                onValueChange={(value) =>
+                  setOrderFilters((prev) => ({ ...prev, companyId: value === "ALL" ? "" : value }))
                 }
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All companies" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All companies</SelectItem>
+                  {sortedCompanies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 placeholder="Limit"
                 value={orderFilters.limit}
@@ -387,12 +429,15 @@ export function MarketPage() {
         orders={orderBook}
         isLoading={isLoadingOrderBook}
         regionNameById={regionNameById}
+        itemNameById={itemNameById}
+        companyNameById={companyNameById}
       />
 
       <MyOrdersCard
         orders={myOrders}
         isLoading={isLoadingMyOrders || Boolean(isCancellingOrderId)}
         regionNameById={regionNameById}
+        itemNameById={itemNameById}
         onCancel={handleCancelOrder}
       />
 
@@ -418,7 +463,7 @@ export function MarketPage() {
                 <SelectItem value="ALL">All items</SelectItem>
                 {sortedItems.map((item) => (
                   <SelectItem value={item.id} key={item.id}>
-                    {item.code} - {item.name}
+                    {item.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -463,6 +508,8 @@ export function MarketPage() {
         trades={trades}
         isLoading={isLoadingTrades}
         regionNameById={regionNameById}
+        itemNameById={itemNameById}
+        companyNameById={companyNameById}
       />
     </div>
   );

@@ -26,7 +26,7 @@ export function FinanceSummaryCards({ summary, isLoading }: FinanceSummaryCardsP
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Cash Start (Window)</CardTitle>
+          <CardTitle className="text-sm">Cash at Start (Window)</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-xl font-semibold tabular-nums">{renderValue(startingCash)}</p>
@@ -34,7 +34,7 @@ export function FinanceSummaryCards({ summary, isLoading }: FinanceSummaryCardsP
       </Card>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Cash End (Window)</CardTitle>
+          <CardTitle className="text-sm">Cash at End (Window)</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-xl font-semibold tabular-nums">{renderValue(endingCash)}</p>
@@ -42,7 +42,7 @@ export function FinanceSummaryCards({ summary, isLoading }: FinanceSummaryCardsP
       </Card>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Net Cash Delta</CardTitle>
+          <CardTitle className="text-sm">Net Cash Change</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-xl font-semibold tabular-nums">{renderValue(deltaCash)}</p>
@@ -50,7 +50,7 @@ export function FinanceSummaryCards({ summary, isLoading }: FinanceSummaryCardsP
       </Card>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Net Reserved Delta</CardTitle>
+          <CardTitle className="text-sm">Reserved Cash Change</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-xl font-semibold tabular-nums">{renderValue(deltaReserved)}</p>

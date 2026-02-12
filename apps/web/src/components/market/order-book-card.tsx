@@ -1,5 +1,7 @@
 import { MarketOrder } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { UI_COPY } from "@/lib/ui-copy";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SideBadge, StatusBadge } from "./market-badges";
@@ -8,9 +10,17 @@ interface OrderBookCardProps {
   orders: MarketOrder[];
   isLoading: boolean;
   regionNameById: Record<string, string>;
+  itemNameById: Record<string, string>;
+  companyNameById: Record<string, string>;
 }
 
-export function OrderBookCard({ orders, isLoading, regionNameById }: OrderBookCardProps) {
+export function OrderBookCard({
+  orders,
+  isLoading,
+  regionNameById,
+  itemNameById,
+  companyNameById
+}: OrderBookCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -20,7 +30,7 @@ export function OrderBookCard({ orders, isLoading, regionNameById }: OrderBookCa
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order</TableHead>
+              <TableHead>{`Placed ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
               <TableHead>Item</TableHead>
               <TableHead>Region</TableHead>
               <TableHead>Company</TableHead>
@@ -34,10 +44,16 @@ export function OrderBookCard({ orders, isLoading, regionNameById }: OrderBookCa
           <TableBody>
             {orders.map((order) => (
               <TableRow key={order.id}>
-                <TableCell className="font-mono text-xs">{order.id}</TableCell>
-                <TableCell className="font-mono text-xs">{order.itemId}</TableCell>
-                <TableCell className="text-xs">{regionNameById[order.regionId] ?? order.regionId}</TableCell>
-                <TableCell className="font-mono text-xs">{order.companyId}</TableCell>
+                <TableCell className="tabular-nums">{order.tickPlaced.toLocaleString()}</TableCell>
+                <TableCell className="text-xs">
+                  {itemNameById[order.itemId] ?? UI_COPY.common.unknownItem}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {regionNameById[order.regionId] ?? UI_COPY.common.unknownRegion}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {companyNameById[order.companyId] ?? UI_COPY.common.unknownCompany}
+                </TableCell>
                 <TableCell>
                   <SideBadge side={order.side} />
                 </TableCell>

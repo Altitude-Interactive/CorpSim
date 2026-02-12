@@ -35,15 +35,15 @@ export function FinanceReconciliationPanel({
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Current cashCents</span>
+          <span className="text-muted-foreground">Current cash balance</span>
           <span className="tabular-nums">{formatMaybe(company?.cashCents ?? null)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Current reservedCashCents</span>
+          <span className="text-muted-foreground">Current reserved cash</span>
           <span className="tabular-nums">{formatMaybe(company?.reservedCashCents ?? null)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Latest ledger balanceAfterCents</span>
+          <span className="text-muted-foreground">Latest ledger balance</span>
           <span className="tabular-nums">{formatMaybe(latestBalance)}</span>
         </div>
         <div className="pt-1">

@@ -58,7 +58,7 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Price History</CardTitle>
+          <CardTitle>Price and Volume</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
@@ -108,7 +108,7 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Candles + Volume</CardTitle>
+        <CardTitle>Price and Volume</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="mb-2 text-xs text-muted-foreground">
@@ -118,14 +118,14 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
               )} | L ${formatCentsRaw(hoveredPoint.low)} | C ${formatCentsRaw(
                 hoveredPoint.close
               )} | Vol ${hoveredPoint.volume.toLocaleString()}`
-            : "Hover over candles to inspect OHLC and volume."}
+            : "Hover over the chart to inspect open, high, low, close, and volume."}
         </p>
         <div className="overflow-x-auto">
           <svg
             width={chartWidth}
             height={chartHeight}
             role="img"
-            aria-label="OHLC candles and trade volume bars"
+            aria-label="Price bars and trade volume bars"
             className="min-w-[920px] rounded-md border border-border bg-muted/15"
             onMouseMove={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();

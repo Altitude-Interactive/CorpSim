@@ -153,7 +153,7 @@ export function AnalyticsPage() {
             <SelectContent>
               {items.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
-                  {item.code} - {item.name}
+                  {item.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -163,12 +163,12 @@ export function AnalyticsPage() {
             onValueChange={(value) => setPointLimit(Number.parseInt(value, 10))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Points" />
+              <SelectValue placeholder="Data points" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="50">50 points</SelectItem>
-              <SelectItem value="100">100 points</SelectItem>
-              <SelectItem value="200">200 points</SelectItem>
+              <SelectItem value="50">50 data points</SelectItem>
+              <SelectItem value="100">100 data points</SelectItem>
+              <SelectItem value="200">200 data points</SelectItem>
             </SelectContent>
           </Select>
           <Select value={selectedRegionId} onValueChange={setSelectedRegionId}>
@@ -184,7 +184,7 @@ export function AnalyticsPage() {
             </SelectContent>
           </Select>
           <p className="self-center text-sm text-muted-foreground">
-            {selectedItem ? `${selectedItem.code} - ${selectedItem.name}` : "No item selected"}
+            {selectedItem ? selectedItem.name : "No item selected"}
           </p>
           {error ? <p className="text-sm text-red-300 lg:col-span-4">{error}</p> : null}
         </CardContent>
@@ -195,7 +195,7 @@ export function AnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Candles</CardTitle>
+          <CardTitle>Recent Price Bars</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <Table>

@@ -95,7 +95,6 @@ export function InventoryView() {
             <TableHeader>
               <TableRow>
                 <TableHead>Item</TableHead>
-                <TableHead>Code</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Reserved</TableHead>
               </TableRow>
@@ -104,14 +103,13 @@ export function InventoryView() {
               {rows.map((row) => (
                 <TableRow key={row.itemId}>
                   <TableCell>{row.itemName}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.itemCode}</TableCell>
                   <TableCell className="tabular-nums">{row.quantity}</TableCell>
                   <TableCell className="tabular-nums">{row.reservedQuantity}</TableCell>
                 </TableRow>
               ))}
               {!isLoading && rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
                     No inventory rows for this company.
                   </TableCell>
                 </TableRow>

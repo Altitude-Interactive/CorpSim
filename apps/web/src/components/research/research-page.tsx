@@ -13,6 +13,7 @@ import {
   listResearch,
   startResearchNode
 } from "@/lib/api";
+import { UI_COPY } from "@/lib/ui-copy";
 import { ResearchNodeDetails } from "./research-node-details";
 import { ResearchNodeList, ResearchTierGroup } from "./research-node-list";
 
@@ -24,13 +25,13 @@ function mapApiError(error: unknown): string {
       return error.message;
     }
     if (error.status === 403) {
-      return "forbidden for active company";
+      return UI_COPY.common.unavailableForCompany;
     }
     if (error.status === 404) {
-      return "company or research node not found";
+      return UI_COPY.common.recordNotFound;
     }
     if (error.status === 409) {
-      return "conflict detected, refresh and retry";
+      return UI_COPY.common.dataChangedRetry;
     }
     return error.message;
   }
@@ -80,7 +81,7 @@ function computeResearchTierGroups(nodes: ResearchNode[]): ResearchTierGroup[] {
     .sort((a, b) => a[0] - b[0])
     .map(([tier, tierNodes]) => ({
       tier,
-      nodes: [...tierNodes].sort((a, b) => a.code.localeCompare(b.code))
+      nodes: [...tierNodes].sort((a, b) => a.name.localeCompare(b.name))
     }));
 }
 
@@ -166,8 +167,8 @@ export function ResearchPage() {
   const startSelectedResearch = async (node: ResearchNode) => {
     if (!activeCompanyId) {
       showToast({
-        title: "No active company",
-        description: "Select an active company before starting research.",
+        title: "Company required",
+        description: UI_COPY.common.selectCompanyFirst,
         variant: "error"
       });
       return;
@@ -178,7 +179,7 @@ export function ResearchPage() {
       await startResearchNode(node.id, activeCompanyId);
       showToast({
         title: "Research started",
-        description: `${node.code} is now running.`,
+        description: `${node.name} is now in progress.`,
         variant: "success"
       });
       await loadResearch();
@@ -198,8 +199,8 @@ export function ResearchPage() {
   const cancelSelectedResearch = async (node: ResearchNode) => {
     if (!activeCompanyId) {
       showToast({
-        title: "No active company",
-        description: "Select an active company before cancelling research.",
+        title: "Company required",
+        description: UI_COPY.common.selectCompanyFirst,
         variant: "error"
       });
       return;
@@ -210,7 +211,7 @@ export function ResearchPage() {
       await cancelResearchNode(node.id, activeCompanyId);
       showToast({
         title: "Research cancelled",
-        description: `${node.code} was cancelled without refund.`,
+        description: `${node.name} was cancelled without refund.`,
         variant: "info"
       });
       await loadResearch();
@@ -236,7 +237,7 @@ export function ResearchPage() {
         <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">
             Active company:{" "}
-            {activeCompany ? `${activeCompany.code} - ${activeCompany.name}` : "No company selected"}
+            {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
           </p>
           <div className="grid gap-2 md:grid-cols-4">
             <p className="text-sm text-muted-foreground">

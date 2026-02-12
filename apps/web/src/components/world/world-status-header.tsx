@@ -48,7 +48,7 @@ export function WorldStatusHeader({
   const cadenceLabel = formatCadencePoint(currentWeek);
   const cadenceWithTechnical =
     showTechnicalCadence && currentWeek !== null
-      ? `${cadenceLabel} (Tick ${currentWeek.toLocaleString()})`
+      ? `${cadenceLabel} (Technical tick: ${currentWeek.toLocaleString()})`
       : cadenceLabel;
 
   return (

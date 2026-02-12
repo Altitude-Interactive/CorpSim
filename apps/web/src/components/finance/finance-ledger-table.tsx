@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FinanceLedgerEntry } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { formatCodeLabel, UI_COPY } from "@/lib/ui-copy";
 
 interface FinanceLedgerTableProps {
   entries: FinanceLedgerEntry[];
@@ -55,10 +56,10 @@ export function FinanceLedgerTable({
           <TableHeader>
             <TableRow>
               <TableHead>{UI_CADENCE_TERMS.singularTitle}</TableHead>
-              <TableHead>Entry Type</TableHead>
+              <TableHead>Transaction Category</TableHead>
               <TableHead>Reference</TableHead>
-              <TableHead>Delta Cash</TableHead>
-              <TableHead>Delta Reserved</TableHead>
+              <TableHead>Cash Change</TableHead>
+              <TableHead>Reserved Cash Change</TableHead>
               <TableHead>Balance After</TableHead>
               <TableHead>Created</TableHead>
             </TableRow>
@@ -67,20 +68,20 @@ export function FinanceLedgerTable({
             {entries.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell className="tabular-nums">{entry.tick.toLocaleString()}</TableCell>
-                <TableCell className="font-mono text-xs">{entry.entryType}</TableCell>
+                <TableCell className="text-xs">{formatCodeLabel(entry.entryType)}</TableCell>
                 <TableCell>
                   <div className="space-y-1">
-                    <p className="font-mono text-xs">{entry.referenceType}</p>
+                    <p className="text-xs">{formatCodeLabel(entry.referenceType)}</p>
                     <div className="flex items-center gap-2">
-                      <p className="truncate font-mono text-xs text-muted-foreground">
-                        {entry.referenceId}
+                      <p className="truncate text-xs text-muted-foreground">
+                        {UI_COPY.common.unknownReference}
                       </p>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => onCopyText(entry.referenceId, "Reference ID")}
-                        title="Copy reference ID"
+                        onClick={() => onCopyText(entry.referenceId, "Reference")}
+                        title="Copy reference"
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -94,13 +95,15 @@ export function FinanceLedgerTable({
                   <div className="space-y-1">
                     <p className="text-xs">{new Date(entry.createdAt).toLocaleString()}</p>
                     <div className="flex items-center gap-2">
-                      <p className="truncate font-mono text-xs text-muted-foreground">{entry.id}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        Ledger record available
+                      </p>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => onCopyText(entry.id, "Ledger ID")}
-                        title="Copy ledger ID"
+                        onClick={() => onCopyText(entry.id, "Ledger Record")}
+                        title="Copy ledger record"
                       >
                         <Copy className="h-3 w-3" />
                       </Button>

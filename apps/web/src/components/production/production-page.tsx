@@ -20,6 +20,7 @@ import {
   listProductionRecipes
 } from "@/lib/api";
 import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { formatCodeLabel, UI_COPY } from "@/lib/ui-copy";
 
 const PRODUCTION_REFRESH_DEBOUNCE_MS = 500;
 
@@ -39,7 +40,7 @@ function mapProductionErrorMessage(error: unknown): string {
       return error.message;
     }
     if (error.status === 404) {
-      return "company or recipe not found";
+      return UI_COPY.common.recordNotFound;
     }
     return error.message;
   }
@@ -140,7 +141,7 @@ export function ProductionPage() {
     event.preventDefault();
 
     if (!activeCompanyId) {
-      setError("Select an active company first.");
+      setError(UI_COPY.common.selectCompanyFirst);
       return;
     }
     if (!selectedRecipeId) {
@@ -188,13 +189,13 @@ export function ProductionPage() {
       if (job.status === "CANCELLED") {
         showToast({
           title: "Job cancelled",
-          description: job.id,
+          description: "The production run was cancelled.",
           variant: "success"
         });
       } else {
         showToast({
           title: "Job already finalized",
-          description: `Status is ${job.status}.`,
+          description: `Status is ${formatCodeLabel(job.status)}.`,
           variant: "info"
         });
       }
@@ -224,7 +225,7 @@ export function ProductionPage() {
               <div>
                 <p className="mb-1 text-xs text-muted-foreground">Active Company</p>
                 <p className="text-sm font-medium">
-                  {activeCompany ? `${activeCompany.code} - ${activeCompany.name}` : "No company selected"}
+                  {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
                 </p>
               </div>
 
@@ -237,7 +238,7 @@ export function ProductionPage() {
                   <SelectContent>
                     {recipes.map((recipe) => (
                       <SelectItem key={recipe.id} value={recipe.id}>
-                        {recipe.code} - {recipe.name}
+                        {recipe.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -260,13 +261,13 @@ export function ProductionPage() {
                     Duration: {formatCadenceCount(selectedRecipe.durationTicks)} / run
                   </p>
                   <p>
-                    Output: {selectedRecipe.outputQuantity} {selectedRecipe.outputItem.code}
+                    Output: {selectedRecipe.outputQuantity} {selectedRecipe.outputItem.name}
                   </p>
                   <p>Inputs:</p>
                   <ul className="list-disc pl-4">
                     {selectedRecipe.inputs.map((input) => (
                       <li key={input.itemId}>
-                        {input.quantityPerRun} {input.item.code} / run
+                        {input.quantityPerRun} {input.item.name} / run
                       </li>
                     ))}
                   </ul>
@@ -300,15 +301,14 @@ export function ProductionPage() {
                   <TableRow key={recipe.id}>
                     <TableCell>
                       <p className="font-medium">{recipe.name}</p>
-                      <p className="font-mono text-xs text-muted-foreground">{recipe.code}</p>
                     </TableCell>
                     <TableCell>
-                      {recipe.outputQuantity} {recipe.outputItem.code}
+                      {recipe.outputQuantity} {recipe.outputItem.name}
                     </TableCell>
                     <TableCell>{formatCadenceCount(recipe.durationTicks)}</TableCell>
                     <TableCell>
                       {recipe.inputs
-                        .map((input) => `${input.quantityPerRun} ${input.item.code}`)
+                        .map((input) => `${input.quantityPerRun} ${input.item.name}`)
                         .join(", ")}
                     </TableCell>
                   </TableRow>
@@ -334,7 +334,6 @@ export function ProductionPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Job</TableHead>
                 <TableHead>Recipe</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Quantity</TableHead>
@@ -346,13 +345,13 @@ export function ProductionPage() {
             <TableBody>
               {runningJobs.map((job) => (
                 <TableRow key={job.id}>
-                  <TableCell className="font-mono text-xs">{job.id}</TableCell>
                   <TableCell>
                     <p>{job.recipe.name}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{job.recipe.code}</p>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={mapProductionStatusVariant(job.status)}>{job.status}</Badge>
+                    <Badge variant={mapProductionStatusVariant(job.status)}>
+                      {formatCodeLabel(job.status)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="tabular-nums">{job.quantity}</TableCell>
                   <TableCell className="tabular-nums">{job.tickStarted}</TableCell>
@@ -373,7 +372,7 @@ export function ProductionPage() {
               ))}
               {!isLoading && runningJobs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No running production jobs.
                   </TableCell>
                 </TableRow>
@@ -391,7 +390,6 @@ export function ProductionPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Job</TableHead>
                 <TableHead>Recipe</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Quantity</TableHead>
@@ -402,13 +400,13 @@ export function ProductionPage() {
             <TableBody>
               {completedJobs.map((job) => (
                 <TableRow key={job.id}>
-                  <TableCell className="font-mono text-xs">{job.id}</TableCell>
                   <TableCell>
                     <p>{job.recipe.name}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{job.recipe.code}</p>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={mapProductionStatusVariant(job.status)}>{job.status}</Badge>
+                    <Badge variant={mapProductionStatusVariant(job.status)}>
+                      {formatCodeLabel(job.status)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="tabular-nums">{job.quantity}</TableCell>
                   <TableCell className="tabular-nums">{job.tickCompleted ?? "-"}</TableCell>
@@ -417,7 +415,7 @@ export function ProductionPage() {
               ))}
               {!isLoading && completedJobs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No completed jobs yet.
                   </TableCell>
                 </TableRow>

@@ -13,6 +13,19 @@ export const UI_COPY = {
     analytics: "Analytics",
     world: "World Status"
   },
+  common: {
+    noCompanySelected: "No company selected",
+    selectCompanyFirst: "Select a company before continuing.",
+    unknownRegion: "Unknown region",
+    unknownItem: "Unknown item",
+    unknownCompany: "Unknown company",
+    unknownReference: "Reference hidden",
+    reference: "Reference",
+    referenceCopied: "Reference copied to clipboard.",
+    unavailableForCompany: "This action is unavailable for the selected company.",
+    dataChangedRetry: "Data changed while processing. Refresh and try again.",
+    recordNotFound: "The requested record could not be found."
+  },
   status: {
     labelPrefix: "System status",
     levels: {
@@ -62,6 +75,14 @@ export const UI_COPY = {
     reservedCash: "Cash reserved for active orders and commitments.",
     tradesLast100: "Count of the most recent 100 trade records.",
     regionScope: "Region affects inventory location, logistics routes, and market scope."
+  },
+  finance: {
+    entryCategory: "Transaction category",
+    allEntryCategories: "All transaction categories",
+    referenceCategory: "Reference category",
+    referenceContains: "Reference contains...",
+    rowLimit: "Row limit (default 100, max 500)",
+    windowSize: "Window size (weeks)"
   }
 } as const;
 
@@ -101,7 +122,7 @@ function titleCaseFromCode(code: string): string {
 
 export function getRegionLabel(region: RegionLike | null | undefined): string {
   if (!region) {
-    return "Unknown region";
+    return UI_COPY.common.unknownRegion;
   }
 
   const name = region.name?.trim();
@@ -115,7 +136,7 @@ export function getRegionLabel(region: RegionLike | null | undefined): string {
 
   const code = region.code?.trim().toUpperCase();
   if (!code) {
-    return "Unknown region";
+    return UI_COPY.common.unknownRegion;
   }
 
   return REGION_COPY_BY_CODE[code]?.label ?? titleCaseFromCode(code);
@@ -137,4 +158,49 @@ export function getRegionDescription(region: RegionLike | null | undefined): str
 
 export function getSystemStatusCopy(status: UiStatusLevel) {
   return UI_COPY.status.levels[status];
+}
+
+const CODE_LABEL_OVERRIDES: Record<string, string> = {
+  BUY: "Buy",
+  SELL: "Sell",
+  OPEN: "Open",
+  FILLED: "Filled",
+  CANCELLED: "Cancelled",
+  COMPLETED: "Completed",
+  RUNNING: "Running",
+  AVAILABLE: "Available",
+  LOCKED: "Locked",
+  RESEARCHING: "In progress",
+  ACCEPTED: "Accepted",
+  PARTIALLY_FULFILLED: "Partially fulfilled",
+  FULFILLED: "Fulfilled",
+  EXPIRED: "Expired",
+  IN_TRANSIT: "In transit",
+  DELIVERED: "Delivered",
+  ORDER_RESERVE: "Order reserve",
+  TRADE_SETTLEMENT: "Trade settlement",
+  CONTRACT_SETTLEMENT: "Contract settlement",
+  RESEARCH_PAYMENT: "Research payment",
+  PRODUCTION_COMPLETION: "Production completion",
+  PRODUCTION_COST: "Production cost",
+  MANUAL_ADJUSTMENT: "Manual adjustment"
+};
+
+export function formatCodeLabel(value: string): string {
+  const code = value.trim().toUpperCase();
+  if (!code) {
+    return value;
+  }
+
+  const overridden = CODE_LABEL_OVERRIDES[code];
+  if (overridden) {
+    return overridden;
+  }
+
+  return code
+    .toLowerCase()
+    .split(/[_\s-]+/)
+    .filter((part) => part.length > 0)
+    .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
+    .join(" ");
 }

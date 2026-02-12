@@ -23,7 +23,7 @@ import {
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
-import { getRegionLabel } from "@/lib/ui-copy";
+import { formatCodeLabel, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 
 const SHIPMENT_REFRESH_DEBOUNCE_MS = 600;
 const SHIPMENT_BASE_FEE_CENTS = Number.parseInt(
@@ -234,7 +234,7 @@ export function LogisticsPage() {
 
   const arbitrageRows = regions
     .slice()
-    .sort((left, right) => left.code.localeCompare(right.code))
+    .sort((left, right) => left.name.localeCompare(right.name))
     .map((region) => {
       const lastPriceCents = analyticsByRegion[region.id]?.lastPriceCents ?? null;
       const deltaVsSourceCents =
@@ -251,7 +251,7 @@ export function LogisticsPage() {
 
   const handleCreateShipment = async () => {
     if (!activeCompanyId || !activeCompany) {
-      setError("Select an active company first.");
+      setError(UI_COPY.common.selectCompanyFirst);
       return;
     }
     if (!toRegionId || !itemId) {
@@ -359,7 +359,7 @@ export function LogisticsPage() {
               <SelectContent>
                 {items.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.code} - {item.name}
+                    {item.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -378,7 +378,7 @@ export function LogisticsPage() {
               Estimated fee: {feeCents === null ? "--" : formatCents(String(feeCents))}
             </p>
             <p>{`Estimated arrival ${UI_CADENCE_TERMS.singular.toLowerCase()}: ${arrivalTick ?? "--"}`}</p>
-            {selectedItem ? <p>Item: {selectedItem.code}</p> : null}
+            {selectedItem ? <p>Item: {selectedItem.name}</p> : null}
           </div>
           <Button
             type="button"
@@ -397,7 +397,7 @@ export function LogisticsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Arbitrage Helper</CardTitle>
+          <CardTitle>Route Margin Analysis</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="mb-3 grid gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground md:grid-cols-2">
@@ -411,7 +411,7 @@ export function LogisticsPage() {
               Destination last price: {destinationPriceCents ? formatCents(destinationPriceCents) : "--"}
             </p>
             <p>
-              Spread/unit (destination - source):{" "}
+              Unit margin (destination - source):{" "}
               {routeSpreadPerUnitCents !== null ? formatCents(routeSpreadPerUnitCents.toString()) : "--"}
             </p>
             <p>
@@ -425,7 +425,7 @@ export function LogisticsPage() {
               <TableRow>
                 <TableHead>Region</TableHead>
                 <TableHead>Last Price</TableHead>
-                <TableHead>Delta vs Source</TableHead>
+                <TableHead>Margin vs Source</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -474,7 +474,7 @@ export function LogisticsPage() {
             <TableBody>
               {inTransit.map((shipment) => (
                 <TableRow key={shipment.id}>
-                  <TableCell>{shipment.item.code}</TableCell>
+                  <TableCell>{shipment.item.name}</TableCell>
                   <TableCell>
                     {`${getRegionLabel({ code: shipment.fromRegion.code, name: shipment.fromRegion.name })} -> ${getRegionLabel({ code: shipment.toRegion.code, name: shipment.toRegion.name })}`}
                   </TableCell>
@@ -522,11 +522,11 @@ export function LogisticsPage() {
             <TableBody>
               {delivered.map((shipment) => (
                 <TableRow key={shipment.id}>
-                  <TableCell>{shipment.item.code}</TableCell>
+                  <TableCell>{shipment.item.name}</TableCell>
                   <TableCell>
                     {`${getRegionLabel({ code: shipment.fromRegion.code, name: shipment.fromRegion.name })} -> ${getRegionLabel({ code: shipment.toRegion.code, name: shipment.toRegion.name })}`}
                   </TableCell>
-                  <TableCell>{shipment.status}</TableCell>
+                  <TableCell>{formatCodeLabel(shipment.status)}</TableCell>
                   <TableCell className="tabular-nums">{shipment.tickCreated}</TableCell>
                   <TableCell className="tabular-nums">{shipment.tickClosed ?? "--"}</TableCell>
                 </TableRow>

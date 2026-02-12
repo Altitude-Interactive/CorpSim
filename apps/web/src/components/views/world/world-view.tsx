@@ -20,16 +20,15 @@ export function WorldView() {
       return null;
     }
     return {
-      currentTick: health.currentTick,
-      lockVersion: health.lockVersion,
-      lastAdvancedAt: health.lastAdvancedAt,
-      ordersOpenCount: health.ordersOpenCount,
-      ordersTotalCount: health.ordersTotalCount,
-      tradesLast100Count: health.tradesLast100Count,
-      companiesCount: health.companiesCount,
-      botsCount: health.botsCount,
-      sumCashCents: health.sumCashCents,
-      sumReservedCashCents: health.sumReservedCashCents
+      "Current week": health.currentTick,
+      "Last simulation run": health.lastAdvancedAt,
+      "Open orders": health.ordersOpenCount,
+      "Total order records": health.ordersTotalCount,
+      "Trades (last 100)": health.tradesLast100Count,
+      Companies: health.companiesCount,
+      "Automated companies": health.botsCount,
+      "Total cash (cents)": health.sumCashCents,
+      "Reserved cash (cents)": health.sumReservedCashCents
     };
   }, [health]);
 
@@ -68,15 +67,15 @@ export function WorldView() {
   return (
     <div className="space-y-4">
       <Alert variant="warning">
-        <AlertTitle>Dev Only Controls</AlertTitle>
+        <AlertTitle>Internal Diagnostics</AlertTitle>
         <AlertDescription>
-          These controls mutate simulation state directly. Do not expose to production players.
+          These controls are for diagnostics and should remain restricted.
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardHeader>
-          <CardTitle>World Controls</CardTitle>
+          <CardTitle>Simulation Controls</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
           <Input
@@ -97,11 +96,11 @@ export function WorldView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>World Health Summary</CardTitle>
+          <CardTitle>World Status Snapshot</CardTitle>
         </CardHeader>
         <CardContent>
           <pre className="overflow-auto rounded-md border border-border bg-muted/30 p-3 text-xs">
-            {summary ? JSON.stringify(summary, null, 2) : "Loading world summary..."}
+            {summary ? JSON.stringify(summary, null, 2) : "Loading world status..."}
           </pre>
         </CardContent>
       </Card>

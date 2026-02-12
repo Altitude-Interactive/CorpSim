@@ -3,9 +3,9 @@ export const UI_CADENCE_TERMS = {
   pluralTitle: "Weeks",
   singular: "week",
   plural: "weeks",
-  fromField: "fromWeek",
-  toField: "toWeek",
-  windowField: "windowWeeks"
+  fromField: "From week",
+  toField: "To week",
+  windowField: "Window (weeks)"
 } as const;
 
 function resolveCadenceNoun(count: number): string {

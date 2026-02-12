@@ -53,11 +53,9 @@ export function AvailableContractsTable({
               <TableRow key={contract.id}>
                 <TableCell>
                   <p>{contract.item.name}</p>
-                  <p className="font-mono text-xs text-muted-foreground">{contract.item.code}</p>
                 </TableCell>
                 <TableCell>
                   <p>{contract.buyerCompany.name}</p>
-                  <p className="font-mono text-xs text-muted-foreground">{contract.buyerCompany.code}</p>
                 </TableCell>
                 <TableCell className="tabular-nums">{contract.quantity}</TableCell>
                 <TableCell className="tabular-nums">{contract.remainingQuantity}</TableCell>

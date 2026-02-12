@@ -16,6 +16,7 @@ import {
   listContracts,
   listItems
 } from "@/lib/api";
+import { UI_COPY } from "@/lib/ui-copy";
 import { AvailableContractsTable } from "./available-contracts-table";
 import { ContractsHistoryTable } from "./contracts-history-table";
 import { MyContractsTable } from "./my-contracts-table";
@@ -30,10 +31,10 @@ function mapApiError(error: unknown): string {
       return error.message;
     }
     if (error.status === 403) {
-      return "forbidden for active company";
+      return UI_COPY.common.unavailableForCompany;
     }
     if (error.status === 409) {
-      return "conflict detected, refresh and retry";
+      return UI_COPY.common.dataChangedRetry;
     }
     return error.message;
   }
@@ -129,8 +130,8 @@ export function ContractsPage() {
   const handleAccept = async (contract: ContractRecord) => {
     if (!activeCompanyId) {
       showToast({
-        title: "No active company",
-        description: "Select an active company before accepting a contract.",
+        title: "Company required",
+        description: UI_COPY.common.selectCompanyFirst,
         variant: "error"
       });
       return;
@@ -141,7 +142,7 @@ export function ContractsPage() {
       await acceptContract(contract.id, activeCompanyId);
       showToast({
         title: "Contract accepted",
-        description: contract.id,
+        description: "The contract is now active in your queue.",
         variant: "success"
       });
       await loadContracts();
@@ -159,8 +160,8 @@ export function ContractsPage() {
   const handleFulfill = async (contract: ContractRecord) => {
     if (!activeCompanyId) {
       showToast({
-        title: "No active company",
-        description: "Select an active company before fulfilling a contract.",
+        title: "Company required",
+        description: UI_COPY.common.selectCompanyFirst,
         variant: "error"
       });
       return;
@@ -231,14 +232,14 @@ export function ContractsPage() {
                 <SelectItem value="ALL">All items</SelectItem>
                 {items.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.code} - {item.name}
+                    {item.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="self-center text-sm text-muted-foreground">
               Active company:{" "}
-              {activeCompany ? `${activeCompany.code} - ${activeCompany.name}` : "No company selected"}
+              {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
             </p>
           </div>
           {error ? <p className="text-sm text-red-300">{error}</p> : null}

@@ -57,10 +57,10 @@ function InvariantTableSkeleton() {
 
 function mapScope(entityType: WorldHealth["invariants"]["issues"][number]["entityType"]): string {
   if (entityType === "inventory") {
-    return "Inventory records";
+    return "Inventory";
   }
 
-  return "Company records";
+  return "Company";
 }
 
 function mapSuggestedAction(message: string): string {
@@ -84,29 +84,26 @@ function TechnicalDetails({ invariants }: { invariants: WorldHealth["invariants"
 
   return (
     <details className="mt-3 rounded-md border border-border bg-muted/20 p-3 text-xs">
-      <summary className="cursor-pointer font-medium text-muted-foreground">Technical details</summary>
+      <summary className="cursor-pointer font-medium text-muted-foreground">
+        Diagnostic details
+      </summary>
       <div className="mt-3 overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Entity</TableHead>
+              <TableHead>Check</TableHead>
+              <TableHead>Scope</TableHead>
               <TableHead>Message</TableHead>
-              <TableHead>Sample IDs</TableHead>
+              <TableHead>Affected records</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {invariants.issues.map((issue, index) => (
               <TableRow key={`${issue.code}-${issue.companyId}-${index}`}>
-                <TableCell className="font-mono text-xs">{issue.code}</TableCell>
-                <TableCell className="text-xs uppercase">{issue.entityType}</TableCell>
+                <TableCell>Integrity rule</TableCell>
+                <TableCell>{mapScope(issue.entityType)}</TableCell>
                 <TableCell>{issue.message}</TableCell>
-                <TableCell>
-                  <div className="space-y-1 font-mono text-xs text-muted-foreground">
-                    <p>company: {issue.companyId}</p>
-                    {issue.itemId ? <p>item: {issue.itemId}</p> : null}
-                  </div>
-                </TableCell>
+                <TableCell>{issue.itemId ? "Company and item records" : "Company record"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -136,7 +133,7 @@ export function WorldInvariantsTable({
               {invariants.truncated ? UI_COPY.world.integrity.partial : UI_COPY.world.integrity.complete}
             </Badge>
           ) : null}
-          <Badge variant="muted">{issueCount.toLocaleString()} issue(s)</Badge>
+          <Badge variant="muted">{`${issueCount.toLocaleString()} ${issueCount === 1 ? "issue" : "issues"}`}</Badge>
         </div>
       </CardHeader>
       <CardContent className="pt-0">

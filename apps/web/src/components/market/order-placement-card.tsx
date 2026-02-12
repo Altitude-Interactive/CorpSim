@@ -3,7 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { CompanySummary, ItemCatalogItem, PlaceMarketOrderInput } from "@/lib/api";
 import { parseCurrencyToCents } from "@/lib/format";
-import { getRegionLabel } from "@/lib/ui-copy";
+import { formatCodeLabel, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,6 @@ export function OrderPlacementCard({
 }: OrderPlacementCardProps) {
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [selectedItemId, setSelectedItemId] = useState<string>("");
-  const [fallbackItemId, setFallbackItemId] = useState<string>("");
   const [priceInput, setPriceInput] = useState("1.00");
   const [quantityInput, setQuantityInput] = useState("1");
   const [error, setError] = useState<string | null>(null);
@@ -38,13 +37,13 @@ export function OrderPlacementCard({
     event.preventDefault();
 
     if (!activeCompany) {
-      setError("Select an active company first.");
+      setError(UI_COPY.common.selectCompanyFirst);
       return;
     }
 
-    const itemId = selectedItem?.id ?? fallbackItemId.trim();
+    const itemId = selectedItem?.id ?? "";
     if (!itemId) {
-      setError("Select an item or provide an item ID.");
+      setError("Select an item.");
       return;
     }
 
@@ -81,7 +80,7 @@ export function OrderPlacementCard({
           <div>
             <p className="mb-1 text-xs text-muted-foreground">Company</p>
             <p className="text-sm font-medium">
-              {activeCompany ? `${activeCompany.code} - ${activeCompany.name}` : "No active company"}
+              {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
             </p>
             {activeCompany ? (
               <p className="mt-1 text-xs text-muted-foreground">
@@ -102,8 +101,8 @@ export function OrderPlacementCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BUY">BUY</SelectItem>
-                  <SelectItem value="SELL">SELL</SelectItem>
+                  <SelectItem value="BUY">{formatCodeLabel("BUY")}</SelectItem>
+                  <SelectItem value="SELL">{formatCodeLabel("SELL")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -121,25 +120,16 @@ export function OrderPlacementCard({
             <p className="mb-1 text-xs text-muted-foreground">Item</p>
             <Select value={selectedItemId} onValueChange={setSelectedItemId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select item by code/name" />
+                <SelectValue placeholder="Select item" />
               </SelectTrigger>
               <SelectContent>
                 {items.map((item) => (
                   <SelectItem value={item.id} key={item.id}>
-                    {item.code} - {item.name}
+                    {item.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div>
-            <p className="mb-1 text-xs text-muted-foreground">Fallback Item ID</p>
-            <Input
-              value={fallbackItemId}
-              onChange={(event) => setFallbackItemId(event.target.value)}
-              placeholder="Optional itemId if not in list"
-            />
           </div>
 
           <div>
