@@ -62,6 +62,7 @@ Agents must respect these at all costs.
 ## 4.1 Golden Rule #1 - Maintenance Mode for Write Work
 
 Before any non-read-only task (file edits, migrations, DB mutations, write API calls), enable maintenance mode first.
+There is no need to enable maintenance mode when editing files that have nothing to do with tasks mentioned above (like editing documentation and such). If not sure, ignore the previous sentence.
 
 ### Required Workflow
 
