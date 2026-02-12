@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 
-const MIN_SUPPORTED_WIDTH_PX = 900;
-
 export default function UnsupportedDevicePage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -22,8 +20,7 @@ export default function UnsupportedDevicePage() {
                   Desktop or tablet required
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  CorpSim ERP is optimized for data-dense operations and is not available on mobile
-                  viewports.
+                  CorpSim ERP is built for larger screens and is not available on mobile phones.
                 </p>
               </div>
               <Badge variant="warning">Unsupported Device</Badge>
@@ -33,8 +30,7 @@ export default function UnsupportedDevicePage() {
           <CardContent className="grid gap-6 pt-6 md:grid-cols-[1.15fr_0.85fr]">
             <section className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Continue on a tablet or desktop browser for full operational dashboards, tables,
-                and workflows.
+                Continue on a tablet or computer to access the full game interface.
               </p>
               <Button asChild variant="outline">
                 <a href={getDocumentationUrl("/overview")} target="_blank" rel="noreferrer">
@@ -53,11 +49,8 @@ export default function UnsupportedDevicePage() {
                   <MonitorSmartphone className="h-4 w-4" />
                 </div>
                 <div className="space-y-1 text-sm">
-                  <p className="font-medium text-foreground">Tablet and desktop browsers</p>
-                  <p className="text-muted-foreground">
-                    Minimum viewport width:{" "}
-                    <span className="font-semibold text-foreground">{MIN_SUPPORTED_WIDTH_PX}px</span>
-                  </p>
+                  <p className="font-medium text-foreground">Tablet and desktop devices</p>
+                  <p className="text-muted-foreground">Phone screens are not supported.</p>
                 </div>
               </div>
             </section>
