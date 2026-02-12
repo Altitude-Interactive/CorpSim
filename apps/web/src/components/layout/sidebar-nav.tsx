@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookOpenText,
   Box,
   CircleDollarSign,
   ClipboardList,
+  ExternalLink,
   Factory,
   FlaskConical,
   Globe,
@@ -15,7 +17,7 @@ import {
   Truck,
   TrendingUp
 } from "lucide-react";
-import { UI_COPY } from "@/lib/ui-copy";
+import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -64,6 +66,20 @@ export function SidebarNav() {
           );
         })}
       </nav>
+      <div className="mt-3 border-t border-border/70 pt-3">
+        <a
+          href={getDocumentationUrl()}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+        >
+          <span className="inline-flex items-center gap-2">
+            <BookOpenText className="h-4 w-4" />
+            <span>{UI_COPY.documentation.navLabel}</span>
+          </span>
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      </div>
     </aside>
   );
 }

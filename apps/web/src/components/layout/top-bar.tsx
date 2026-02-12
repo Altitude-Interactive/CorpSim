@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCcw } from "lucide-react";
+import { BookOpenText, RefreshCcw } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ActiveCompanyCombobox } from "@/components/company/active-company-combobox";
 import { useActiveCompany } from "@/components/company/active-company-provider";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InlineHelp } from "@/components/ui/inline-help";
 import { formatCadencePoint } from "@/lib/ui-terms";
-import { getRegionDescription, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
+import { getDocumentationUrl, getRegionDescription, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 import { StatusIndicator } from "./status-indicator";
 import { useWorldHealth } from "./world-health-provider";
 
@@ -56,6 +56,12 @@ export function TopBar() {
             </div>
           ) : null}
           <StatusIndicator status={apiStatus} />
+          <Button asChild variant="outline" size="sm">
+            <a href={getDocumentationUrl(pathname)} target="_blank" rel="noreferrer">
+              <BookOpenText className="mr-2 h-3.5 w-3.5" />
+              Docs
+            </a>
+          </Button>
           <Button
             variant="outline"
             size="sm"

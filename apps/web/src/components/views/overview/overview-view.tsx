@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { formatCents, formatInt } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 
 export function OverviewView() {
   const { health } = useWorldHealth();
@@ -62,6 +63,20 @@ export function OverviewView() {
           )}
           <Button asChild variant="ghost" size="sm" className="h-auto px-0 text-xs">
             <Link href="/world">Open World Status</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{UI_COPY.documentation.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">{UI_COPY.documentation.description}</p>
+          <Button asChild size="sm" variant="outline">
+            <a href={getDocumentationUrl("/overview")} target="_blank" rel="noreferrer">
+              {UI_COPY.documentation.openCta}
+            </a>
           </Button>
         </CardContent>
       </Card>

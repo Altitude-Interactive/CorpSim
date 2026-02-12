@@ -83,6 +83,26 @@ export const UI_COPY = {
     referenceContains: "Reference contains...",
     rowLimit: "Row limit (default 100, max 500)",
     windowSize: "Window size (weeks)"
+  },
+  documentation: {
+    navLabel: "ERP Documentation",
+    title: "ERP Documentation",
+    description:
+      "Access operating procedures, module guides, and business process references for CorpSim ERP.",
+    openCta: "Open Documentation",
+    baseUrl: "https://docs.altitude-interactive.com/corpsim",
+    routePaths: {
+      "/overview": "/pages/overview",
+      "/market": "/pages/market",
+      "/production": "/pages/production",
+      "/research": "/pages/research",
+      "/inventory": "/pages/inventory",
+      "/logistics": "/pages/logistics",
+      "/contracts": "/pages/contracts",
+      "/finance": "/pages/finance",
+      "/analytics": "/pages/analytics",
+      "/world": "/pages/world-status"
+    }
   }
 } as const;
 
@@ -158,6 +178,16 @@ export function getRegionDescription(region: RegionLike | null | undefined): str
 
 export function getSystemStatusCopy(status: UiStatusLevel) {
   return UI_COPY.status.levels[status];
+}
+
+export function getDocumentationUrl(route?: string | null): string {
+  const baseUrl = UI_COPY.documentation.baseUrl;
+  if (!route) {
+    return baseUrl;
+  }
+
+  const docsPath = UI_COPY.documentation.routePaths[route as keyof typeof UI_COPY.documentation.routePaths];
+  return docsPath ? `${baseUrl}${docsPath}` : baseUrl;
 }
 
 const CODE_LABEL_OVERRIDES: Record<string, string> = {
