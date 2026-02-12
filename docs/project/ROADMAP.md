@@ -101,6 +101,8 @@
 ## Content Expansion
 
 * Additional industries / sectors
+* Properties buying on a StreetMap
+* UI sounds (with option to mute them completely for low end PCs)
 * Service economy layer
 * Technology era progression
 * Energy sector simulation
