@@ -13,6 +13,7 @@ import { ItemsService } from "./items/items.service";
 import { MarketController } from "./market/market.controller";
 import { MarketService } from "./market/market.service";
 import { MaintenanceService } from "./maintenance/maintenance.service";
+import { MetaController } from "./meta/meta.controller";
 import { OpsController } from "./ops/ops.controller";
 import { PlayersController } from "./players/players.controller";
 import { PlayersService } from "./players/players.service";
@@ -33,6 +34,7 @@ import { WorldService } from "./world/world.service";
   imports: [],
   controllers: [
     RootController,
+    MetaController,
     HealthController,
     OpsController,
     WorldController,

@@ -23,6 +23,10 @@
     "sim:advance": "tsx scripts/sim-advance.ts",
     "sim:reset": "tsx scripts/sim-reset.ts",
     "sim:seed": "pnpm -C packages/db seed",
+    "release:entry": "node scripts/release-entry.mjs",
+    "release:check": "node scripts/check-release-entry.mjs",
+    "release:check-tag": "node scripts/check-tag-version.mjs",
+    "release:cut": "node scripts/release-cut.mjs",
     "maintenance:on": "node scripts/maintenance.mjs on",
     "maintenance:off": "node scripts/maintenance.mjs off",
     "maintenance:status": "node scripts/maintenance.mjs status"
