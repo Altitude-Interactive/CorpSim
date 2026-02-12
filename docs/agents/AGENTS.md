@@ -45,6 +45,47 @@ AGENTS.md is plain Markdown; use these instructions as the source of truth for h
 
 If files differ, follow the repo reality but keep the separation of concerns.
 
+# Golden Rules
+Agents must respect these at all costs.
+
+## Golden rule #1 -- maintenance mode for write work
+Before any non-read-only task (any task that edits files, runs migrations/seeds, mutates DB state, or triggers write API calls), enable maintenance mode first.
+
+Required workflow:
+- Check current maintenance status with `pnpm maintenance:status` (another AI Agent might already have enabled the maintenance mode, this doesn't mean you're unable to work, just ignore maintenance mode if maintenance mode is already enabled for another reason)
+- Enable: `pnpm maintenance:on --reason "<short reason>"` if is not enabled
+- Optional scope for UI-only freezes: `pnpm maintenance:on --scope web-only --reason "<short reason>"`
+- Disable when done: `pnpm maintenance:off`
+
+Dev safety behavior:
+- If no CorpSim services are running, `pnpm maintenance:on` exits with:
+  `No dev environment detected. Nothing to toggle; you're free to code.`
+- Use `--force` when you still need to persist maintenance state without running services:
+  `pnpm maintenance:on --force --reason "<short reason>"`
+
+## Golden Rule #2 -- Release Entry Required, No Per-Commit Version Bumps
+For any non-read-only change:
+- Create one release entry in `.releases/unreleased/*.md` including:
+  - `type`: `patch` | `minor` | `major`
+  - `area`: impacted surface (for example: `api`, `web`, `sim`, `db`, `worker`, `ci`)
+  - `summary`: one-line release note
+
+Hard constraints:
+- Agents must NOT bump root `package.json` version during normal feature/fix commits.
+- Agents must NOT create git tags.
+- Agents must NOT bump version if remote already has the same version tag.
+- Version bump happens only in a dedicated release-cut commit (human or release pipeline), typically with `pnpm release:cut`.
+- Exception: emergency hotfix release explicitly requested in the task.
+
+SemVer classification examples:
+- PATCH: bugfix or refactor without breaking behavior/contracts.
+- MINOR: backward-compatible feature addition.
+- MAJOR: breaking API/contract change.
+
+## Golden rule #3 -- commit allowed, push/pull forbidden for agents
+Agents must create local commits when their task is finished. Agents must never run `git push` or `git pull`. Agents should always prefer individual specific commits rather than big commits changing a lot of files. Agents should use Conventional Commits 1.0.0 (https://www.conventionalcommits.org/en/v1.0.0/) for commits format. Agents should check git status at all times to know what the repository state is.
+Only the human operator is allowed to push to or pull from remotes.
+
 ## Core architecture rules (non-negotiable)
 
 ### 1) Server is authoritative
@@ -103,21 +144,6 @@ Prefer `pnpm`. If the repo already uses npm/yarn, follow it consistently.
 - Run API: `pnpm -C apps/api dev`
 - Run Worker: `pnpm -C apps/worker dev`
 - Run Web: `pnpm -C apps/web dev`
-
-## Golden rule: maintenance mode for write work
-Before any non-read-only task (any task that edits files, runs migrations/seeds, mutates DB state, or triggers write API calls), enable maintenance mode first.
-
-Required workflow:
-- Enable: `pnpm maintenance:on --reason "<short reason>"`
-- Optional scope for UI-only freezes: `pnpm maintenance:on --scope web-only --reason "<short reason>"`
-- Check status any time: `pnpm maintenance:status`
-- Disable when done: `pnpm maintenance:off`
-
-Dev safety behavior:
-- If no CorpSim services are running, `pnpm maintenance:on` exits with:
-  `No dev environment detected. Nothing to toggle; you're free to code.`
-- Use `--force` when you still need to persist maintenance state without running services:
-  `pnpm maintenance:on --force --reason "<short reason>"`
 
 ## Simulation operations (must exist as scripts)
 We want explicit, repeatable scripts:
