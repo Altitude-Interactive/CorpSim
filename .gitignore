@@ -90,3 +90,5 @@ apps/worker/dist/
 # Optional: local docs/build exports
 #######################################
 docs/.cache/
+.corpsim/
+.corpsim/maintenance.json

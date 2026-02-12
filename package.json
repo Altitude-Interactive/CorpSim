@@ -22,7 +22,10 @@
     "verify:full": "pnpm verify && pnpm worker:once -- --ticks 1",
     "sim:advance": "tsx scripts/sim-advance.ts",
     "sim:reset": "tsx scripts/sim-reset.ts",
-    "sim:seed": "pnpm -C packages/db seed"
+    "sim:seed": "pnpm -C packages/db seed",
+    "maintenance:on": "node scripts/maintenance.mjs on",
+    "maintenance:off": "node scripts/maintenance.mjs off",
+    "maintenance:status": "node scripts/maintenance.mjs status"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.8",

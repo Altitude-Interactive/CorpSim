@@ -104,6 +104,21 @@ Prefer `pnpm`. If the repo already uses npm/yarn, follow it consistently.
 - Run Worker: `pnpm -C apps/worker dev`
 - Run Web: `pnpm -C apps/web dev`
 
+## Golden rule: maintenance mode for write work
+Before any non-read-only task (any task that edits files, runs migrations/seeds, mutates DB state, or triggers write API calls), enable maintenance mode first.
+
+Required workflow:
+- Enable: `pnpm maintenance:on --reason "<short reason>"`
+- Optional scope for UI-only freezes: `pnpm maintenance:on --scope web-only --reason "<short reason>"`
+- Check status any time: `pnpm maintenance:status`
+- Disable when done: `pnpm maintenance:off`
+
+Dev safety behavior:
+- If no CorpSim services are running, `pnpm maintenance:on` exits with:
+  `No dev environment detected. Nothing to toggle; you're free to code.`
+- Use `--force` when you still need to persist maintenance state without running services:
+  `pnpm maintenance:on --force --reason "<short reason>"`
+
 ## Simulation operations (must exist as scripts)
 We want explicit, repeatable scripts:
 - `pnpm sim:advance --ticks <N>` — advances N ticks (safe/locked)

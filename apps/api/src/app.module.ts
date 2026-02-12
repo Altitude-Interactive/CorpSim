@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { MaintenanceModeMiddleware } from "./common/middleware/maintenance-mode.middleware";
 import { PlayerIdentityMiddleware } from "./common/middleware/player-identity.middleware";
 import { CompaniesController } from "./companies/companies.controller";
 import { CompaniesService } from "./companies/companies.service";
@@ -11,6 +12,8 @@ import { ItemsController } from "./items/items.controller";
 import { ItemsService } from "./items/items.service";
 import { MarketController } from "./market/market.controller";
 import { MarketService } from "./market/market.service";
+import { MaintenanceService } from "./maintenance/maintenance.service";
+import { OpsController } from "./ops/ops.controller";
 import { PlayersController } from "./players/players.controller";
 import { PlayersService } from "./players/players.service";
 import { PrismaService } from "./prisma/prisma.service";
@@ -31,6 +34,7 @@ import { WorldService } from "./world/world.service";
   controllers: [
     RootController,
     HealthController,
+    OpsController,
     WorldController,
     FinanceController,
     ContractsController,
@@ -45,12 +49,14 @@ import { WorldService } from "./world/world.service";
   ],
   providers: [
     PrismaService,
+    MaintenanceModeMiddleware,
     WorldService,
     FinanceService,
     ContractsService,
     CompaniesService,
     PlayersService,
     MarketService,
+    MaintenanceService,
     ItemsService,
     RegionsService,
     ShipmentsService,
@@ -60,6 +66,6 @@ import { WorldService } from "./world/world.service";
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(PlayerIdentityMiddleware).forRoutes("*");
+    consumer.apply(MaintenanceModeMiddleware, PlayerIdentityMiddleware).forRoutes("*");
   }
 }
