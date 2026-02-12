@@ -41,12 +41,12 @@ export function OverviewView() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            System Integrity
+          <div className="flex items-center gap-2">
+            <CardTitle>System Integrity</CardTitle>
             <Badge variant={health.invariants.hasViolations ? "danger" : "success"}>
               {health.invariants.hasViolations ? "Issues detected" : "All checks passed"}
             </Badge>
-          </CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {health.invariants.issues.length === 0 ? (

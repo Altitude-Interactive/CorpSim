@@ -67,10 +67,10 @@ export function ResearchNodeDetails({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-2">
-          <span>{node.name}</span>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>{node.name}</CardTitle>
           <Badge variant={mapStatusVariant(node.status)}>{node.status}</Badge>
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>

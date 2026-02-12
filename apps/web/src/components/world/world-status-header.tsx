@@ -66,9 +66,9 @@ export function WorldStatusHeader({
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-md border border-border bg-muted/20 p-3">
           <p className="text-xs text-muted-foreground">{UI_COPY.status.labelPrefix}</p>
-          <p className="mt-1">
+          <div className="mt-1">
             <Badge variant={resolveBadgeVariant(statusLevel)}>{statusCopy.label}</Badge>
-          </p>
+          </div>
         </div>
         <div className="rounded-md border border-border bg-muted/20 p-3">
           <p className="text-xs text-muted-foreground">{UI_COPY.world.lastSimulationRun}</p>
