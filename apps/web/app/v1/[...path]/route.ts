@@ -21,6 +21,8 @@ const REQUEST_BLOCKED_HEADERS = new Set([
 
 const RESPONSE_BLOCKED_HEADERS = new Set([
   "connection",
+  "content-encoding",
+  "content-length",
   "keep-alive",
   "proxy-authenticate",
   "proxy-authorization",

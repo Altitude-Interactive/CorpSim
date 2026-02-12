@@ -92,6 +92,7 @@ async function fetchMaintenanceFromUrl(url: string): Promise<MaintenanceState> {
 export async function getMaintenanceState(): Promise<MaintenanceState> {
   const candidates: string[] = [];
   const apiBase = normalizeApiBaseUrl();
+  const isProduction = process.env.NODE_ENV === "production";
 
   if (apiBase) {
     candidates.push(`${apiBase}/health/maintenance`);
@@ -99,7 +100,9 @@ export async function getMaintenanceState(): Promise<MaintenanceState> {
     candidates.push("/health/maintenance");
   }
 
-  candidates.push("/api/dev/maintenance");
+  if (!isProduction) {
+    candidates.push("/api/dev/maintenance");
+  }
 
   let lastError: unknown;
 
