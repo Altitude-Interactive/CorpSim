@@ -14,3 +14,13 @@ All notable changes to CorpSim are documented in this file.
 - [ops] Declare root app version metadata for release tooling consistency
 - [db] Precreate maintenance state table before dependent migration
 - [ci] Publish GitHub releases only when package version increases
+
+## 0.2.0 - 2026-02-12
+
+### Minor
+- [ci] Publish GHCR app images automatically during release workflow
+
+### Patch
+- [ci] Set git identity before creating release tags in CI
+- [ci] Allow CI to publish existing version when release tag is missing
+- [ops] Use tag-first image variables in preview compose deployment
