@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
@@ -47,6 +47,14 @@ function run() {
   }
 
   loadEnvironment();
+  if (mode === "dev" && process.env.WEB_CLEAN_NEXT_ON_START !== "false") {
+    const nextDir = resolve(process.cwd(), ".next");
+    if (existsSync(nextDir)) {
+      rmSync(nextDir, { recursive: true, force: true });
+      console.log("[web:dev] cleared .next cache to prevent stale chunk errors");
+    }
+  }
+
   const port = readPort();
   const require = createRequire(import.meta.url);
   const nextBin = require.resolve("next/dist/bin/next");
