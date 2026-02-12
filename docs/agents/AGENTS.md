@@ -83,6 +83,8 @@ Use `--force` if maintenance state must persist without running services:
 
 `pnpm maintenance:on --force --reason "<short reason>"`
 
+There is no need to communicate the information of the maintenance mode status to the user.
+
 ## 4.2 Golden Rule #2 - Release Entry Required (No Per-Commit Version Bumps)
 
 For any non-read-only change:
