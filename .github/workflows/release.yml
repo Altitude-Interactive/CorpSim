@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Verify"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Determine release eligibility
+        id: freshness
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            CURRENT_MAIN_SHA="$(git rev-parse origin/main)"
+            if [ "$CURRENT_MAIN_SHA" != "$WORKFLOW_HEAD_SHA" ]; then
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "Skipping release: verify run is not for the latest main commit."
+              echo "Current main: $CURRENT_MAIN_SHA"
+              echo "Verify head:  $WORKFLOW_HEAD_SHA"
+              exit 0
+            fi
+          fi
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        if: steps.freshness.outputs.should_release == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        if: steps.freshness.outputs.should_release == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.freshness.outputs.should_release == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Detect unreleased entries
+        if: steps.freshness.outputs.should_release == 'true'
+        id: entries
+        run: |
+          shopt -s nullglob
+          entries=(.releases/unreleased/*.md)
+          if [ "${#entries[@]}" -eq 0 ]; then
+            echo "has_entries=false" >> "$GITHUB_OUTPUT"
+            echo "No unreleased entries; skipping release."
+          else
+            echo "has_entries=true" >> "$GITHUB_OUTPUT"
+            printf 'Found %s unreleased entries.\n' "${#entries[@]}"
+          fi
+
+      - name: Cut release
+        if: steps.freshness.outputs.should_release == 'true' && steps.entries.outputs.has_entries == 'true'
+        run: pnpm release:cut --skip-remote-check
+
+      - name: Read release version
+        if: steps.freshness.outputs.should_release == 'true' && steps.entries.outputs.has_entries == 'true'
+        id: version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes from changelog
+        if: steps.freshness.outputs.should_release == 'true' && steps.entries.outputs.has_entries == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          awk -v version="$VERSION" '
+            $0 ~ "^## " version " - " {print; keep=1; next}
+            keep && /^## / {exit}
+            keep {print}
+          ' CHANGELOG.md > RELEASE_NOTES.md
+
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Failed to derive release notes for version $VERSION from CHANGELOG.md"
+            exit 1
+          fi
+
+      - name: Commit release artifacts
+        if: steps.freshness.outputs.should_release == 'true' && steps.entries.outputs.has_entries == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json CHANGELOG.md .releases/released .releases/unreleased
+          git commit -m "chore(release): cut v$VERSION"
+
+      - name: Create annotated tag
+        if: steps.freshness.outputs.should_release == 'true' && steps.entries.outputs.has_entries == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: git tag -a "$TAG" -m "Release $TAG"
+
+      - name: Push release commit and tag
+        if: steps.freshness.outputs.should_release == 'true' && steps.entries.outputs.has_entries == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git push origin HEAD:main
+          git push origin "$TAG"
+
+      - name: Publish GitHub release
+        if: steps.freshness.outputs.should_release == 'true' && steps.entries.outputs.has_entries == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: CorpSim ${{ steps.version.outputs.tag }}
+          body_path: RELEASE_NOTES.md
