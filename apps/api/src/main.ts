@@ -23,16 +23,63 @@ function resolvePort(): number {
   return port;
 }
 
-async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
-  const corsOrigin = process.env.CORS_ORIGIN;
-
-  if (!corsOrigin) {
+function resolveCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGIN;
+  if (!raw) {
     throw new Error("CORS_ORIGIN environment variable is required");
   }
 
+  const origins = raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  if (origins.length === 0) {
+    throw new Error("CORS_ORIGIN must include at least one origin");
+  }
+
+  return origins;
+}
+
+function isLocalhostOrigin(origin: string): boolean {
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+
+    return (
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "[::1]"
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule);
+  const corsOrigins = resolveCorsOrigins();
+  const allowLocalhost = process.env.NODE_ENV !== "production";
+
   app.enableCors({
-    origin: corsOrigin,
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void
+    ) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (corsOrigins.includes(origin) || (allowLocalhost && isLocalhostOrigin(origin))) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS origin denied: ${origin}`), false);
+    },
     credentials: false
   });
 

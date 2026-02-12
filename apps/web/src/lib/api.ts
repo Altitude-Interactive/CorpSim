@@ -1,6 +1,6 @@
 export const HEALTH_POLL_INTERVAL_MS = 3_000;
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
 const PLAYER_HANDLE_STORAGE_KEY = "corpsim.playerHandle";
 const DEFAULT_PLAYER_HANDLE = "PLAYER";
 
@@ -501,7 +501,7 @@ function resolvePlayerHandle(): string {
 
 function resolveApiBaseUrl(): string {
   if (!API_BASE_URL) {
-    throw new Error("NEXT_PUBLIC_API_URL environment variable is required");
+    return "";
   }
 
   return API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
@@ -512,7 +512,8 @@ async function fetchJson<T>(
   parser: (value: unknown) => T,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
+  const baseUrl = resolveApiBaseUrl();
+  const requestInit: RequestInit = {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -520,7 +521,20 @@ async function fetchJson<T>(
       ...(init?.headers ?? {})
     },
     cache: "no-store"
-  });
+  };
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, requestInit);
+  } catch (caught) {
+    const shouldRetryViaProxy =
+      typeof window !== "undefined" && baseUrl.length > 0 && caught instanceof TypeError;
+    if (!shouldRetryViaProxy) {
+      throw caught;
+    }
+
+    response = await fetch(path, requestInit);
+  }
 
   const payload = (await response.json().catch(() => null)) as unknown;
 

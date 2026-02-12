@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { config as loadDotenv } from "dotenv";
 
 function loadEnvironment() {
@@ -47,9 +48,9 @@ function run() {
 
   loadEnvironment();
   const port = readPort();
-
-  const executable = process.platform === "win32" ? "next.cmd" : "next";
-  const child = spawn(executable, [mode, "-p", port], {
+  const require = createRequire(import.meta.url);
+  const nextBin = require.resolve("next/dist/bin/next");
+  const child = spawn(process.execPath, [nextBin, mode, "-p", port], {
     stdio: "inherit",
     env: process.env
   });

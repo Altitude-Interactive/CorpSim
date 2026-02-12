@@ -12,7 +12,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "CorpSim ERP",
-  description: "Dark ERP dashboard for CorpSim simulation control and monitoring."
+  description: "Dark ERP dashboard for CorpSim simulation control and monitoring.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

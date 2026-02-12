@@ -20,7 +20,7 @@ x-app-build: &app_build
     RUN pnpm -C packages/db generate
     RUN pnpm -C apps/web build
   args:
-    NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://corpsim-api.altitude-interactive.com}
+    NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
     NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS: ${NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS:-250}
     NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS: ${NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS:-15}
 
@@ -178,7 +178,8 @@ services:
       NODE_ENV: production
       WEB_PORT: ${WEB_PORT:-4311}
       PORT: ${WEB_PORT:-4311}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://corpsim-api.altitude-interactive.com}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+      API_URL: ${API_URL:-http://backend:${API_PORT:-4310}}
       NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS: ${NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS:-250}
       NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS: ${NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS:-15}
     depends_on:
