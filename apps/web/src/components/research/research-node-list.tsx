@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCents } from "@/lib/format";
 import { ResearchNode } from "@/lib/api";
+import { formatCadenceCount } from "@/lib/ui-terms";
 
 export interface ResearchTierGroup {
   tier: number;
@@ -17,7 +18,7 @@ function formatCompletesIn(node: ResearchNode, currentTick: number | undefined):
   }
 
   const remaining = Math.max(0, node.tickCompletes - currentTick);
-  return `${remaining} tick(s)`;
+  return formatCadenceCount(remaining);
 }
 
 function mapStatusVariant(status: ResearchNode["status"]): "muted" | "info" | "warning" | "success" {
@@ -86,7 +87,7 @@ export function ResearchNodeList({
                         <Badge variant={mapStatusVariant(node.status)}>{node.status}</Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">{formatCents(node.costCashCents)}</TableCell>
-                      <TableCell className="tabular-nums">{node.durationTicks} tick(s)</TableCell>
+                      <TableCell className="tabular-nums">{formatCadenceCount(node.durationTicks)}</TableCell>
                       <TableCell className="tabular-nums">
                         {formatCompletesIn(node, currentTick)}
                       </TableCell>

@@ -72,7 +72,9 @@ export function MyContractsTable({
                   <TableCell>
                     <Input
                       className="w-24"
-                      value={fulfillQuantityByContractId[contract.id] ?? "1"}
+                      value={
+                        fulfillQuantityByContractId[contract.id] ?? String(contract.remainingQuantity)
+                      }
                       onChange={(event) =>
                         onFulfillQuantityChange(contract.id, event.target.value)
                       }

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { formatCents, formatInt } from "@/lib/format";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 export function OverviewView() {
   const { health } = useWorldHealth();
@@ -13,7 +14,7 @@ export function OverviewView() {
   }
 
   const kpis = [
-    { label: "Current Tick", value: formatInt(health.currentTick) },
+    { label: `Current ${UI_CADENCE_TERMS.singularTitle}`, value: formatInt(health.currentTick) },
     { label: "Open Orders", value: formatInt(health.ordersOpenCount) },
     { label: "Trades (Last 100)", value: formatInt(health.tradesLast100Count) },
     { label: "Companies", value: formatInt(health.companiesCount) },

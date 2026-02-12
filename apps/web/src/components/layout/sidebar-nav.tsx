@@ -34,7 +34,7 @@ export function SidebarNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden h-screen w-60 flex-col border-r border-border bg-card/80 p-4 lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-60 flex-col border-r border-border bg-card/80 p-4 lg:flex">
       <div className="mb-8 flex items-center gap-2">
         <div className="rounded-md bg-primary/15 p-2 text-primary">
           <Box className="h-4 w-4" />
@@ -44,7 +44,7 @@ export function SidebarNav() {
           <p className="text-xs text-muted-foreground">Dark Operations Dashboard</p>
         </div>
       </div>
-      <nav className="space-y-1">
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;

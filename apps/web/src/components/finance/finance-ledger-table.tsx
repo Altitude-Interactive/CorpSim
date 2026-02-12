@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FinanceLedgerEntry } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 interface FinanceLedgerTableProps {
   entries: FinanceLedgerEntry[];
@@ -53,7 +54,7 @@ export function FinanceLedgerTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Tick</TableHead>
+              <TableHead>{UI_CADENCE_TERMS.singularTitle}</TableHead>
               <TableHead>Entry Type</TableHead>
               <TableHead>Reference</TableHead>
               <TableHead>Delta Cash</TableHead>

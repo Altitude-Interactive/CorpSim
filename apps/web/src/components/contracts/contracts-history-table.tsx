@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractRecord } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 interface ContractsHistoryTableProps {
   contracts: ContractRecord[];
@@ -24,8 +25,8 @@ export function ContractsHistoryTable({ contracts, isLoading }: ContractsHistory
               <TableHead>Status</TableHead>
               <TableHead>Total Qty</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Accepted Tick</TableHead>
-              <TableHead>Closed Tick</TableHead>
+              <TableHead>{`Accepted ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
+              <TableHead>{`Closed ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

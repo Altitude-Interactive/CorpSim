@@ -1,4 +1,5 @@
 import { MarketOrder } from "@/lib/api";
+import { formatCents } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SideBadge, StatusBadge } from "./market-badges";
@@ -42,7 +43,7 @@ export function OrderBookCard({ orders, isLoading }: OrderBookCardProps) {
                 <TableCell>
                   <StatusBadge status={order.status} />
                 </TableCell>
-                <TableCell className="tabular-nums">{order.priceCents}</TableCell>
+                <TableCell className="tabular-nums">{formatCents(order.priceCents)}</TableCell>
                 <TableCell className="tabular-nums">{order.quantity}</TableCell>
                 <TableCell className="tabular-nums">{order.remainingQuantity}</TableCell>
               </TableRow>

@@ -18,6 +18,7 @@ import {
   getFinanceSummary,
   listFinanceLedger
 } from "@/lib/api";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { FinanceBreakdownTable } from "./finance-breakdown-table";
 import { FinanceLedgerTable } from "./finance-ledger-table";
 import { FinanceReconciliationPanel } from "./finance-reconciliation-panel";
@@ -62,8 +63,8 @@ const INITIAL_FILTERS: FinanceFilterFormState = {
   entryType: "ALL",
   referenceType: "",
   referenceId: "",
-  limit: "100",
-  windowTicks: "100"
+  limit: "",
+  windowTicks: ""
 };
 
 function parseOptionalNonNegativeInt(value: string, field: string): number | undefined {
@@ -192,10 +193,10 @@ export function FinancePage() {
     event.preventDefault();
 
     try {
-      const fromTick = parseOptionalNonNegativeInt(form.fromTick, "fromTick");
-      const toTick = parseOptionalNonNegativeInt(form.toTick, "toTick");
+      const fromTick = parseOptionalNonNegativeInt(form.fromTick, UI_CADENCE_TERMS.fromField);
+      const toTick = parseOptionalNonNegativeInt(form.toTick, UI_CADENCE_TERMS.toField);
       if (fromTick !== undefined && toTick !== undefined && fromTick > toTick) {
-        throw new Error("fromTick cannot be greater than toTick");
+        throw new Error(`${UI_CADENCE_TERMS.fromField} cannot be greater than ${UI_CADENCE_TERMS.toField}`);
       }
 
       const nextAppliedFilters: AppliedFinanceFilters = {
@@ -205,7 +206,7 @@ export function FinancePage() {
         referenceType: form.referenceType.trim() || undefined,
         referenceId: form.referenceId.trim() || undefined,
         limit: parsePositiveInt(form.limit, "limit", 100, 500),
-        windowTicks: parsePositiveInt(form.windowTicks, "windowTicks", 100, 10_000)
+        windowTicks: parsePositiveInt(form.windowTicks, UI_CADENCE_TERMS.windowField, 100, 10_000)
       };
 
       setCursorHistory([]);
@@ -285,12 +286,12 @@ export function FinancePage() {
         <CardContent>
           <form className="grid gap-3 lg:grid-cols-4" onSubmit={submitFilters}>
             <Input
-              placeholder="fromTick"
+              placeholder={UI_CADENCE_TERMS.fromField}
               value={form.fromTick}
               onChange={(event) => setForm((prev) => ({ ...prev, fromTick: event.target.value }))}
             />
             <Input
-              placeholder="toTick"
+              placeholder={UI_CADENCE_TERMS.toField}
               value={form.toTick}
               onChange={(event) => setForm((prev) => ({ ...prev, toTick: event.target.value }))}
             />
@@ -327,12 +328,12 @@ export function FinancePage() {
               }
             />
             <Input
-              placeholder="limit (1-500)"
+              placeholder="limit (default 100, max 500)"
               value={form.limit}
               onChange={(event) => setForm((prev) => ({ ...prev, limit: event.target.value }))}
             />
             <Input
-              placeholder="windowTicks (1-10000)"
+              placeholder={`${UI_CADENCE_TERMS.windowField} (default 100, max 10000)`}
               value={form.windowTicks}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, windowTicks: event.target.value }))

@@ -6,6 +6,7 @@ import { ActiveCompanyCombobox } from "@/components/company/active-company-combo
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatCadencePoint } from "@/lib/ui-terms";
 import { StatusIndicator } from "./status-indicator";
 import { useWorldHealth } from "./world-health-provider";
 
@@ -22,13 +23,6 @@ const TITLES: Record<string, string> = {
   "/world": "World"
 };
 
-function formatTickLabel(currentTick: number | undefined) {
-  if (currentTick === undefined) {
-    return "Tick --";
-  }
-  return `Tick ${currentTick.toLocaleString()}`;
-}
-
 export function TopBar() {
   const pathname = usePathname();
   const { health, apiStatus, refresh, isRefreshing } = useWorldHealth();
@@ -39,7 +33,7 @@ export function TopBar() {
       <div className="flex h-14 items-center justify-between gap-3 px-4">
         <div className="min-w-0">
           <h1 className="text-base font-semibold">{TITLES[pathname] ?? "CorpSim"}</h1>
-          <p className="text-xs text-muted-foreground">{formatTickLabel(health?.currentTick)}</p>
+          <p className="text-xs text-muted-foreground">{formatCadencePoint(health?.currentTick)}</p>
         </div>
         <div className="flex items-center gap-3">
           <ActiveCompanyCombobox />

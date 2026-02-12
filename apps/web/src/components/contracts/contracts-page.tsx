@@ -166,7 +166,8 @@ export function ContractsPage() {
       return;
     }
 
-    const rawQuantity = fulfillQuantityByContractId[contract.id] ?? "1";
+    const rawQuantity =
+      fulfillQuantityByContractId[contract.id] ?? String(contract.remainingQuantity);
     const parsedQuantity = Number.parseInt(rawQuantity, 10);
     if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
       showToast({

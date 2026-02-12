@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -254,6 +255,17 @@ export function ResearchPage() {
               <span className="tabular-nums text-foreground">{statusCounts.completed}</span>
             </p>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void loadResearch();
+            }}
+            disabled={isLoading || isMutating}
+          >
+            Refresh Research
+          </Button>
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
         </CardContent>
       </Card>

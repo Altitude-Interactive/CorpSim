@@ -18,6 +18,7 @@ import {
   listRegions
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { AnalyticsKpiCards } from "./analytics-kpi-cards";
 import { CandleVolumeChart } from "./candle-volume-chart";
 
@@ -199,7 +200,7 @@ export function AnalyticsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tick</TableHead>
+                <TableHead>{UI_CADENCE_TERMS.singularTitle}</TableHead>
                 <TableHead>Open</TableHead>
                 <TableHead>High</TableHead>
                 <TableHead>Low</TableHead>

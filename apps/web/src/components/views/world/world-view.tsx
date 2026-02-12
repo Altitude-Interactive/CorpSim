@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { advanceWorld, resetWorld } from "@/lib/api";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 
 export function WorldView() {
@@ -35,7 +36,7 @@ export function WorldView() {
   const runAdvance = async () => {
     const parsed = Number.parseInt(ticksInput, 10);
     if (!Number.isInteger(parsed) || parsed <= 0) {
-      setError("Ticks must be a positive integer.");
+      setError(`${UI_CADENCE_TERMS.pluralTitle} must be a positive integer.`);
       return;
     }
 
@@ -82,10 +83,10 @@ export function WorldView() {
             className="w-40"
             value={ticksInput}
             onChange={(event) => setTicksInput(event.target.value)}
-            placeholder="Ticks"
+            placeholder={UI_CADENCE_TERMS.pluralTitle}
           />
           <Button onClick={() => void runAdvance()} disabled={isSubmitting}>
-            Advance World
+            {`Advance ${UI_CADENCE_TERMS.pluralTitle}`}
           </Button>
           <Button variant="destructive" onClick={() => void runReset()} disabled={isSubmitting}>
             Reset + Reseed

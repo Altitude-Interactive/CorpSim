@@ -19,6 +19,7 @@ import {
   listProductionJobs,
   listProductionRecipes
 } from "@/lib/api";
+import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 const PRODUCTION_REFRESH_DEBOUNCE_MS = 500;
 
@@ -256,7 +257,7 @@ export function ProductionPage() {
                 <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground">{selectedRecipe.name}</p>
                   <p>
-                    Duration: {selectedRecipe.durationTicks} tick(s) / run
+                    Duration: {formatCadenceCount(selectedRecipe.durationTicks)} / run
                   </p>
                   <p>
                     Output: {selectedRecipe.outputQuantity} {selectedRecipe.outputItem.code}
@@ -304,7 +305,7 @@ export function ProductionPage() {
                     <TableCell>
                       {recipe.outputQuantity} {recipe.outputItem.code}
                     </TableCell>
-                    <TableCell>{recipe.durationTicks} tick(s)</TableCell>
+                    <TableCell>{formatCadenceCount(recipe.durationTicks)}</TableCell>
                     <TableCell>
                       {recipe.inputs
                         .map((input) => `${input.quantityPerRun} ${input.item.code}`)
@@ -337,8 +338,8 @@ export function ProductionPage() {
                 <TableHead>Recipe</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Quantity</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Expected Completion</TableHead>
+                <TableHead>{`Started ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
+                <TableHead>{`Expected Completion ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -394,7 +395,7 @@ export function ProductionPage() {
                 <TableHead>Recipe</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Quantity</TableHead>
-                <TableHead>Completed Tick</TableHead>
+                <TableHead>{`Completed ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
                 <TableHead>Updated</TableHead>
               </TableRow>
             </TableHeader>

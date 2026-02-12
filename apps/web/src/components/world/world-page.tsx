@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { useToast } from "@/components/ui/toast";
-import { advanceWorld, resetWorld } from "@/lib/api";
+import { advanceWorld, getWorldHealth, resetWorld, WorldHealth } from "@/lib/api";
+import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
+import { WorldInvariantsTable } from "./world-invariants-table";
+import { WorldKpiCards } from "./world-kpi-cards";
 
 const DEV_MODE_STORAGE_KEY = "corpsim.devMode";
 
@@ -20,8 +22,11 @@ function readDevModeFromStorage(): boolean {
 
 export function WorldPage() {
   const { showToast } = useToast();
-  const { health, refresh } = useWorldHealth();
+  const [health, setHealth] = useState<WorldHealth | null>(null);
   const [ticksInput, setTicksInput] = useState("1");
+  const [isLoadingHealth, setIsLoadingHealth] = useState(true);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [devMode, setDevMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,25 +35,30 @@ export function WorldPage() {
     setDevMode(readDevModeFromStorage());
   }, []);
 
-  const summary = useMemo(() => {
-    if (!health) {
-      return null;
+  const loadWorldHealth = useCallback(async () => {
+    setIsLoadingHealth(true);
+    try {
+      const snapshot = await getWorldHealth();
+      setHealth(snapshot);
+      setHealthError(null);
+      setLastUpdatedAt(new Date());
+    } catch (caught) {
+      setHealthError(caught instanceof Error ? caught.message : "Failed to load world health");
+    } finally {
+      setIsLoadingHealth(false);
     }
+  }, []);
 
-    return {
-      currentTick: health.currentTick,
-      lockVersion: health.lockVersion,
-      lastAdvancedAt: health.lastAdvancedAt,
-      ordersOpenCount: health.ordersOpenCount,
-      ordersTotalCount: health.ordersTotalCount,
-      tradesLast100Count: health.tradesLast100Count,
-      companiesCount: health.companiesCount,
-      botsCount: health.botsCount,
-      sumCashCents: health.sumCashCents,
-      sumReservedCashCents: health.sumReservedCashCents,
-      invariants: health.invariants
-    };
-  }, [health]);
+  useEffect(() => {
+    void loadWorldHealth();
+  }, [loadWorldHealth]);
+
+  const lastUpdatedLabel = useMemo(() => {
+    if (lastUpdatedAt === null) {
+      return "Never";
+    }
+    return lastUpdatedAt.toLocaleString();
+  }, [lastUpdatedAt]);
 
   const toggleDevMode = (next: boolean) => {
     setDevMode(next);
@@ -60,12 +70,14 @@ export function WorldPage() {
   const runAdvance = async () => {
     const parsed = Number.parseInt(ticksInput, 10);
     if (!Number.isInteger(parsed) || parsed <= 0) {
-      setError("Ticks must be a positive integer.");
+      setError(`${UI_CADENCE_TERMS.pluralTitle} must be a positive integer.`);
       return;
     }
 
     if (parsed > 10) {
-      const confirmed = window.confirm(`Advance by ${parsed} ticks? This may process many events.`);
+      const confirmed = window.confirm(
+        `Advance by ${formatCadenceCount(parsed)}? This may process many events.`
+      );
       if (!confirmed) {
         return;
       }
@@ -77,10 +89,10 @@ export function WorldPage() {
       setError(null);
       showToast({
         title: "World advanced",
-        description: `${parsed} tick(s) applied`,
+        description: `${formatCadenceCount(parsed)} applied`,
         variant: "success"
       });
-      await refresh();
+      await loadWorldHealth();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Failed to advance world";
       setError(message);
@@ -111,7 +123,7 @@ export function WorldPage() {
         description: "Simulation was reset and reseeded.",
         variant: "success"
       });
-      await refresh();
+      await loadWorldHealth();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Failed to reset world";
       setError(message);
@@ -147,6 +159,9 @@ export function WorldPage() {
             />
             Enable Dev Mode
           </label>
+          <p className="text-xs text-muted-foreground">
+            {`Cadence is displayed as ${UI_CADENCE_TERMS.plural} in UI (internally stored as ticks).`}
+          </p>
         </CardContent>
       </Card>
 
@@ -160,10 +175,10 @@ export function WorldPage() {
               className="w-40"
               value={ticksInput}
               onChange={(event) => setTicksInput(event.target.value)}
-              placeholder="Ticks"
+              placeholder={UI_CADENCE_TERMS.pluralTitle}
             />
             <Button onClick={() => void runAdvance()} disabled={isSubmitting}>
-              Advance World
+              {`Advance ${UI_CADENCE_TERMS.pluralTitle}`}
             </Button>
             <Button variant="destructive" onClick={() => void runReset()} disabled={isSubmitting}>
               Reset + Reseed
@@ -174,15 +189,48 @@ export function WorldPage() {
       ) : null}
 
       <Card>
-        <CardHeader>
-          <CardTitle>World Health Summary</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle>World Health Summary</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Last updated: {lastUpdatedLabel}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void loadWorldHealth();
+            }}
+            disabled={isLoadingHealth}
+          >
+            Refresh World Health
+          </Button>
         </CardHeader>
         <CardContent>
-          <pre className="overflow-auto rounded-md border border-border bg-muted/30 p-3 text-xs">
-            {summary ? JSON.stringify(summary, null, 2) : "Loading world summary..."}
-          </pre>
+          {healthError ? (
+            <Alert variant="destructive">
+              <AlertTitle>World Health Sync Issue</AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                <span>{healthError}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void loadWorldHealth();
+                  }}
+                  disabled={isLoadingHealth}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
         </CardContent>
       </Card>
+
+      <WorldKpiCards health={health} isLoading={isLoadingHealth} />
+      <WorldInvariantsTable invariants={health?.invariants ?? null} isLoading={isLoadingHealth} />
     </div>
   );
 }

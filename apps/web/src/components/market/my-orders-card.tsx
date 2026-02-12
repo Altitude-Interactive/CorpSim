@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MarketOrder } from "@/lib/api";
+import { formatCents } from "@/lib/format";
 import { SideBadge, StatusBadge } from "./market-badges";
 
 interface MyOrdersCardProps {
@@ -42,7 +43,7 @@ export function MyOrdersCard({ orders, isLoading, onCancel }: MyOrdersCardProps)
                 <TableCell>
                   <StatusBadge status={order.status} />
                 </TableCell>
-                <TableCell className="tabular-nums">{order.priceCents}</TableCell>
+                <TableCell className="tabular-nums">{formatCents(order.priceCents)}</TableCell>
                 <TableCell className="tabular-nums">{order.remainingQuantity}</TableCell>
                 <TableCell className="text-right">
                   {order.status === "OPEN" ? (

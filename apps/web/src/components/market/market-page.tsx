@@ -21,6 +21,7 @@ import {
   listMarketTrades,
   placeMarketOrder
 } from "@/lib/api";
+import { formatCents } from "@/lib/format";
 import { MyOrdersCard } from "./my-orders-card";
 import { OrderBookCard } from "./order-book-card";
 import { OrderPlacementCard } from "./order-placement-card";
@@ -235,7 +236,7 @@ export function MarketPage() {
       await placeMarketOrder(input);
       showToast({
         title: "Order placed",
-        description: `${input.side} ${input.quantity} @ ${input.priceCents} cents`,
+        description: `${input.side} ${input.quantity} @ ${formatCents(String(input.priceCents))}`,
         variant: "success"
       });
       await Promise.all([refreshMarketData(), refreshHealth()]);

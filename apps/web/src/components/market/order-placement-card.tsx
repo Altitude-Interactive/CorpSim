@@ -138,12 +138,15 @@ export function OrderPlacementCard({
           </div>
 
           <div>
-            <p className="mb-1 text-xs text-muted-foreground">Price (USD)</p>
+            <p className="mb-1 text-xs text-muted-foreground">Price (USD per unit)</p>
             <Input
               value={priceInput}
               onChange={(event) => setPriceInput(event.target.value)}
               placeholder="1.00"
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Enter dollars (for example, 0.80). The order is stored in cents.
+            </p>
           </div>
 
           {error ? <p className="text-xs text-red-300">{error}</p> : null}

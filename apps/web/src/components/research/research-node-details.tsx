@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ResearchNode } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 function mapStatusVariant(status: ResearchNode["status"]): "muted" | "info" | "warning" | "success" {
   switch (status) {
@@ -27,7 +28,7 @@ function formatTickCountdown(targetTick: number | null, currentTick: number | un
   }
 
   const remaining = Math.max(0, targetTick - currentTick);
-  return `${remaining} tick(s)`;
+  return formatCadenceCount(remaining);
 }
 
 interface ResearchNodeDetailsProps {
@@ -81,10 +82,10 @@ export function ResearchNodeDetails({
           <p className="text-muted-foreground">Cost</p>
           <p className="tabular-nums">{formatCents(node.costCashCents)}</p>
           <p className="text-muted-foreground">Duration</p>
-          <p className="tabular-nums">{node.durationTicks} tick(s)</p>
-          <p className="text-muted-foreground">Tick Started</p>
+          <p className="tabular-nums">{formatCadenceCount(node.durationTicks)}</p>
+          <p className="text-muted-foreground">{`${UI_CADENCE_TERMS.singularTitle} Started`}</p>
           <p className="tabular-nums">{node.tickStarted ?? "-"}</p>
-          <p className="text-muted-foreground">Tick Completes</p>
+          <p className="text-muted-foreground">{`${UI_CADENCE_TERMS.singularTitle} Completes`}</p>
           <p className="tabular-nums">{node.tickCompletes ?? "-"}</p>
           <p className="text-muted-foreground">Countdown</p>
           <p className="tabular-nums">{formatTickCountdown(node.tickCompletes, currentTick)}</p>

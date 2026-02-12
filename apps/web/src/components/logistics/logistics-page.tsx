@@ -22,6 +22,7 @@ import {
   listShipments
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 const SHIPMENT_REFRESH_DEBOUNCE_MS = 600;
 const SHIPMENT_BASE_FEE_CENTS = Number.parseInt(
@@ -184,6 +185,10 @@ export function LogisticsPage() {
     () => items.find((item) => item.id === itemId) ?? null,
     [items, itemId]
   );
+  const sourceRegion = useMemo(
+    () => regions.find((region) => region.id === activeCompany?.regionId) ?? null,
+    [activeCompany?.regionId, regions]
+  );
 
   const quantity = Number.parseInt(quantityInput, 10);
   const travelTicks =
@@ -196,25 +201,40 @@ export function LogisticsPage() {
 
   const inTransit = shipments.filter((shipment) => shipment.status === "IN_TRANSIT");
   const delivered = shipments.filter((shipment) => shipment.status !== "IN_TRANSIT");
+  const sourcePriceCents = sourceRegion ? analyticsByRegion[sourceRegion.id]?.lastPriceCents ?? null : null;
+  const destinationPriceCents = selectedToRegion
+    ? analyticsByRegion[selectedToRegion.id]?.lastPriceCents ?? null
+    : null;
+
+  const routeSpreadPerUnitCents =
+    sourcePriceCents !== null && destinationPriceCents !== null
+      ? BigInt(destinationPriceCents) - BigInt(sourcePriceCents)
+      : null;
+  const routeGrossSpreadCents =
+    routeSpreadPerUnitCents !== null && Number.isInteger(quantity) && quantity > 0
+      ? routeSpreadPerUnitCents * BigInt(quantity)
+      : null;
+  const routeNetSpreadCents =
+    routeGrossSpreadCents !== null && feeCents !== null
+      ? routeGrossSpreadCents - BigInt(feeCents)
+      : null;
+
   const arbitrageRows = regions
+    .slice()
+    .sort((left, right) => left.code.localeCompare(right.code))
     .map((region) => {
-      const summary = analyticsByRegion[region.id] ?? null;
+      const lastPriceCents = analyticsByRegion[region.id]?.lastPriceCents ?? null;
+      const deltaVsSourceCents =
+        sourcePriceCents !== null && lastPriceCents !== null
+          ? BigInt(lastPriceCents) - BigInt(sourcePriceCents)
+          : null;
+
       return {
         region,
-        lastPriceCents: summary?.lastPriceCents ?? null
+        lastPriceCents,
+        deltaVsSourceCents
       };
-    })
-    .filter((row) => row.lastPriceCents !== null);
-  const cheapest = arbitrageRows.reduce<bigint | null>((min, row) => {
-    if (row.lastPriceCents === null) {
-      return min;
-    }
-    const value = BigInt(row.lastPriceCents);
-    if (min === null || value < min) {
-      return value;
-    }
-    return min;
-  }, null);
+    });
 
   const handleCreateShipment = async () => {
     if (!activeCompanyId || !activeCompany) {
@@ -237,7 +257,7 @@ export function LogisticsPage() {
     const confirmed = window.confirm(
       `Ship ${quantity} units to ${selectedToRegion?.code ?? "region"} for ${formatCents(
         String(feeCents)
-      )}. ETA tick ${arrivalTick}.`
+      )}. ETA ${UI_CADENCE_TERMS.singular.toLowerCase()} ${arrivalTick}.`
     );
     if (!confirmed) {
       return;
@@ -254,7 +274,7 @@ export function LogisticsPage() {
       setError(null);
       showToast({
         title: "Shipment created",
-        description: `Arrives at tick ${arrivalTick}.`,
+        description: `Arrives at ${UI_CADENCE_TERMS.singular.toLowerCase()} ${arrivalTick}.`,
         variant: "success"
       });
       await loadShipments();
@@ -344,9 +364,20 @@ export function LogisticsPage() {
             <p>
               Estimated fee: {feeCents === null ? "--" : formatCents(String(feeCents))}
             </p>
-            <p>Estimated arrival tick: {arrivalTick ?? "--"}</p>
+            <p>{`Estimated arrival ${UI_CADENCE_TERMS.singular.toLowerCase()}: ${arrivalTick ?? "--"}`}</p>
             {selectedItem ? <p>Item: {selectedItem.code}</p> : null}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void Promise.all([loadShipments(), loadArbitrage()]);
+            }}
+            disabled={isLoading || isLoadingArbitrage || isSubmitting}
+          >
+            Refresh Logistics Data
+          </Button>
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
         </CardContent>
       </Card>
@@ -356,18 +387,36 @@ export function LogisticsPage() {
           <CardTitle>Arbitrage Helper</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
+          <div className="mb-3 grid gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground md:grid-cols-2">
+            <p>
+              Route: {sourceRegion?.code ?? "--"} {"->"} {selectedToRegion?.code ?? "--"}
+            </p>
+            <p>
+              Source last price: {sourcePriceCents ? formatCents(sourcePriceCents) : "--"}
+            </p>
+            <p>
+              Destination last price: {destinationPriceCents ? formatCents(destinationPriceCents) : "--"}
+            </p>
+            <p>
+              Spread/unit (destination - source):{" "}
+              {routeSpreadPerUnitCents !== null ? formatCents(routeSpreadPerUnitCents.toString()) : "--"}
+            </p>
+            <p>
+              Net spread for qty {Number.isInteger(quantity) && quantity > 0 ? quantity : "--"}:{" "}
+              {routeNetSpreadCents !== null ? formatCents(routeNetSpreadCents.toString()) : "--"}
+            </p>
+            <p>Net spread includes estimated shipping fee.</p>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Region</TableHead>
                 <TableHead>Last Price</TableHead>
-                <TableHead>Delta vs Cheapest</TableHead>
+                <TableHead>Delta vs Source</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {arbitrageRows.map((row) => {
-                const price = row.lastPriceCents ? BigInt(row.lastPriceCents) : null;
-                const delta = price !== null && cheapest !== null ? price - cheapest : null;
                 return (
                   <TableRow key={row.region.id}>
                     <TableCell>{row.region.code}</TableCell>
@@ -375,7 +424,9 @@ export function LogisticsPage() {
                       {row.lastPriceCents ? formatCents(row.lastPriceCents) : "--"}
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {delta !== null ? formatCents(delta.toString()) : "--"}
+                      {row.deltaVsSourceCents !== null
+                        ? formatCents(row.deltaVsSourceCents.toString())
+                        : "--"}
                     </TableCell>
                   </TableRow>
                 );
@@ -383,7 +434,7 @@ export function LogisticsPage() {
               {!isLoadingArbitrage && arbitrageRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    No recent regional prices for selected item.
+                    No regions available.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -403,7 +454,7 @@ export function LogisticsPage() {
                 <TableHead>Item</TableHead>
                 <TableHead>Route</TableHead>
                 <TableHead>Qty</TableHead>
-                <TableHead>ETA Tick</TableHead>
+                <TableHead>{`ETA ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
                 <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -449,8 +500,8 @@ export function LogisticsPage() {
                 <TableHead>Item</TableHead>
                 <TableHead>Route</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Created Tick</TableHead>
-                <TableHead>Closed Tick</TableHead>
+                <TableHead>{`Created ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
+                <TableHead>{`Closed ${UI_CADENCE_TERMS.singularTitle}`}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

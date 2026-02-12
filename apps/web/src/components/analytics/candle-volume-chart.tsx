@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarketCandle } from "@/lib/api";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 interface CandlePoint {
   tick: number;
@@ -50,6 +52,7 @@ interface CandleVolumeChartProps {
 
 export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
   const points = candles.map(toPoint).filter((point): point is CandlePoint => point !== null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (points.length === 0) {
     return (
@@ -59,30 +62,34 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No candle data yet. Trades in future ticks will populate this chart.
+            No candle data yet. Trades in future {UI_CADENCE_TERMS.plural} will populate this chart.
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const chartWidth = Math.max(760, points.length * 10);
-  const chartHeight = 360;
+  const chartWidth = Math.max(920, points.length * 14);
+  const chartHeight = 420;
   const leftPadding = 52;
   const rightPadding = 24;
   const topPadding = 20;
-  const priceAreaHeight = 220;
-  const volumeAreaTop = 260;
-  const volumeAreaHeight = 78;
+  const priceAreaHeight = 260;
+  const volumeAreaTop = 310;
+  const volumeAreaHeight = 84;
 
   const minPrice = Math.min(...points.map((point) => point.low));
   const maxPrice = Math.max(...points.map((point) => point.high));
   const priceRange = Math.max(1, maxPrice - minPrice);
+  const midPrice = minPrice + priceRange / 2;
   const maxVolume = Math.max(1, ...points.map((point) => point.volume));
 
   const plotWidth = chartWidth - leftPadding - rightPadding;
   const slot = points.length > 0 ? plotWidth / points.length : plotWidth;
   const candleBodyWidth = Math.max(2, Math.min(8, slot * 0.65));
+  const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex] ?? null;
+  const hoveredX =
+    hoveredIndex === null ? null : leftPadding + slot * hoveredIndex + slot / 2;
 
   const priceToY = (price: number): number => {
     const normalized = (price - minPrice) / priceRange;
@@ -104,13 +111,38 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
         <CardTitle>Candles + Volume</CardTitle>
       </CardHeader>
       <CardContent>
+        <p className="mb-2 text-xs text-muted-foreground">
+          {hoveredPoint
+            ? `${UI_CADENCE_TERMS.singularTitle} ${hoveredPoint.tick} | O ${formatCentsRaw(hoveredPoint.open)} | H ${formatCentsRaw(
+                hoveredPoint.high
+              )} | L ${formatCentsRaw(hoveredPoint.low)} | C ${formatCentsRaw(
+                hoveredPoint.close
+              )} | Vol ${hoveredPoint.volume.toLocaleString()}`
+            : "Hover over candles to inspect OHLC and volume."}
+        </p>
         <div className="overflow-x-auto">
           <svg
             width={chartWidth}
             height={chartHeight}
             role="img"
             aria-label="OHLC candles and trade volume bars"
-            className="min-w-[760px] rounded-md border border-border bg-muted/15"
+            className="min-w-[920px] rounded-md border border-border bg-muted/15"
+            onMouseMove={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const relativeX = event.clientX - rect.left - leftPadding;
+
+              if (relativeX < 0 || relativeX > plotWidth || slot <= 0) {
+                setHoveredIndex(null);
+                return;
+              }
+
+              const nextIndex = Math.max(
+                0,
+                Math.min(points.length - 1, Math.floor(relativeX / slot))
+              );
+              setHoveredIndex(nextIndex);
+            }}
+            onMouseLeave={() => setHoveredIndex(null)}
           >
             <line
               x1={leftPadding}
@@ -130,6 +162,15 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
             />
             <line
               x1={leftPadding}
+              y1={priceToY(midPrice)}
+              x2={chartWidth - rightPadding}
+              y2={priceToY(midPrice)}
+              stroke="#1E2A3A"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+            />
+            <line
+              x1={leftPadding}
               y1={topPadding}
               x2={leftPadding}
               y2={volumeAreaTop + volumeAreaHeight}
@@ -139,6 +180,9 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
 
             <text x={8} y={topPadding + 6} fill="#9AA7B5" fontSize={11}>
               {formatCentsRaw(maxPrice)}
+            </text>
+            <text x={8} y={priceToY(midPrice) + 4} fill="#9AA7B5" fontSize={11}>
+              {formatCentsRaw(midPrice)}
             </text>
             <text x={8} y={topPadding + priceAreaHeight + 4} fill="#9AA7B5" fontSize={11}>
               {formatCentsRaw(minPrice)}
@@ -180,9 +224,20 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
                 </g>
               );
             })}
+            {hoveredX !== null ? (
+              <line
+                x1={hoveredX}
+                y1={topPadding}
+                x2={hoveredX}
+                y2={volumeAreaTop + volumeAreaHeight}
+                stroke="#60A5FA"
+                strokeWidth={1}
+                strokeDasharray="4 3"
+              />
+            ) : null}
 
             <text x={leftPadding} y={chartHeight - 8} fill="#9AA7B5" fontSize={11}>
-              Tick {firstTick}
+              {UI_CADENCE_TERMS.singularTitle} {firstTick}
             </text>
             <text
               x={leftPadding + plotWidth / 2}
@@ -191,7 +246,7 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
               fontSize={11}
               textAnchor="middle"
             >
-              Tick {midTick}
+              {UI_CADENCE_TERMS.singularTitle} {midTick}
             </text>
             <text
               x={chartWidth - rightPadding}
@@ -200,7 +255,7 @@ export function CandleVolumeChart({ candles }: CandleVolumeChartProps) {
               fontSize={11}
               textAnchor="end"
             >
-              Tick {lastTick}
+              {UI_CADENCE_TERMS.singularTitle} {lastTick}
             </text>
           </svg>
         </div>

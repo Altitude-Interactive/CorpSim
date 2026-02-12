@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractRecord } from "@/lib/api";
 import { formatCents } from "@/lib/format";
+import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 interface AvailableContractsTableProps {
   contracts: ContractRecord[];
@@ -43,7 +44,7 @@ export function AvailableContractsTable({
               <TableHead>Quantity</TableHead>
               <TableHead>Remaining</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Expires In (ticks)</TableHead>
+              <TableHead>{`Expires In (${UI_CADENCE_TERMS.plural})`}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
