@@ -1,11 +1,3 @@
-x-app-build: &app_build
-  context: .
-  dockerfile: docker/app.Dockerfile
-  args:
-    NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-    NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS: ${NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS:-250}
-    NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS: ${NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS:-15}
-
 x-app-image: &app_image ${APP_IMAGE_REPO:-corpsim-preview-app}:${APP_IMAGE_TAG:-latest}
 
 services:
@@ -46,7 +38,6 @@ services:
 
   backend:
     image: *app_image
-    build: *app_build
     restart: unless-stopped
     command:
       [
