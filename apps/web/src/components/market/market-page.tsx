@@ -401,12 +401,15 @@ export function MarketPage() {
           <CardTitle>Trades Filters</CardTitle>
         </CardHeader>
         <CardContent>
-            <form className="grid gap-3 md:grid-cols-[minmax(0,220px)_minmax(0,160px)_auto_auto]" onSubmit={submitTradesFilters}>
-              <Select
-                value={tradeFilters.itemId || "ALL"}
-                onValueChange={(value) =>
-                  setTradeFilters((prev) => ({ ...prev, itemId: value === "ALL" ? "" : value }))
-                }
+          <form
+            className="grid gap-3 md:grid-cols-[minmax(0,220px)_minmax(0,180px)_auto_auto]"
+            onSubmit={submitTradesFilters}
+          >
+            <Select
+              value={tradeFilters.itemId || "ALL"}
+              onValueChange={(value) =>
+                setTradeFilters((prev) => ({ ...prev, itemId: value === "ALL" ? "" : value }))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="All items" />
@@ -417,28 +420,28 @@ export function MarketPage() {
                   <SelectItem value={item.id} key={item.id}>
                     {item.code} - {item.name}
                   </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={selectedRegionId || "ALL"}
-                onValueChange={(value) => setSelectedRegionId(value === "ALL" ? "" : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Region" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All regions</SelectItem>
-                  {regions.map((region) => (
-                    <SelectItem key={region.id} value={region.id}>
-                      {getRegionLabel({ code: region.code, name: region.name })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <label className="flex items-center gap-2 rounded-md border border-border px-3 text-sm">
-                <input
-                  type="checkbox"
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={selectedRegionId || "ALL"}
+              onValueChange={(value) => setSelectedRegionId(value === "ALL" ? "" : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All regions</SelectItem>
+                {regions.map((region) => (
+                  <SelectItem key={region.id} value={region.id}>
+                    {getRegionLabel({ code: region.code, name: region.name })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <label className="flex items-center gap-2 rounded-md border border-border px-3 text-sm">
+              <input
+                type="checkbox"
                 checked={tradeFilters.myTradesOnly}
                 onChange={(event) =>
                   setTradeFilters((prev) => ({ ...prev, myTradesOnly: event.target.checked }))
