@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { createPrismaClient } from "@corpsim/db";
 import { loadWorkerConfig } from "./config";
+import { assertWorkerDeterminismSchemaReady } from "./preflight";
 import { startQueueRuntime } from "./queue-runtime";
 import { runWorkerIteration } from "./worker-loop";
 
@@ -27,41 +28,48 @@ async function main(): Promise<void> {
   const config = loadWorkerConfig();
   const prisma = createPrismaClient();
 
-  if (isOnceMode(args)) {
-    try {
-      const result = await runWorkerIteration(prisma, config, {
-        ticksOverride: parseTicks(args)
-      });
-      console.log(
-        `[worker:once] ticks +${result.ticksAdvanced} (${result.tickBefore} -> ${result.tickAfter}) retries=${result.retries}`
-      );
-      return;
-    } finally {
+  try {
+    await assertWorkerDeterminismSchemaReady(prisma);
+
+    if (isOnceMode(args)) {
+      try {
+        const result = await runWorkerIteration(prisma, config, {
+          ticksOverride: parseTicks(args)
+        });
+        console.log(
+          `[worker:once] ticks +${result.ticksAdvanced} (${result.tickBefore} -> ${result.tickAfter}) retries=${result.retries}`
+        );
+        return;
+      } finally {
+        await prisma.$disconnect();
+      }
+    }
+
+    const runtime = await startQueueRuntime(prisma, config);
+    console.log("[worker] runtime started");
+
+    let shuttingDown = false;
+    const shutdown = async (signal: string) => {
+      if (shuttingDown) {
+        return;
+      }
+      shuttingDown = true;
+      console.log(`[worker] received ${signal}, stopping...`);
+      await runtime.stop();
       await prisma.$disconnect();
-    }
-  }
+      console.log("[worker] stopped");
+    };
 
-  const runtime = await startQueueRuntime(prisma, config);
-  console.log("[worker] runtime started");
-
-  let shuttingDown = false;
-  const shutdown = async (signal: string) => {
-    if (shuttingDown) {
-      return;
-    }
-    shuttingDown = true;
-    console.log(`[worker] received ${signal}, stopping...`);
-    await runtime.stop();
+    process.on("SIGINT", () => {
+      void shutdown("SIGINT");
+    });
+    process.on("SIGTERM", () => {
+      void shutdown("SIGTERM");
+    });
+  } catch (error: unknown) {
     await prisma.$disconnect();
-    console.log("[worker] stopped");
-  };
-
-  process.on("SIGINT", () => {
-    void shutdown("SIGINT");
-  });
-  process.on("SIGTERM", () => {
-    void shutdown("SIGTERM");
-  });
+    throw error;
+  }
 }
 
 main().catch((error: unknown) => {

@@ -65,5 +65,41 @@ export class WorldService {
 
     return this.getTickState();
   }
+
+  async resetSimulationControlState() {
+    const control = await this.prisma.simulationControlState.upsert({
+      where: { id: 1 },
+      create: {
+        id: 1,
+        botsPaused: false,
+        processingStopped: false,
+        lastInvariantViolationTick: null,
+        lastInvariantViolationAt: null
+      },
+      update: {
+        botsPaused: false,
+        processingStopped: false,
+        lastInvariantViolationTick: null,
+        lastInvariantViolationAt: null
+      },
+      select: {
+        id: true,
+        botsPaused: true,
+        processingStopped: true,
+        lastInvariantViolationTick: true,
+        lastInvariantViolationAt: true,
+        updatedAt: true
+      }
+    });
+
+    return {
+      id: control.id,
+      botsPaused: control.botsPaused,
+      processingStopped: control.processingStopped,
+      lastInvariantViolationTick: control.lastInvariantViolationTick,
+      lastInvariantViolationAt: control.lastInvariantViolationAt?.toISOString() ?? null,
+      updatedAt: control.updatedAt.toISOString()
+    };
+  }
 }
 

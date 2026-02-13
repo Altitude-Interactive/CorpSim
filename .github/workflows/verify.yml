@@ -86,5 +86,8 @@ jobs:
       - name: Reset simulation world
         run: pnpm sim:reset
 
+      - name: Run worker integration test
+        run: pnpm -C apps/api vitest run --config vitest.config.ts test/worker.integration.test.ts
+
       - name: Run verification gates
         run: pnpm verify:full

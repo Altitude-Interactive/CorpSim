@@ -36,6 +36,11 @@ describe("worker config", () => {
       workerEnabled: true,
       workerConcurrency: 1
     });
+
+    expect(config).toMatchObject({
+      tickExecutionRetentionTicks: 100_000,
+      tickExecutionCleanupEveryTicks: 100
+    });
   });
 
   it("throws on invalid BullMQ boolean flag", () => {

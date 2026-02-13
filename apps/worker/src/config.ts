@@ -8,6 +8,8 @@ export interface WorkerConfig {
   tickIntervalMs: number;
   simulationSpeed: number;
   maxTicksPerRun: number;
+  tickExecutionRetentionTicks: number;
+  tickExecutionCleanupEveryTicks: number;
   invariantsCheckEveryTicks: number;
   onInvariantViolation: "stop" | "pause_bots" | "log_only";
   botConfig: Partial<BotRuntimeConfig>;
@@ -200,6 +202,14 @@ export function loadWorkerConfig(): WorkerRuntimeConfig {
     tickIntervalMs: parseIntegerEnv("TICK_INTERVAL_MS", 60_000),
     simulationSpeed: parseIntegerEnv("SIMULATION_SPEED", 1),
     maxTicksPerRun: parseIntegerEnv("MAX_TICKS_PER_RUN", 10),
+    tickExecutionRetentionTicks: parseNonNegativeIntegerEnv(
+      "TICK_EXECUTION_RETENTION_TICKS",
+      100_000
+    ),
+    tickExecutionCleanupEveryTicks: parseIntegerEnv(
+      "TICK_EXECUTION_CLEANUP_EVERY_TICKS",
+      100
+    ),
     invariantsCheckEveryTicks: parseIntegerEnv("INVARIANTS_CHECK_EVERY_TICKS", 10),
     onInvariantViolation: parseInvariantPolicy(process.env.ON_INVARIANT_VIOLATION),
     botConfig,

@@ -37,6 +37,26 @@ function resolveTickBatchSize(config: WorkerConfig, ticksOverride?: number): num
   return Math.min(safeRequested, config.maxTicksPerRun);
 }
 
+function shouldCleanupTickExecutionRows(
+  tickAfter: number,
+  retentionTicks: number,
+  cleanupEveryTicks: number
+): boolean {
+  if (retentionTicks <= 0) {
+    return false;
+  }
+
+  if (cleanupEveryTicks <= 0) {
+    return false;
+  }
+
+  if (!Number.isInteger(tickAfter) || tickAfter < 0) {
+    return false;
+  }
+
+  return tickAfter % cleanupEveryTicks === 0;
+}
+
 interface RunSingleTickOptions {
   maxConflictRetries: number;
   initialBackoffMs: number;
@@ -126,10 +146,28 @@ export async function runWorkerIteration(
     }
 
     const after = await getWorldTickState(prisma);
+    const tickAfter = after?.currentTick ?? tickBefore;
+    if (
+      shouldCleanupTickExecutionRows(
+        tickAfter,
+        config.tickExecutionRetentionTicks,
+        config.tickExecutionCleanupEveryTicks
+      )
+    ) {
+      const minTickToKeep = Math.max(0, tickAfter - config.tickExecutionRetentionTicks + 1);
+      await prisma.simulationTickExecution.deleteMany({
+        where: {
+          tickAfter: {
+            lt: minTickToKeep
+          }
+        }
+      });
+    }
+
     return {
       ticksAdvanced,
       tickBefore,
-      tickAfter: after?.currentTick ?? tickBefore,
+      tickAfter,
       retries
     };
   } finally {

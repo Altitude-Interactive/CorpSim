@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { UpdateMaintenanceDto } from "../maintenance/dto/update-maintenance.dto";
 import { MaintenanceService } from "../maintenance/maintenance.service";
+import { WorldService } from "../world/world.service";
 
 function readBearerToken(headerValue: string | undefined): string | undefined {
   if (!headerValue) {
@@ -27,9 +28,14 @@ function readBearerToken(headerValue: string | undefined): string | undefined {
 @Controller("ops")
 export class OpsController {
   private readonly maintenanceService: MaintenanceService;
+  private readonly worldService: WorldService;
 
-  constructor(@Inject(MaintenanceService) maintenanceService: MaintenanceService) {
+  constructor(
+    @Inject(MaintenanceService) maintenanceService: MaintenanceService,
+    @Inject(WorldService) worldService: WorldService
+  ) {
     this.maintenanceService = maintenanceService;
+    this.worldService = worldService;
   }
 
   @Post("maintenance")
@@ -39,6 +45,12 @@ export class OpsController {
   ) {
     this.assertAuthorizedInProduction(authorizationHeader);
     return this.maintenanceService.setState(body);
+  }
+
+  @Post("simulation/control/reset")
+  async resetSimulationControl(@Headers("authorization") authorizationHeader?: string) {
+    this.assertAuthorizedInProduction(authorizationHeader);
+    return this.worldService.resetSimulationControlState();
   }
 
   private assertAuthorizedInProduction(authorizationHeader?: string): void {

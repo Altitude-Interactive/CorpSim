@@ -16,6 +16,8 @@ describe("worker iteration integration", () => {
     tickIntervalMs: 60_000,
     simulationSpeed: 1,
     maxTicksPerRun: 10,
+    tickExecutionRetentionTicks: 100_000,
+    tickExecutionCleanupEveryTicks: 100,
     invariantsCheckEveryTicks: 10,
     onInvariantViolation: "stop",
     botConfig: {
@@ -189,6 +191,29 @@ describe("worker iteration integration", () => {
         ownerId: ownerA
       });
     }
+  });
+
+  it("cleans up old tick execution rows based on retention policy", async () => {
+    const cleanupConfig: WorkerConfig = {
+      ...config,
+      tickExecutionRetentionTicks: 2,
+      tickExecutionCleanupEveryTicks: 1
+    };
+
+    for (let tick = 1; tick <= 5; tick += 1) {
+      await runWorkerIteration(prisma, cleanupConfig, {
+        ticksOverride: 1,
+        maxConflictRetries: 0,
+        executionKey: `integration:cleanup:${tick}`
+      });
+    }
+
+    const rows = await prisma.simulationTickExecution.findMany({
+      orderBy: { tickAfter: "asc" },
+      select: { tickAfter: true }
+    });
+
+    expect(rows.map((entry) => entry.tickAfter)).toEqual([4, 5]);
   });
 });
 

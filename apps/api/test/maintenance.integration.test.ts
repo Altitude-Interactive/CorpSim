@@ -93,6 +93,50 @@ describe("maintenance mode integration", () => {
       });
   });
 
+  it("allows simulation control reset writes during maintenance mode", async () => {
+    await prisma.simulationControlState.upsert({
+      where: { id: 1 },
+      create: {
+        id: 1,
+        botsPaused: true,
+        processingStopped: true,
+        lastInvariantViolationTick: 42,
+        lastInvariantViolationAt: new Date()
+      },
+      update: {
+        botsPaused: true,
+        processingStopped: true,
+        lastInvariantViolationTick: 42,
+        lastInvariantViolationAt: new Date()
+      }
+    });
+
+    await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Systems are currently being updated.",
+        scope: "all",
+        enabledBy: "integration-test"
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post("/ops/simulation/control/reset")
+      .send({})
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          id: 1,
+          botsPaused: false,
+          processingStopped: false,
+          lastInvariantViolationTick: null,
+          lastInvariantViolationAt: null,
+          updatedAt: expect.any(String)
+        });
+      });
+  });
+
   it("allows writes when maintenance scope is web-only", async () => {
     await request(app.getHttpServer())
       .post("/ops/maintenance")

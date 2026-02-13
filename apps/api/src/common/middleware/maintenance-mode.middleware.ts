@@ -21,7 +21,14 @@ function getRequestPath(request: MaintenanceModeRequest): string {
 }
 
 function isMaintenanceBypassPath(path: string): boolean {
-  return path === "/ops/maintenance" || path.startsWith("/ops/maintenance/");
+  if (path === "/ops/maintenance" || path.startsWith("/ops/maintenance/")) {
+    return true;
+  }
+
+  return (
+    path === "/ops/simulation/control/reset" ||
+    path.startsWith("/ops/simulation/control/reset/")
+  );
 }
 
 @Injectable()
