@@ -11,8 +11,13 @@
     "@prisma/client": "^6.19.2",
     "dotenv": "^16.6.1"
   },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0",
+    "prisma": "^6.19.2",
+    "tsx": "^4.21.0"
+  },
   "scripts": {
-    "generate": "dotenv -e ../../.env -- prisma generate --schema prisma/schema.prisma",
+    "generate": "dotenv -e ../../.env -v PRISMA_GENERATE_SKIP_AUTOINSTALL=1 -- prisma generate --schema prisma/schema.prisma",
     "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev --schema prisma/schema.prisma",
     "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy --schema prisma/schema.prisma",
     "seed": "tsx seed.ts"
