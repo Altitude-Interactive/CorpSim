@@ -7,5 +7,5 @@ module.exports = {
     node: true,
     es2022: true
   },
-  ignorePatterns: ["dist", "build", ".next", "node_modules"]
+  ignorePatterns: ["dist", "build", ".next", "node_modules", "**/next-env.d.ts"]
 };
