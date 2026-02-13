@@ -4,6 +4,7 @@ import {
   PrismaClient,
   ProductionJobStatus
 } from "@prisma/client";
+import { resolveIconItemFallbackPriceCents } from "@corpsim/shared";
 import {
   DomainInvariantError,
   NotFoundError
@@ -235,7 +236,7 @@ function resolveFallbackItemPriceCents(itemCode: string): bigint {
     case "CYBERNETIC_SUITE":
       return 24_000n;
     default:
-      return 100n;
+      return resolveIconItemFallbackPriceCents(itemCode) ?? 100n;
   }
 }
 

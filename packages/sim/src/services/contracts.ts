@@ -4,6 +4,7 @@ import {
   Prisma,
   PrismaClient
 } from "@prisma/client";
+import { resolveIconItemFallbackPriceCents } from "@corpsim/shared";
 import {
   DomainInvariantError,
   NotFoundError,
@@ -97,30 +98,7 @@ export interface ContractLifecycleResult {
 export const DEFAULT_CONTRACT_LIFECYCLE_CONFIG: ContractLifecycleConfig = {
   contractsPerTick: 2,
   ttlTicks: 50,
-  itemCodes: [
-    "IRON_ORE",
-    "COAL",
-    "COPPER_ORE",
-    "IRON_INGOT",
-    "COPPER_INGOT",
-    "HAND_TOOLS",
-    "STEEL_INGOT",
-    "STEEL_BEAM",
-    "FASTENERS",
-    "MACHINE_PARTS",
-    "TOOL_KIT",
-    "POWER_UNIT",
-    "CONVEYOR_MODULE",
-    "SYNTHETIC_CONDUIT",
-    "BIOCELL_CANISTER",
-    "SERVO_DRIVE",
-    "OPTIC_MODULE",
-    "NEURAL_INTERFACE",
-    "SPINAL_LINK",
-    "OCULAR_IMPLANT",
-    "CYBER_ARMATURE",
-    "CYBERNETIC_SUITE"
-  ],
+  itemCodes: undefined,
   priceBandBps: 500
 };
 
@@ -188,6 +166,7 @@ export function resolveContractUnitPriceCents(input: {
   const basePrice =
     input.recentTradeAverageCents ??
     FALLBACK_PRICE_CENTS_BY_ITEM_CODE.get(input.itemCode) ??
+    resolveIconItemFallbackPriceCents(input.itemCode) ??
     100n;
 
   if (basePrice <= 0n) {

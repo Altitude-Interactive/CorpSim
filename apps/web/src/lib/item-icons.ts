@@ -31,5 +31,13 @@ export function getItemIconSrc(itemCode: string | null | undefined): string {
     return UNKNOWN_ITEM_ICON_SRC;
   }
 
-  return ITEM_ICON_BY_CODE[itemCode] ?? UNKNOWN_ITEM_ICON_SRC;
+  if (ITEM_ICON_BY_CODE[itemCode]) {
+    return ITEM_ICON_BY_CODE[itemCode];
+  }
+
+  if (/^ICON_\d{2}_\d{2}$/.test(itemCode)) {
+    return `/assets/items/${itemCode.toLowerCase()}.png`;
+  }
+
+  return UNKNOWN_ITEM_ICON_SRC;
 }

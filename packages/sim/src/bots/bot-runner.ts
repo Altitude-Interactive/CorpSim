@@ -1,4 +1,5 @@
 import { OrderSide, OrderStatus, Prisma } from "@prisma/client";
+import { resolveIconItemFallbackPriceCents } from "@corpsim/shared";
 import { DomainInvariantError } from "../domain/errors";
 import { availableCash } from "../domain/reservations";
 import { placeMarketOrderWithTx } from "../services/market-orders";
@@ -76,28 +77,7 @@ const DEFAULT_REFERENCE_PRICES = new Map<string, bigint>([
 export const DEFAULT_BOT_RUNTIME_CONFIG: BotRuntimeConfig = {
   enabled: false,
   botCount: 25,
-  itemCodes: [
-    "IRON_ORE",
-    "COAL",
-    "COPPER_ORE",
-    "IRON_INGOT",
-    "COPPER_INGOT",
-    "HAND_TOOLS",
-    "STEEL_INGOT",
-    "STEEL_BEAM",
-    "FASTENERS",
-    "MACHINE_PARTS",
-    "TOOL_KIT",
-    "SYNTHETIC_CONDUIT",
-    "BIOCELL_CANISTER",
-    "SERVO_DRIVE",
-    "OPTIC_MODULE",
-    "NEURAL_INTERFACE",
-    "SPINAL_LINK",
-    "OCULAR_IMPLANT",
-    "CYBER_ARMATURE",
-    "CYBERNETIC_SUITE"
-  ],
+  itemCodes: [],
   spreadBps: 500,
   maxNotionalPerTickCents: 50_000n,
   targetQuantityPerSide: 5,
@@ -212,7 +192,11 @@ function resolveReferencePrice(
     return bestSell;
   }
 
-  return DEFAULT_REFERENCE_PRICES.get(itemCode) ?? 100n;
+  return (
+    DEFAULT_REFERENCE_PRICES.get(itemCode) ??
+    resolveIconItemFallbackPriceCents(itemCode) ??
+    100n
+  );
 }
 
 function inferStrategy(companyCode: string): "LIQUIDITY" | "PRODUCER" {
@@ -234,7 +218,7 @@ export async function runBotsForTick(
     throw new DomainInvariantError("tick must be a non-negative integer");
   }
 
-  if (config.botCount <= 0 || config.itemCodes.length === 0) {
+  if (config.botCount <= 0) {
     return { placedOrders: 0, startedProductionJobs: 0 };
   }
 
@@ -256,7 +240,10 @@ export async function runBotsForTick(
   }
 
   const items = await tx.item.findMany({
-    where: { code: { in: config.itemCodes } },
+    where:
+      config.itemCodes.length > 0
+        ? { code: { in: config.itemCodes } }
+        : undefined,
     orderBy: { code: "asc" },
     select: { id: true, code: true }
   });

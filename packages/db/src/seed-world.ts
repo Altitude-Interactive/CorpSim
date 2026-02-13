@@ -1,3 +1,4 @@
+import { buildIconCatalogItems, ICON_PACK_DEFINITIONS, resolveIconItemKey } from "@corpsim/shared";
 import { OrderSide, PrismaClient } from "@prisma/client";
 import { placeMarketOrder } from "@corpsim/sim";
 import { resetSimulationData } from "@corpsim/sim";
@@ -11,7 +12,41 @@ export interface SeedWorldResult {
   itemIds: Record<string, string>;
 }
 
-const ITEM_DEFINITIONS = [
+interface ItemDefinition {
+  key: string;
+  code: string;
+  name: string;
+  series?: number;
+  index?: number;
+  tier?: number;
+  isFinalTier?: boolean;
+  basePriceCents?: bigint;
+}
+
+interface RecipeDefinition {
+  key: string;
+  code: string;
+  name: string;
+  durationTicks: number;
+  outputItemKey: string;
+  outputQuantity: number;
+  inputs: Array<{
+    itemKey: string;
+    quantity: number;
+  }>;
+}
+
+interface ResearchDefinition {
+  key: string;
+  code: string;
+  name: string;
+  description: string;
+  costCashCents: bigint;
+  durationTicks: number;
+  unlockRecipeKeys: string[];
+}
+
+const BASE_ITEM_DEFINITIONS: ItemDefinition[] = [
   { key: "ironOre", code: "IRON_ORE", name: "Scrap Metal" },
   { key: "coal", code: "COAL", name: "Polymer Sheet" },
   { key: "copperOre", code: "COPPER_ORE", name: "Copper Spool" },
@@ -35,11 +70,9 @@ const ITEM_DEFINITIONS = [
   { key: "cyberArmature", code: "CYBER_ARMATURE", name: "Cyber Armature" },
   { key: "spinalLink", code: "SPINAL_LINK", name: "Spinal Link" },
   { key: "cyberneticSuite", code: "CYBERNETIC_SUITE", name: "Cybernetic Suite" }
-] as const;
+];
 
-type ItemKey = (typeof ITEM_DEFINITIONS)[number]["key"];
-
-const RECIPE_DEFINITIONS = [
+const BASE_RECIPE_DEFINITIONS: RecipeDefinition[] = [
   {
     key: "smeltIron",
     code: "SMELT_IRON",
@@ -290,11 +323,9 @@ const RECIPE_DEFINITIONS = [
       { itemKey: "powerUnit", quantity: 1 }
     ]
   }
-] as const;
+];
 
-type RecipeKey = (typeof RECIPE_DEFINITIONS)[number]["key"];
-
-const RESEARCH_DEFINITIONS = [
+const RESEARCH_DEFINITIONS: ResearchDefinition[] = [
   {
     key: "basics",
     code: "BASICS",
@@ -387,21 +418,11 @@ const RESEARCH_DEFINITIONS = [
       "buildCyberneticSuite"
     ]
   }
-] as const satisfies ReadonlyArray<{
-  key: string;
-  code: string;
-  name: string;
-  description: string;
-  costCashCents: bigint;
-  durationTicks: number;
-  unlockRecipeKeys: readonly RecipeKey[];
-}>;
+];
 
-type ResearchKey = (typeof RESEARCH_DEFINITIONS)[number]["key"];
-
-const RESEARCH_PREREQUISITES: ReadonlyArray<{
-  nodeKey: ResearchKey;
-  prerequisiteKey: ResearchKey;
+const RESEARCH_PREREQUISITES: Array<{
+  nodeKey: string;
+  prerequisiteKey: string;
 }> = [
   { nodeKey: "metalworking", prerequisiteKey: "basics" },
   { nodeKey: "steelProcessing", prerequisiteKey: "basics" },
@@ -416,6 +437,101 @@ const RESEARCH_PREREQUISITES: ReadonlyArray<{
   { nodeKey: "heavyIndustry", prerequisiteKey: "automationLines" }
 ];
 
+const ICON_ITEM_DEFINITIONS: ItemDefinition[] = buildIconCatalogItems().map((item) => ({
+  key: item.key,
+  code: item.code,
+  name: item.name,
+  series: item.series,
+  index: item.index,
+  tier: item.tier,
+  isFinalTier: item.isFinalTier,
+  basePriceCents: item.basePriceCents
+}));
+
+function buildIconRecipeDefinitions(iconItems: ItemDefinition[]): RecipeDefinition[] {
+  const bySeries = new Map<number, ItemDefinition[]>();
+  for (const item of iconItems) {
+    if (item.series === undefined) {
+      continue;
+    }
+    const bucket = bySeries.get(item.series) ?? [];
+    bucket.push(item);
+    bySeries.set(item.series, bucket);
+  }
+
+  const recipes: RecipeDefinition[] = [];
+
+  for (const seriesItems of bySeries.values()) {
+    const ordered = [...seriesItems].sort((left, right) => (left.index ?? 0) - (right.index ?? 0));
+    const tierSpan = Math.ceil(ordered.length / 4);
+
+    for (let idx = 0; idx < ordered.length; idx += 1) {
+      const item = ordered[idx];
+      const tier = item.tier ?? 1;
+      const previous = ordered[idx - 1];
+      const tierAnchor = idx - tierSpan >= 0 ? ordered[idx - tierSpan] : undefined;
+      const fallbackAnchor = tierAnchor ?? previous;
+
+      const inputs: Array<{ itemKey: string; quantity: number }> = [];
+
+      if (tier === 1) {
+        inputs.push({ itemKey: "ironOre", quantity: 1 + ((item.index ?? 1) % 2) });
+        inputs.push({
+          itemKey: (item.index ?? 1) % 3 === 0 ? "copperOre" : "coal",
+          quantity: 1
+        });
+      } else if (tier === 2 && previous) {
+        inputs.push({ itemKey: previous.key, quantity: 1 });
+        inputs.push({
+          itemKey: (item.index ?? 1) % 2 === 0 ? "steelIngot" : "copperIngot",
+          quantity: 1
+        });
+        inputs.push({ itemKey: "fasteners", quantity: 2 });
+      } else if (tier === 3 && previous) {
+        inputs.push({ itemKey: previous.key, quantity: 1 });
+        inputs.push({ itemKey: (fallbackAnchor ?? previous).key, quantity: 1 });
+        inputs.push({ itemKey: "machineParts", quantity: 1 });
+      } else if (tier === 4 && previous) {
+        inputs.push({ itemKey: previous.key, quantity: 1 });
+        inputs.push({ itemKey: (fallbackAnchor ?? previous).key, quantity: 1 });
+        inputs.push({ itemKey: "powerUnit", quantity: 1 });
+        inputs.push({ itemKey: "syntheticConduit", quantity: 1 });
+      }
+
+      recipes.push({
+        key: `fabricate_${item.key}`,
+        code: `FABRICATE_${item.code}`,
+        name: `Fabricate ${item.name}`,
+        durationTicks: 2 + tier,
+        outputItemKey: item.key,
+        outputQuantity: tier === 1 ? 2 : 1,
+        inputs
+      });
+    }
+  }
+
+  return recipes.sort((left, right) => left.code.localeCompare(right.code));
+}
+
+const ICON_RECIPE_DEFINITIONS = buildIconRecipeDefinitions(ICON_ITEM_DEFINITIONS);
+const ITEM_DEFINITIONS: ItemDefinition[] = [...BASE_ITEM_DEFINITIONS, ...ICON_ITEM_DEFINITIONS];
+const RECIPE_DEFINITIONS: RecipeDefinition[] = [...BASE_RECIPE_DEFINITIONS, ...ICON_RECIPE_DEFINITIONS];
+
+const ICON_ITEM_BY_KEY = new Map(ICON_ITEM_DEFINITIONS.map((item) => [item.key, item] as const));
+const ICON_TIER_ONE_ITEM_KEYS = ICON_ITEM_DEFINITIONS.filter((item) => item.tier === 1).map((item) => item.key);
+const ICON_TIER_TWO_ITEM_KEYS = ICON_ITEM_DEFINITIONS.filter((item) => item.tier === 2).map((item) => item.key);
+const ICON_FINAL_PRODUCT_KEYS = ICON_PACK_DEFINITIONS.map((pack) =>
+  resolveIconItemKey(pack.series, pack.count)
+);
+
+function resolveIconPrice(itemKey: string): bigint {
+  return ICON_ITEM_BY_KEY.get(itemKey)?.basePriceCents ?? 100n;
+}
+
+function isRecipeAutoUnlocked(recipeCode: string): boolean {
+  return recipeCode === "SMELT_IRON" || recipeCode === "SMELT_COPPER" || recipeCode.startsWith("FABRICATE_ICON_");
+}
+
 export async function seedWorld(
   prisma: PrismaClient,
   options: SeedWorldOptions = {}
@@ -424,14 +540,7 @@ export async function seedWorld(
     await resetSimulationData(prisma);
   }
 
-  const itemsByKey = {} as Record<
-    ItemKey,
-    {
-      id: string;
-      code: string;
-      name: string;
-    }
-  >;
+  const itemsByKey: Record<string, { id: string; code: string; name: string }> = {};
   for (const definition of ITEM_DEFINITIONS) {
     const item = await prisma.item.create({
       data: {
@@ -496,7 +605,7 @@ export async function seedWorld(
       name: "Atlas Mining Co",
       isPlayer: false,
       regionId: coreRegion.id,
-      cashCents: 1_000_000n,
+      cashCents: 2_500_000n,
       reservedCashCents: 0n
     }
   });
@@ -507,7 +616,7 @@ export async function seedWorld(
       name: "Northwind Smelting",
       isPlayer: false,
       regionId: coreRegion.id,
-      cashCents: 1_000_000n,
+      cashCents: 2_500_000n,
       reservedCashCents: 0n
     }
   });
@@ -518,14 +627,14 @@ export async function seedWorld(
       name: "Summit Trading",
       isPlayer: false,
       regionId: coreRegion.id,
-      cashCents: 1_000_000n,
+      cashCents: 2_500_000n,
       reservedCashCents: 0n
     }
   });
 
   const inventoryRows: Array<{
     companyId: string;
-    itemKey: ItemKey;
+    itemKey: string;
     quantity: number;
     reservedQuantity?: number;
   }> = [
@@ -534,24 +643,6 @@ export async function seedWorld(
     { companyId: playerCompany.id, itemKey: "copperOre", quantity: 180 },
     { companyId: playerCompany.id, itemKey: "ironIngot", quantity: 12 },
     { companyId: playerCompany.id, itemKey: "copperIngot", quantity: 6 },
-    { companyId: playerCompany.id, itemKey: "handTools", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "steelIngot", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "steelBeam", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "fasteners", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "machineParts", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "toolKit", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "powerUnit", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "conveyorModule", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "industrialPress", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "syntheticConduit", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "biocellCanister", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "servoDrive", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "opticModule", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "neuralInterface", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "ocularImplant", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "cyberArmature", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "spinalLink", quantity: 0 },
-    { companyId: playerCompany.id, itemKey: "cyberneticSuite", quantity: 0 },
 
     { companyId: botMiner.id, itemKey: "ironOre", quantity: 700 },
     { companyId: botMiner.id, itemKey: "coal", quantity: 650 },
@@ -580,6 +671,30 @@ export async function seedWorld(
     { companyId: botTrader.id, itemKey: "cyberneticSuite", quantity: 3 }
   ];
 
+  for (const itemKey of ICON_TIER_ONE_ITEM_KEYS) {
+    inventoryRows.push({
+      companyId: botSmelter.id,
+      itemKey,
+      quantity: 80
+    });
+  }
+
+  for (const itemKey of ICON_TIER_TWO_ITEM_KEYS) {
+    inventoryRows.push({
+      companyId: botTrader.id,
+      itemKey,
+      quantity: 20
+    });
+  }
+
+  for (const itemKey of ICON_FINAL_PRODUCT_KEYS) {
+    inventoryRows.push({
+      companyId: botTrader.id,
+      itemKey,
+      quantity: 3
+    });
+  }
+
   await prisma.inventory.createMany({
     data: inventoryRows.map((row) => ({
       companyId: row.companyId,
@@ -590,13 +705,7 @@ export async function seedWorld(
     }))
   });
 
-  const recipesByKey = {} as Record<
-    RecipeKey,
-    {
-      id: string;
-      code: string;
-    }
-  >;
+  const recipesByKey: Record<string, { id: string; code: string }> = {};
   for (const definition of RECIPE_DEFINITIONS) {
     const recipe = await prisma.recipe.create({
       data: {
@@ -617,7 +726,6 @@ export async function seedWorld(
   }
 
   const companies = [playerCompany, botMiner, botSmelter, botTrader];
-  const starterRecipeCodes = new Set(["SMELT_IRON", "SMELT_COPPER"]);
   const allRecipes = Object.values(recipesByKey);
 
   for (const company of companies) {
@@ -625,18 +733,12 @@ export async function seedWorld(
       data: allRecipes.map((recipe) => ({
         companyId: company.id,
         recipeId: recipe.id,
-        isUnlocked: starterRecipeCodes.has(recipe.code)
+        isUnlocked: isRecipeAutoUnlocked(recipe.code)
       }))
     });
   }
 
-  const researchNodesByKey = {} as Record<
-    ResearchKey,
-    {
-      id: string;
-      code: string;
-    }
-  >;
+  const researchNodesByKey: Record<string, { id: string; code: string }> = {};
   for (const definition of RESEARCH_DEFINITIONS) {
     const node = await prisma.researchNode.create({
       data: {
@@ -674,7 +776,7 @@ export async function seedWorld(
 
   const marketSeedOrders: Array<{
     companyId: string;
-    itemKey: ItemKey;
+    itemKey: string;
     side: OrderSide;
     quantity: number;
     unitPriceCents: bigint;
@@ -835,6 +937,37 @@ export async function seedWorld(
     }
   ];
 
+  for (const itemKey of ICON_TIER_ONE_ITEM_KEYS) {
+    marketSeedOrders.push({
+      companyId: botSmelter.id,
+      itemKey,
+      side: OrderSide.SELL,
+      quantity: 35,
+      unitPriceCents: resolveIconPrice(itemKey)
+    });
+  }
+
+  for (const itemKey of ICON_TIER_TWO_ITEM_KEYS) {
+    marketSeedOrders.push({
+      companyId: botTrader.id,
+      itemKey,
+      side: OrderSide.SELL,
+      quantity: 12,
+      unitPriceCents: resolveIconPrice(itemKey)
+    });
+  }
+
+  for (const itemKey of ICON_FINAL_PRODUCT_KEYS) {
+    const basePrice = resolveIconPrice(itemKey);
+    marketSeedOrders.push({
+      companyId: botTrader.id,
+      itemKey,
+      side: OrderSide.BUY,
+      quantity: 3,
+      unitPriceCents: (basePrice * 95n) / 100n
+    });
+  }
+
   for (const order of marketSeedOrders) {
     await placeMarketOrder(prisma, {
       companyId: order.companyId,
@@ -873,4 +1006,3 @@ export async function seedWorld(
     )
   };
 }
-
