@@ -29,8 +29,6 @@ import { formatCodeLabel } from "@/lib/ui-copy";
 interface ItemUsageSummary {
   inputRecipeCount: number;
   outputRecipeCount: number;
-  inputRecipeNames: string[];
-  outputRecipeNames: string[];
 }
 
 interface CatalogSnapshot {
@@ -56,6 +54,8 @@ interface ItemIconMeta {
 }
 
 const ITEM_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+const RECIPE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+const RESEARCH_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 function mapStatusVariant(
   status: ResearchNode["status"]
@@ -119,6 +119,17 @@ export function DevCatalogPage() {
   const [itemPageSize, setItemPageSize] =
     useState<(typeof ITEM_PAGE_SIZE_OPTIONS)[number]>(20);
   const [itemPage, setItemPage] = useState(1);
+  const [recipeSearch, setRecipeSearch] = useState("");
+  const [recipePageSize, setRecipePageSize] =
+    useState<(typeof RECIPE_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [recipePage, setRecipePage] = useState(1);
+  const [researchSearch, setResearchSearch] = useState("");
+  const [researchStatusFilter, setResearchStatusFilter] =
+    useState<"ALL" | ResearchNode["status"]>("ALL");
+  const [researchPageSize, setResearchPageSize] =
+    useState<(typeof RESEARCH_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [researchPage, setResearchPage] = useState(1);
+  const [isConsistencyCheckEnabled, setIsConsistencyCheckEnabled] = useState(false);
 
   const loadSnapshot = useCallback(async () => {
     setIsLoading(true);
@@ -164,9 +175,7 @@ export function DevCatalogPage() {
     for (const item of snapshot.items) {
       usage.set(item.id, {
         inputRecipeCount: 0,
-        outputRecipeCount: 0,
-        inputRecipeNames: [],
-        outputRecipeNames: []
+        outputRecipeCount: 0
       });
     }
 
@@ -174,7 +183,6 @@ export function DevCatalogPage() {
       const output = usage.get(recipe.outputItem.id);
       if (output) {
         output.outputRecipeCount += 1;
-        output.outputRecipeNames.push(recipe.name);
       }
 
       for (const input of recipe.inputs) {
@@ -183,7 +191,6 @@ export function DevCatalogPage() {
           continue;
         }
         row.inputRecipeCount += 1;
-        row.inputRecipeNames.push(recipe.name);
       }
     }
 
@@ -235,7 +242,6 @@ export function DevCatalogPage() {
     const needle = itemSearch.trim().toLowerCase();
 
     return snapshot.items.filter((item) => {
-      const usage = itemUsageById.get(item.id);
       const meta = itemMetaById.get(item.id) ?? { source: "BASE", series: null, tier: null };
 
       if (needle.length > 0) {
@@ -256,9 +262,9 @@ export function DevCatalogPage() {
         }
       }
 
-      return Boolean(usage);
+      return true;
     });
-  }, [itemMetaById, itemSearch, itemSourceFilter, itemTierFilter, itemUsageById, snapshot]);
+  }, [itemMetaById, itemSearch, itemSourceFilter, itemTierFilter, snapshot]);
 
   useEffect(() => {
     setItemPage(1);
@@ -289,8 +295,107 @@ export function DevCatalogPage() {
     return `${start}-${end}`;
   }, [filteredItems.length, itemPage, itemPageSize]);
 
-  const consistencyIssues = useMemo(() => {
+  const filteredRecipes = useMemo(() => {
     if (!snapshot) {
+      return [] as ProductionRecipe[];
+    }
+
+    const needle = recipeSearch.trim().toLowerCase();
+    if (!needle) {
+      return snapshot.recipes;
+    }
+
+    return snapshot.recipes.filter((recipe) => {
+      const inputNames = recipe.inputs.map((input) => input.item.name).join(" ");
+      const haystack =
+        `${recipe.code} ${recipe.name} ${recipe.outputItem.code} ${recipe.outputItem.name} ${inputNames}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [recipeSearch, snapshot]);
+
+  useEffect(() => {
+    setRecipePage(1);
+  }, [recipeSearch, recipePageSize]);
+
+  const totalRecipePages = useMemo(
+    () => Math.max(1, Math.ceil(filteredRecipes.length / recipePageSize)),
+    [filteredRecipes.length, recipePageSize]
+  );
+
+  useEffect(() => {
+    if (recipePage > totalRecipePages) {
+      setRecipePage(totalRecipePages);
+    }
+  }, [recipePage, totalRecipePages]);
+
+  const pagedRecipes = useMemo(() => {
+    const start = (recipePage - 1) * recipePageSize;
+    return filteredRecipes.slice(start, start + recipePageSize);
+  }, [filteredRecipes, recipePage, recipePageSize]);
+
+  const recipeRangeLabel = useMemo(() => {
+    if (filteredRecipes.length === 0) {
+      return "0-0";
+    }
+
+    const start = (recipePage - 1) * recipePageSize + 1;
+    const end = Math.min(recipePage * recipePageSize, filteredRecipes.length);
+    return `${start}-${end}`;
+  }, [filteredRecipes.length, recipePage, recipePageSize]);
+
+  const filteredResearchNodes = useMemo(() => {
+    if (!snapshot) {
+      return [] as ResearchNode[];
+    }
+
+    const needle = researchSearch.trim().toLowerCase();
+
+    return snapshot.researchNodes.filter((node) => {
+      if (researchStatusFilter !== "ALL" && node.status !== researchStatusFilter) {
+        return false;
+      }
+
+      if (!needle) {
+        return true;
+      }
+
+      const haystack = `${node.code} ${node.name} ${node.description}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [researchSearch, researchStatusFilter, snapshot]);
+
+  useEffect(() => {
+    setResearchPage(1);
+  }, [researchSearch, researchStatusFilter, researchPageSize]);
+
+  const totalResearchPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredResearchNodes.length / researchPageSize)),
+    [filteredResearchNodes.length, researchPageSize]
+  );
+
+  useEffect(() => {
+    if (researchPage > totalResearchPages) {
+      setResearchPage(totalResearchPages);
+    }
+  }, [researchPage, totalResearchPages]);
+
+  const pagedResearchNodes = useMemo(() => {
+    const start = (researchPage - 1) * researchPageSize;
+    return filteredResearchNodes.slice(start, start + researchPageSize);
+  }, [filteredResearchNodes, researchPage, researchPageSize]);
+
+  const researchRangeLabel = useMemo(() => {
+    if (filteredResearchNodes.length === 0) {
+      return "0-0";
+    }
+
+    const start = (researchPage - 1) * researchPageSize + 1;
+    const end = Math.min(researchPage * researchPageSize, filteredResearchNodes.length);
+    return `${start}-${end}`;
+  }, [filteredResearchNodes.length, researchPage, researchPageSize]);
+
+  const consistencyIssues = useMemo(() => {
+    if (!snapshot || !isConsistencyCheckEnabled) {
       return [] as CatalogConsistencyIssue[];
     }
 
@@ -364,7 +469,7 @@ export function DevCatalogPage() {
     }
 
     return issues;
-  }, [snapshot]);
+  }, [isConsistencyCheckEnabled, snapshot]);
 
   if (!snapshot) {
     return (
@@ -637,7 +742,62 @@ export function DevCatalogPage() {
         <CardHeader>
           <CardTitle>Recipes</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="space-y-3 pt-0">
+          <div className="flex flex-wrap items-end gap-2">
+            <Input
+              value={recipeSearch}
+              onChange={(event) => setRecipeSearch(event.target.value)}
+              placeholder="Search recipes by code, name, output, or inputs"
+              className="w-full md:w-96"
+            />
+            <Select
+              value={String(recipePageSize)}
+              onValueChange={(value) =>
+                setRecipePageSize(
+                  Number.parseInt(value, 10) as (typeof RECIPE_PAGE_SIZE_OPTIONS)[number]
+                )
+              }
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                {RECIPE_PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / page
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              Showing {recipeRangeLabel} of {filteredRecipes.length} filtered recipes ({snapshot.recipes.length} total)
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRecipePage((page) => Math.max(1, page - 1))}
+                disabled={recipePage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="tabular-nums">
+                Page {recipePage} / {totalRecipePages}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRecipePage((page) => Math.min(totalRecipePages, page + 1))}
+                disabled={recipePage >= totalRecipePages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -648,7 +808,7 @@ export function DevCatalogPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {snapshot.recipes.map((recipe) => (
+              {pagedRecipes.map((recipe) => (
                 <TableRow key={recipe.id}>
                   <TableCell>
                     <div className="space-y-1">
@@ -675,10 +835,10 @@ export function DevCatalogPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {snapshot.recipes.length === 0 ? (
+              {pagedRecipes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No recipes found.
+                    No recipes found for current filters.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -691,7 +851,79 @@ export function DevCatalogPage() {
         <CardHeader>
           <CardTitle>Research</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="space-y-3 pt-0">
+          <div className="flex flex-wrap items-end gap-2">
+            <Input
+              value={researchSearch}
+              onChange={(event) => setResearchSearch(event.target.value)}
+              placeholder="Search research nodes by code, name, or description"
+              className="w-full md:w-96"
+            />
+            <Select
+              value={researchStatusFilter}
+              onValueChange={(value) =>
+                setResearchStatusFilter(value as "ALL" | ResearchNode["status"])
+              }
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="LOCKED">Locked</SelectItem>
+                <SelectItem value="AVAILABLE">Available</SelectItem>
+                <SelectItem value="RESEARCHING">Researching</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={String(researchPageSize)}
+              onValueChange={(value) =>
+                setResearchPageSize(
+                  Number.parseInt(value, 10) as (typeof RESEARCH_PAGE_SIZE_OPTIONS)[number]
+                )
+              }
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                {RESEARCH_PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / page
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              Showing {researchRangeLabel} of {filteredResearchNodes.length} filtered nodes ({snapshot.researchNodes.length} total)
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setResearchPage((page) => Math.max(1, page - 1))}
+                disabled={researchPage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="tabular-nums">
+                Page {researchPage} / {totalResearchPages}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setResearchPage((page) => Math.min(totalResearchPages, page + 1))}
+                disabled={researchPage >= totalResearchPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -704,7 +936,7 @@ export function DevCatalogPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {snapshot.researchNodes.map((node) => (
+              {pagedResearchNodes.map((node) => (
                 <TableRow key={node.id}>
                   <TableCell>
                     <div className="space-y-1">
@@ -729,10 +961,10 @@ export function DevCatalogPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {snapshot.researchNodes.length === 0 ? (
+              {pagedResearchNodes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No research nodes found.
+                    No research nodes found for current filters.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -746,14 +978,55 @@ export function DevCatalogPage() {
           <CardTitle>Consistency Checks</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {consistencyIssues.length === 0 ? (
-            <p className="text-sm text-emerald-300">No structural issues found in current snapshot.</p>
-          ) : (
-            consistencyIssues.map((issue) => (
-              <p key={issue.id} className="text-sm text-yellow-300">
-                {issue.message}
+          {!isConsistencyCheckEnabled ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Consistency checks are disabled by default to keep this page responsive on large catalogs.
               </p>
-            ))
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsConsistencyCheckEnabled(true)}
+              >
+                Run Consistency Checks
+              </Button>
+            </div>
+          ) : consistencyIssues.length === 0 ? (
+            <div className="space-y-2">
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsConsistencyCheckEnabled(false)}
+                >
+                  Disable Checks
+                </Button>
+              </div>
+              <p className="text-sm text-emerald-300">No structural issues found in current snapshot.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsConsistencyCheckEnabled(false)}
+                >
+                  Disable Checks
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Showing {consistencyIssues.length} issue(s)
+                </p>
+              </div>
+              {consistencyIssues.map((issue) => (
+                <p key={issue.id} className="text-sm text-yellow-300">
+                  {issue.message}
+                </p>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
