@@ -177,6 +177,35 @@ jobs:
             NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250
             NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15
 
+      - name: Smoke check release image endpoints
+        if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
+        env:
+          APP_IMAGE_REPO: ${{ steps.image.outputs.repo }}
+          APP_IMAGE_TAG: ${{ steps.version.outputs.version }}
+          COMPOSE_NETWORK_NAME: corpsim-release-smoke-${{ github.run_id }}
+        run: |
+          docker compose -f docker-compose.preview.yml down -v --remove-orphans || true
+          docker compose -f docker-compose.preview.yml up -d frontend
+
+          for i in $(seq 1 90); do
+            if curl -fsS "http://127.0.0.1:4311/meta/version" >/tmp/meta-version.json; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl -fsS "http://127.0.0.1:4311/meta/version" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);if(typeof j.version!=='string'||j.version.trim().length===0){process.exit(1)}})"
+          curl -fsS "http://127.0.0.1:4311/health/maintenance" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);if(typeof j.enabled!=='boolean'){process.exit(1)}})"
+          curl -fsS "http://127.0.0.1:4311/v1/world/health" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);if(typeof j.currentTick!=='number'){process.exit(1)}})"
+
+      - name: Cleanup smoke test stack
+        if: always() && steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
+        env:
+          APP_IMAGE_REPO: ${{ steps.image.outputs.repo }}
+          APP_IMAGE_TAG: ${{ steps.version.outputs.version }}
+          COMPOSE_NETWORK_NAME: corpsim-release-smoke-${{ github.run_id }}
+        run: docker compose -f docker-compose.preview.yml down -v --remove-orphans
+
       - name: Create annotated tag
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
         env:
