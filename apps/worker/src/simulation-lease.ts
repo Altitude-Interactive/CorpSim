@@ -22,10 +22,6 @@ function validateLeaseInput(input: SimulationLeaseInput): void {
   }
 }
 
-function isUniqueConstraintError(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
-}
-
 export async function acquireSimulationLease(
   prisma: PrismaClient,
   input: SimulationLeaseInput,
@@ -56,21 +52,18 @@ export async function acquireSimulationLease(
     return true;
   }
 
-  try {
-    await prisma.simulationLease.create({
-      data: {
+  const created = await prisma.simulationLease.createMany({
+    data: [
+      {
         name: leaseName,
         ownerId,
         expiresAt
       }
-    });
-    return true;
-  } catch (error: unknown) {
-    if (isUniqueConstraintError(error)) {
-      return false;
-    }
-    throw error;
-  }
+    ],
+    skipDuplicates: true
+  });
+
+  return created.count === 1;
 }
 
 export async function releaseSimulationLease(
