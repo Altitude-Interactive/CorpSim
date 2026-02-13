@@ -47,3 +47,10 @@ All notable changes to CorpSim are documented in this file.
 - [worker] Make prisma generate resilient to Windows engine lock errors and skip unchanged schema generation
 - [worker] Add deterministic worker preflight, tick execution retention cleanup, control reset ops path, and CI worker integration gate
 - [web] Keep market filter controls single-line and responsive to prevent wrapped labels.
+
+## 0.3.1 - 2026-02-13
+
+### Patch
+- [ci] Fix verify workflow worker integration test command to use pnpm --dir with exec.
+- [web] Force patched glob versions to mitigate CVE-2025-64756 in transitive tooling.
+- [web] Upgrade Next.js to a patched version for CVE-2026-23864 deserialization DoS.
