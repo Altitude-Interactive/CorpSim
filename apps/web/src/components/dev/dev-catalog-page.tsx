@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ICON_PACK_DEFINITIONS } from "@corpsim/shared";
 import { ItemLabel } from "@/components/items/item-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   CompanySummary,
@@ -45,6 +48,14 @@ interface CatalogConsistencyIssue {
   id: string;
   message: string;
 }
+
+interface ItemIconMeta {
+  source: "BASE" | "ICON";
+  series: number | null;
+  tier: number | null;
+}
+
+const ITEM_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 function mapStatusVariant(
   status: ResearchNode["status"]
@@ -102,6 +113,12 @@ export function DevCatalogPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [researchError, setResearchError] = useState<string | null>(null);
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemSourceFilter, setItemSourceFilter] = useState<"ALL" | "BASE" | "ICON">("ALL");
+  const [itemTierFilter, setItemTierFilter] = useState<"ALL" | "1" | "2" | "3" | "4">("ALL");
+  const [itemPageSize, setItemPageSize] =
+    useState<(typeof ITEM_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [itemPage, setItemPage] = useState(1);
 
   const loadSnapshot = useCallback(async () => {
     setIsLoading(true);
@@ -172,6 +189,105 @@ export function DevCatalogPage() {
 
     return usage;
   }, [snapshot]);
+
+  const iconPackCountBySeries = useMemo(
+    () =>
+      new Map<number, number>(
+        ICON_PACK_DEFINITIONS.map((definition) => [definition.series, definition.count] as const)
+      ),
+    []
+  );
+
+  const itemMetaById = useMemo(() => {
+    const rows = new Map<string, ItemIconMeta>();
+    if (!snapshot) {
+      return rows;
+    }
+
+    for (const item of snapshot.items) {
+      const parsed = /^ICON_(\d{2})_(\d{2})$/.exec(item.code);
+      if (!parsed) {
+        rows.set(item.id, { source: "BASE", series: null, tier: null });
+        continue;
+      }
+
+      const series = Number.parseInt(parsed[1], 10);
+      const index = Number.parseInt(parsed[2], 10);
+      const count = iconPackCountBySeries.get(series) ?? 40;
+      const tierSize = Math.max(1, Math.ceil(count / 4));
+      const tier = Math.max(1, Math.min(4, Math.floor((index - 1) / tierSize) + 1));
+
+      rows.set(item.id, {
+        source: "ICON",
+        series,
+        tier
+      });
+    }
+
+    return rows;
+  }, [iconPackCountBySeries, snapshot]);
+
+  const filteredItems = useMemo(() => {
+    if (!snapshot) {
+      return [] as ItemCatalogItem[];
+    }
+
+    const needle = itemSearch.trim().toLowerCase();
+
+    return snapshot.items.filter((item) => {
+      const usage = itemUsageById.get(item.id);
+      const meta = itemMetaById.get(item.id) ?? { source: "BASE", series: null, tier: null };
+
+      if (needle.length > 0) {
+        const haystack = `${item.code} ${item.name}`.toLowerCase();
+        if (!haystack.includes(needle)) {
+          return false;
+        }
+      }
+
+      if (itemSourceFilter !== "ALL" && meta.source !== itemSourceFilter) {
+        return false;
+      }
+
+      if (itemTierFilter !== "ALL") {
+        const desiredTier = Number.parseInt(itemTierFilter, 10);
+        if (meta.tier !== desiredTier) {
+          return false;
+        }
+      }
+
+      return Boolean(usage);
+    });
+  }, [itemMetaById, itemSearch, itemSourceFilter, itemTierFilter, itemUsageById, snapshot]);
+
+  useEffect(() => {
+    setItemPage(1);
+  }, [itemSearch, itemSourceFilter, itemTierFilter, itemPageSize]);
+
+  const totalItemPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredItems.length / itemPageSize));
+  }, [filteredItems.length, itemPageSize]);
+
+  useEffect(() => {
+    if (itemPage > totalItemPages) {
+      setItemPage(totalItemPages);
+    }
+  }, [itemPage, totalItemPages]);
+
+  const pagedItems = useMemo(() => {
+    const start = (itemPage - 1) * itemPageSize;
+    return filteredItems.slice(start, start + itemPageSize);
+  }, [filteredItems, itemPage, itemPageSize]);
+
+  const itemRangeLabel = useMemo(() => {
+    if (filteredItems.length === 0) {
+      return "0-0";
+    }
+
+    const start = (itemPage - 1) * itemPageSize + 1;
+    const end = Math.min(itemPage * itemPageSize, filteredItems.length);
+    return `${start}-${end}`;
+  }, [filteredItems.length, itemPage, itemPageSize]);
 
   const consistencyIssues = useMemo(() => {
     if (!snapshot) {
@@ -400,7 +516,88 @@ export function DevCatalogPage() {
         <CardHeader>
           <CardTitle>Items</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="space-y-3 pt-0">
+          <div className="flex flex-wrap items-end gap-2">
+            <Input
+              value={itemSearch}
+              onChange={(event) => setItemSearch(event.target.value)}
+              placeholder="Search items by code or name"
+              className="w-full md:w-80"
+            />
+            <Select
+              value={itemSourceFilter}
+              onValueChange={(value) => setItemSourceFilter(value as "ALL" | "BASE" | "ICON")}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Sources</SelectItem>
+                <SelectItem value="BASE">Base Items</SelectItem>
+                <SelectItem value="ICON">Icon Items</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={itemTierFilter}
+              onValueChange={(value) => setItemTierFilter(value as "ALL" | "1" | "2" | "3" | "4")}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Tier" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Tiers</SelectItem>
+                <SelectItem value="1">Tier 1</SelectItem>
+                <SelectItem value="2">Tier 2</SelectItem>
+                <SelectItem value="3">Tier 3</SelectItem>
+                <SelectItem value="4">Tier 4</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={String(itemPageSize)}
+              onValueChange={(value) =>
+                setItemPageSize(Number.parseInt(value, 10) as (typeof ITEM_PAGE_SIZE_OPTIONS)[number])
+              }
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                {ITEM_PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / page
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              Showing {itemRangeLabel} of {filteredItems.length} filtered items ({snapshot.items.length} total)
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setItemPage((page) => Math.max(1, page - 1))}
+                disabled={itemPage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="tabular-nums">
+                Page {itemPage} / {totalItemPages}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setItemPage((page) => Math.min(totalItemPages, page + 1))}
+                disabled={itemPage >= totalItemPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -411,7 +608,7 @@ export function DevCatalogPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {snapshot.items.map((item) => {
+              {pagedItems.map((item) => {
                 const usage = itemUsageById.get(item.id);
                 return (
                   <TableRow key={item.id}>
@@ -424,10 +621,10 @@ export function DevCatalogPage() {
                   </TableRow>
                 );
               })}
-              {snapshot.items.length === 0 ? (
+              {pagedItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No items found.
+                    No items found for current filters.
                   </TableCell>
                 </TableRow>
               ) : null}
