@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { ItemLabel } from "@/components/items/item-label";
 import { CompanySummary, ItemCatalogItem, PlaceMarketOrderInput } from "@/lib/api";
 import { parseCurrencyToCents } from "@/lib/format";
 import { formatCodeLabel, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
@@ -125,7 +126,7 @@ export function OrderPlacementCard({
               <SelectContent>
                 {items.map((item) => (
                   <SelectItem value={item.id} key={item.id}>
-                    {item.name}
+                    <ItemLabel itemCode={item.code} itemName={item.name} />
                   </SelectItem>
                 ))}
               </SelectContent>

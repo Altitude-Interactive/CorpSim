@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
+import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -153,7 +154,7 @@ export function AnalyticsPage() {
             <SelectContent>
               {items.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
-                  {item.name}
+                  <ItemLabel itemCode={item.code} itemName={item.name} />
                 </SelectItem>
               ))}
             </SelectContent>
@@ -184,7 +185,11 @@ export function AnalyticsPage() {
             </SelectContent>
           </Select>
           <p className="self-center text-sm text-muted-foreground">
-            {selectedItem ? selectedItem.name : "No item selected"}
+            {selectedItem ? (
+              <ItemLabel itemCode={selectedItem.code} itemName={selectedItem.name} />
+            ) : (
+              "No item selected"
+            )}
           </p>
           {error ? <p className="text-sm text-red-300 lg:col-span-4">{error}</p> : null}
         </CardContent>

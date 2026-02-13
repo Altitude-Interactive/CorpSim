@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
+import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -165,7 +166,9 @@ export function InventoryPage() {
                 const available = row.quantity - row.reservedQuantity;
                 return (
                   <TableRow key={row.itemId}>
-                    <TableCell>{row.itemName}</TableCell>
+                    <TableCell>
+                      <ItemLabel itemCode={row.itemCode} itemName={row.itemName} />
+                    </TableCell>
                     <TableCell className="tabular-nums">{row.quantity}</TableCell>
                     {showReserved ? (
                       <TableCell className="tabular-nums">{row.reservedQuantity}</TableCell>

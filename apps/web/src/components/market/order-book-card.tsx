@@ -3,6 +3,7 @@ import { formatCents } from "@/lib/format";
 import { UI_COPY } from "@/lib/ui-copy";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemLabel } from "@/components/items/item-label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SideBadge, StatusBadge } from "./market-badges";
 
@@ -10,7 +11,7 @@ interface OrderBookCardProps {
   orders: MarketOrder[];
   isLoading: boolean;
   regionNameById: Record<string, string>;
-  itemNameById: Record<string, string>;
+  itemMetaById: Record<string, { code: string; name: string }>;
   companyNameById: Record<string, string>;
 }
 
@@ -18,7 +19,7 @@ export function OrderBookCard({
   orders,
   isLoading,
   regionNameById,
-  itemNameById,
+  itemMetaById,
   companyNameById
 }: OrderBookCardProps) {
   return (
@@ -46,7 +47,10 @@ export function OrderBookCard({
               <TableRow key={order.id}>
                 <TableCell className="tabular-nums">{order.tickPlaced.toLocaleString()}</TableCell>
                 <TableCell className="text-xs">
-                  {itemNameById[order.itemId] ?? UI_COPY.common.unknownItem}
+                  <ItemLabel
+                    itemCode={itemMetaById[order.itemId]?.code}
+                    itemName={itemMetaById[order.itemId]?.name ?? UI_COPY.common.unknownItem}
+                  />
                 </TableCell>
                 <TableCell className="text-xs">
                   {regionNameById[order.regionId] ?? UI_COPY.common.unknownRegion}

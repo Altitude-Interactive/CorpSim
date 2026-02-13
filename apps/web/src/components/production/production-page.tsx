@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
+import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -261,13 +262,20 @@ export function ProductionPage() {
                     Duration: {formatCadenceCount(selectedRecipe.durationTicks)} / run
                   </p>
                   <p>
-                    Output: {selectedRecipe.outputQuantity} {selectedRecipe.outputItem.name}
+                    Output: {selectedRecipe.outputQuantity}{" "}
+                    <ItemLabel
+                      itemCode={selectedRecipe.outputItem.code}
+                      itemName={selectedRecipe.outputItem.name}
+                      className="inline-flex"
+                    />
                   </p>
                   <p>Inputs:</p>
                   <ul className="list-disc pl-4">
                     {selectedRecipe.inputs.map((input) => (
-                      <li key={input.itemId}>
-                        {input.quantityPerRun} {input.item.name} / run
+                      <li key={input.itemId} className="flex items-center gap-1">
+                        <span>{input.quantityPerRun}</span>
+                        <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
+                        <span>/ run</span>
                       </li>
                     ))}
                   </ul>
@@ -303,13 +311,24 @@ export function ProductionPage() {
                       <p className="font-medium">{recipe.name}</p>
                     </TableCell>
                     <TableCell>
-                      {recipe.outputQuantity} {recipe.outputItem.name}
+                      <span className="inline-flex items-center gap-1">
+                        <span>{recipe.outputQuantity}</span>
+                        <ItemLabel
+                          itemCode={recipe.outputItem.code}
+                          itemName={recipe.outputItem.name}
+                        />
+                      </span>
                     </TableCell>
                     <TableCell>{formatCadenceCount(recipe.durationTicks)}</TableCell>
                     <TableCell>
-                      {recipe.inputs
-                        .map((input) => `${input.quantityPerRun} ${input.item.name}`)
-                        .join(", ")}
+                      <div className="flex flex-col gap-1">
+                        {recipe.inputs.map((input) => (
+                          <span key={input.itemId} className="inline-flex items-center gap-1">
+                            <span>{input.quantityPerRun}</span>
+                            <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
+                          </span>
+                        ))}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

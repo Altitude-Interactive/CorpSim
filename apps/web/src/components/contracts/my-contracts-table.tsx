@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemLabel } from "@/components/items/item-label";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractRecord } from "@/lib/api";
@@ -57,7 +58,7 @@ export function MyContractsTable({
               return (
                 <TableRow key={contract.id}>
                   <TableCell>
-                    <p>{contract.item.name}</p>
+                    <ItemLabel itemCode={contract.item.code} itemName={contract.item.name} />
                   </TableCell>
                   <TableCell className="text-xs">{formatCodeLabel(contract.status)}</TableCell>
                   <TableCell>

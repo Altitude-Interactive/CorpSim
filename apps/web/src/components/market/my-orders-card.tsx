@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemLabel } from "@/components/items/item-label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MarketOrder } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -12,7 +13,7 @@ interface MyOrdersCardProps {
   isLoading: boolean;
   onCancel: (order: MarketOrder) => Promise<void>;
   regionNameById: Record<string, string>;
-  itemNameById: Record<string, string>;
+  itemMetaById: Record<string, { code: string; name: string }>;
 }
 
 export function MyOrdersCard({
@@ -20,7 +21,7 @@ export function MyOrdersCard({
   isLoading,
   onCancel,
   regionNameById,
-  itemNameById
+  itemMetaById
 }: MyOrdersCardProps) {
   return (
     <Card>
@@ -46,7 +47,10 @@ export function MyOrdersCard({
               <TableRow key={order.id}>
                 <TableCell className="tabular-nums">{order.tickPlaced.toLocaleString()}</TableCell>
                 <TableCell className="text-xs">
-                  {itemNameById[order.itemId] ?? UI_COPY.common.unknownItem}
+                  <ItemLabel
+                    itemCode={itemMetaById[order.itemId]?.code}
+                    itemName={itemMetaById[order.itemId]?.name ?? UI_COPY.common.unknownItem}
+                  />
                 </TableCell>
                 <TableCell className="text-xs">
                   {regionNameById[order.regionId] ?? UI_COPY.common.unknownRegion}

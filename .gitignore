@@ -92,3 +92,4 @@ apps/worker/dist/
 docs/.cache/
 .corpsim/
 .corpsim/maintenance.json
+archive/

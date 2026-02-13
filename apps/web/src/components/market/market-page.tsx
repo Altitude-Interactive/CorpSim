@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
+import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -313,8 +314,8 @@ export function MarketPage() {
       ),
     [regions]
   );
-  const itemNameById = useMemo(
-    () => Object.fromEntries(items.map((item) => [item.id, item.name])),
+  const itemMetaById = useMemo(
+    () => Object.fromEntries(items.map((item) => [item.id, { code: item.code, name: item.name }])),
     [items]
   );
   const companyNameById = useMemo(
@@ -391,7 +392,7 @@ export function MarketPage() {
                   <SelectItem value="ALL">All items</SelectItem>
                   {sortedItems.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
-                      {item.name}
+                      <ItemLabel itemCode={item.code} itemName={item.name} />
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -433,7 +434,7 @@ export function MarketPage() {
         orders={orderBook}
         isLoading={isLoadingOrderBook}
         regionNameById={regionNameById}
-        itemNameById={itemNameById}
+        itemMetaById={itemMetaById}
         companyNameById={companyNameById}
       />
 
@@ -441,7 +442,7 @@ export function MarketPage() {
         orders={myOrders}
         isLoading={isLoadingMyOrders || Boolean(isCancellingOrderId)}
         regionNameById={regionNameById}
-        itemNameById={itemNameById}
+        itemMetaById={itemMetaById}
         onCancel={handleCancelOrder}
       />
 
@@ -467,7 +468,7 @@ export function MarketPage() {
                 <SelectItem value="ALL">All items</SelectItem>
                 {sortedItems.map((item) => (
                   <SelectItem value={item.id} key={item.id}>
-                    {item.name}
+                    <ItemLabel itemCode={item.code} itemName={item.name} />
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -512,7 +513,7 @@ export function MarketPage() {
         trades={trades}
         isLoading={isLoadingTrades}
         regionNameById={regionNameById}
-        itemNameById={itemNameById}
+        itemMetaById={itemMetaById}
         companyNameById={companyNameById}
       />
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ItemLabel } from "@/components/items/item-label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -102,7 +103,9 @@ export function InventoryView() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.itemId}>
-                  <TableCell>{row.itemName}</TableCell>
+                  <TableCell>
+                    <ItemLabel itemCode={row.itemCode} itemName={row.itemName} />
+                  </TableCell>
                   <TableCell className="tabular-nums">{row.quantity}</TableCell>
                   <TableCell className="tabular-nums">{row.reservedQuantity}</TableCell>
                 </TableRow>

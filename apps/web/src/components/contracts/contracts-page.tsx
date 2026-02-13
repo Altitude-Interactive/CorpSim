@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
+import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -232,7 +233,7 @@ export function ContractsPage() {
                 <SelectItem value="ALL">All items</SelectItem>
                 {items.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.name}
+                    <ItemLabel itemCode={item.code} itemName={item.name} />
                   </SelectItem>
                 ))}
               </SelectContent>

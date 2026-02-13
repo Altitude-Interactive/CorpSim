@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
+import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -359,7 +360,7 @@ export function LogisticsPage() {
               <SelectContent>
                 {items.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.name}
+                    <ItemLabel itemCode={item.code} itemName={item.name} />
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -378,7 +379,12 @@ export function LogisticsPage() {
               Estimated fee: {feeCents === null ? "--" : formatCents(String(feeCents))}
             </p>
             <p>{`Estimated arrival ${UI_CADENCE_TERMS.singular.toLowerCase()}: ${arrivalTick ?? "--"}`}</p>
-            {selectedItem ? <p>Item: {selectedItem.name}</p> : null}
+            {selectedItem ? (
+              <p className="inline-flex items-center gap-1">
+                <span>Item:</span>
+                <ItemLabel itemCode={selectedItem.code} itemName={selectedItem.name} />
+              </p>
+            ) : null}
           </div>
           <Button
             type="button"
@@ -474,7 +480,9 @@ export function LogisticsPage() {
             <TableBody>
               {inTransit.map((shipment) => (
                 <TableRow key={shipment.id}>
-                  <TableCell>{shipment.item.name}</TableCell>
+                  <TableCell>
+                    <ItemLabel itemCode={shipment.item.code} itemName={shipment.item.name} />
+                  </TableCell>
                   <TableCell>
                     {`${getRegionLabel({ code: shipment.fromRegion.code, name: shipment.fromRegion.name })} -> ${getRegionLabel({ code: shipment.toRegion.code, name: shipment.toRegion.name })}`}
                   </TableCell>
@@ -522,7 +530,9 @@ export function LogisticsPage() {
             <TableBody>
               {delivered.map((shipment) => (
                 <TableRow key={shipment.id}>
-                  <TableCell>{shipment.item.name}</TableCell>
+                  <TableCell>
+                    <ItemLabel itemCode={shipment.item.code} itemName={shipment.item.name} />
+                  </TableCell>
                   <TableCell>
                     {`${getRegionLabel({ code: shipment.fromRegion.code, name: shipment.fromRegion.name })} -> ${getRegionLabel({ code: shipment.toRegion.code, name: shipment.toRegion.name })}`}
                   </TableCell>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemLabel } from "@/components/items/item-label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractRecord } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -34,7 +35,7 @@ export function ContractsHistoryTable({ contracts, isLoading }: ContractsHistory
             {contracts.map((contract) => (
               <TableRow key={contract.id}>
                 <TableCell>
-                  <p>{contract.item.name}</p>
+                  <ItemLabel itemCode={contract.item.code} itemName={contract.item.name} />
                 </TableCell>
                 <TableCell className="text-xs">{formatCodeLabel(contract.status)}</TableCell>
                 <TableCell className="tabular-nums">{contract.quantity}</TableCell>

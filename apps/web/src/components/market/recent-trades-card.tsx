@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemLabel } from "@/components/items/item-label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MarketTrade } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -9,7 +10,7 @@ interface RecentTradesCardProps {
   trades: MarketTrade[];
   isLoading: boolean;
   regionNameById: Record<string, string>;
-  itemNameById: Record<string, string>;
+  itemMetaById: Record<string, { code: string; name: string }>;
   companyNameById: Record<string, string>;
 }
 
@@ -17,7 +18,7 @@ export function RecentTradesCard({
   trades,
   isLoading,
   regionNameById,
-  itemNameById,
+  itemMetaById,
   companyNameById
 }: RecentTradesCardProps) {
   return (
@@ -44,7 +45,10 @@ export function RecentTradesCard({
               <TableRow key={trade.id}>
                 <TableCell className="tabular-nums">{trade.tick}</TableCell>
                 <TableCell className="text-xs">
-                  {itemNameById[trade.itemId] ?? UI_COPY.common.unknownItem}
+                  <ItemLabel
+                    itemCode={itemMetaById[trade.itemId]?.code}
+                    itemName={itemMetaById[trade.itemId]?.name ?? UI_COPY.common.unknownItem}
+                  />
                 </TableCell>
                 <TableCell className="text-xs">
                   {regionNameById[trade.regionId] ?? UI_COPY.common.unknownRegion}

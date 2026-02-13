@@ -12,20 +12,20 @@ export interface SeedWorldResult {
 }
 
 const ITEM_DEFINITIONS = [
-  { key: "ironOre", code: "IRON_ORE", name: "Iron Ore" },
-  { key: "coal", code: "COAL", name: "Coal" },
-  { key: "copperOre", code: "COPPER_ORE", name: "Copper Ore" },
-  { key: "ironIngot", code: "IRON_INGOT", name: "Iron Ingot" },
-  { key: "copperIngot", code: "COPPER_INGOT", name: "Copper Ingot" },
-  { key: "handTools", code: "HAND_TOOLS", name: "Hand Tools" },
-  { key: "steelIngot", code: "STEEL_INGOT", name: "Steel Ingot" },
-  { key: "steelBeam", code: "STEEL_BEAM", name: "Steel Beam" },
-  { key: "fasteners", code: "FASTENERS", name: "Fasteners" },
-  { key: "machineParts", code: "MACHINE_PARTS", name: "Machine Parts" },
-  { key: "toolKit", code: "TOOL_KIT", name: "Tool Kit" },
-  { key: "powerUnit", code: "POWER_UNIT", name: "Power Unit" },
-  { key: "conveyorModule", code: "CONVEYOR_MODULE", name: "Conveyor Module" },
-  { key: "industrialPress", code: "INDUSTRIAL_PRESS", name: "Industrial Press" }
+  { key: "ironOre", code: "IRON_ORE", name: "Scrap Metal" },
+  { key: "coal", code: "COAL", name: "Polymer Sheet" },
+  { key: "copperOre", code: "COPPER_ORE", name: "Copper Spool" },
+  { key: "ironIngot", code: "IRON_INGOT", name: "Steel Tube" },
+  { key: "copperIngot", code: "COPPER_INGOT", name: "Copper Cable" },
+  { key: "handTools", code: "HAND_TOOLS", name: "Wrench Set" },
+  { key: "steelIngot", code: "STEEL_INGOT", name: "Spring Steel" },
+  { key: "steelBeam", code: "STEEL_BEAM", name: "Rail Segment" },
+  { key: "fasteners", code: "FASTENERS", name: "Bolt Kit" },
+  { key: "machineParts", code: "MACHINE_PARTS", name: "Control Board" },
+  { key: "toolKit", code: "TOOL_KIT", name: "Maintenance Kit" },
+  { key: "powerUnit", code: "POWER_UNIT", name: "Battery Module" },
+  { key: "conveyorModule", code: "CONVEYOR_MODULE", name: "Roller Module" },
+  { key: "industrialPress", code: "INDUSTRIAL_PRESS", name: "Press Chassis" }
 ] as const;
 
 type ItemKey = (typeof ITEM_DEFINITIONS)[number]["key"];
@@ -34,7 +34,7 @@ const RECIPE_DEFINITIONS = [
   {
     key: "smeltIron",
     code: "SMELT_IRON",
-    name: "Smelt Iron",
+    name: "Refine Steel Tubes",
     durationTicks: 2,
     outputItemKey: "ironIngot",
     outputQuantity: 1,
@@ -43,7 +43,7 @@ const RECIPE_DEFINITIONS = [
   {
     key: "smeltCopper",
     code: "SMELT_COPPER",
-    name: "Smelt Copper",
+    name: "Draw Copper Cable",
     durationTicks: 3,
     outputItemKey: "copperIngot",
     outputQuantity: 1,
@@ -55,7 +55,7 @@ const RECIPE_DEFINITIONS = [
   {
     key: "assembleTools",
     code: "ASSEMBLE_TOOLS",
-    name: "Assemble Tools",
+    name: "Assemble Wrench Sets",
     durationTicks: 3,
     outputItemKey: "handTools",
     outputQuantity: 1,
@@ -64,7 +64,7 @@ const RECIPE_DEFINITIONS = [
   {
     key: "smeltSteel",
     code: "SMELT_STEEL",
-    name: "Smelt Steel",
+    name: "Temper Spring Steel",
     durationTicks: 3,
     outputItemKey: "steelIngot",
     outputQuantity: 1,
@@ -76,19 +76,19 @@ const RECIPE_DEFINITIONS = [
   {
     key: "forgeSteelBeam",
     code: "FORGE_STEEL_BEAM",
-    name: "Forge Steel Beam",
+    name: "Machine Rail Segments",
     durationTicks: 4,
     outputItemKey: "steelBeam",
     outputQuantity: 1,
     inputs: [
       { itemKey: "steelIngot", quantity: 2 },
-      { itemKey: "coal", quantity: 1 }
+      { itemKey: "ironIngot", quantity: 1 }
     ]
   },
   {
     key: "assembleFasteners",
     code: "ASSEMBLE_FASTENERS",
-    name: "Assemble Fasteners",
+    name: "Pack Bolt Kits",
     durationTicks: 2,
     outputItemKey: "fasteners",
     outputQuantity: 4,
@@ -100,31 +100,32 @@ const RECIPE_DEFINITIONS = [
   {
     key: "machineParts",
     code: "MACHINE_PARTS",
-    name: "Assemble Machine Parts",
+    name: "Etch Control Boards",
     durationTicks: 4,
     outputItemKey: "machineParts",
     outputQuantity: 1,
     inputs: [
-      { itemKey: "steelIngot", quantity: 2 },
+      { itemKey: "steelIngot", quantity: 1 },
+      { itemKey: "copperIngot", quantity: 2 },
       { itemKey: "handTools", quantity: 1 }
     ]
   },
   {
     key: "assembleKits",
     code: "ASSEMBLE_KITS",
-    name: "Assemble Tool Kits",
-    durationTicks: 4,
+    name: "Assemble Maintenance Kits",
+    durationTicks: 3,
     outputItemKey: "toolKit",
     outputQuantity: 1,
     inputs: [
-      { itemKey: "handTools", quantity: 2 },
+      { itemKey: "handTools", quantity: 1 },
       { itemKey: "machineParts", quantity: 1 }
     ]
   },
   {
     key: "assemblePowerUnit",
     code: "ASSEMBLE_POWER_UNIT",
-    name: "Assemble Power Unit",
+    name: "Assemble Battery Modules",
     durationTicks: 5,
     outputItemKey: "powerUnit",
     outputQuantity: 1,
@@ -137,7 +138,7 @@ const RECIPE_DEFINITIONS = [
   {
     key: "assembleConveyorModule",
     code: "ASSEMBLE_CONVEYOR_MODULE",
-    name: "Assemble Conveyor Module",
+    name: "Assemble Roller Modules",
     durationTicks: 6,
     outputItemKey: "conveyorModule",
     outputQuantity: 1,
@@ -150,7 +151,7 @@ const RECIPE_DEFINITIONS = [
   {
     key: "buildIndustrialPress",
     code: "BUILD_INDUSTRIAL_PRESS",
-    name: "Build Industrial Press",
+    name: "Build Press Chassis",
     durationTicks: 8,
     outputItemKey: "industrialPress",
     outputQuantity: 1,
@@ -158,7 +159,7 @@ const RECIPE_DEFINITIONS = [
       { itemKey: "powerUnit", quantity: 1 },
       { itemKey: "conveyorModule", quantity: 1 },
       { itemKey: "toolKit", quantity: 1 },
-      { itemKey: "fasteners", quantity: 6 }
+      { itemKey: "fasteners", quantity: 8 }
     ]
   }
 ] as const;
@@ -179,7 +180,7 @@ const RESEARCH_DEFINITIONS = [
     key: "metalworking",
     code: "METALWORKING",
     name: "Metalworking",
-    description: "Unlocks practical fabrication methods for hand tool production.",
+    description: "Unlocks practical fabrication methods for wrench set production.",
     costCashCents: 55_000n,
     durationTicks: 3,
     unlockRecipeKeys: ["assembleTools"]
@@ -188,7 +189,7 @@ const RESEARCH_DEFINITIONS = [
     key: "steelProcessing",
     code: "STEEL_PROCESSING",
     name: "Steel Processing",
-    description: "Enables carbon-assisted smelting and stronger steel outputs.",
+    description: "Enables spring steel tempering and bolt kit assembly.",
     costCashCents: 85_000n,
     durationTicks: 4,
     unlockRecipeKeys: ["smeltSteel", "assembleFasteners"]
@@ -197,7 +198,7 @@ const RESEARCH_DEFINITIONS = [
     key: "structuralFabrication",
     code: "STRUCTURAL_FABRICATION",
     name: "Structural Fabrication",
-    description: "Allows beam forging and heavy structural component workflows.",
+    description: "Allows rail segment machining for heavy structural workflows.",
     costCashCents: 120_000n,
     durationTicks: 5,
     unlockRecipeKeys: ["forgeSteelBeam"]
@@ -206,7 +207,7 @@ const RESEARCH_DEFINITIONS = [
     key: "precisionManufacturing",
     code: "PRECISION_MANUFACTURING",
     name: "Precision Manufacturing",
-    description: "Combines steel and tooling workflows into precision components.",
+    description: "Combines steel, copper, and tooling workflows into control boards.",
     costCashCents: 150_000n,
     durationTicks: 5,
     unlockRecipeKeys: ["machineParts"]
@@ -215,7 +216,7 @@ const RESEARCH_DEFINITIONS = [
     key: "industrialLogistics",
     code: "INDUSTRIAL_LOGISTICS",
     name: "Industrial Logistics",
-    description: "Unlocks scalable packaging and coordinated kit assembly methods.",
+    description: "Unlocks scalable coordinated maintenance kit assembly methods.",
     costCashCents: 180_000n,
     durationTicks: 6,
     unlockRecipeKeys: ["assembleKits"]
@@ -224,7 +225,7 @@ const RESEARCH_DEFINITIONS = [
     key: "powerSystems",
     code: "POWER_SYSTEMS",
     name: "Power Systems",
-    description: "Introduces integrated electromechanical power unit design.",
+    description: "Introduces integrated electromechanical battery module design.",
     costCashCents: 220_000n,
     durationTicks: 6,
     unlockRecipeKeys: ["assemblePowerUnit"]
@@ -233,7 +234,7 @@ const RESEARCH_DEFINITIONS = [
     key: "automationLines",
     code: "AUTOMATION_LINES",
     name: "Automation Lines",
-    description: "Adds modular conveyor assembly for repeatable factory throughput.",
+    description: "Adds modular roller assembly for repeatable factory throughput.",
     costCashCents: 260_000n,
     durationTicks: 7,
     unlockRecipeKeys: ["assembleConveyorModule"]
@@ -242,7 +243,7 @@ const RESEARCH_DEFINITIONS = [
     key: "heavyIndustry",
     code: "HEAVY_INDUSTRY",
     name: "Heavy Industry",
-    description: "Final-stage system integration for complete industrial press builds.",
+    description: "Final-stage system integration for complete press chassis builds.",
     costCashCents: 320_000n,
     durationTicks: 8,
     unlockRecipeKeys: ["buildIndustrialPress"]
