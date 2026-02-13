@@ -45,4 +45,13 @@ describe("worker config", () => {
       "BULLMQ_WORKER_ENABLED must be true/false or 1/0"
     );
   });
+
+  it("throws when worker concurrency is greater than 1", () => {
+    process.env.BULLMQ_WORKER_ENABLED = "true";
+    process.env.BULLMQ_WORKER_CONCURRENCY = "2";
+
+    expect(() => loadWorkerConfig()).toThrow(
+      "BULLMQ_WORKER_CONCURRENCY must be 1 to preserve deterministic globally serialized ticks"
+    );
+  });
 });

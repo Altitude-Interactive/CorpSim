@@ -1,8 +1,16 @@
 import { PrismaClient } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 import { JobsOptions, Queue, Worker } from "bullmq";
 import type { RedisOptions } from "ioredis";
 import { scanSimulationInvariants } from "@corpsim/sim";
 import { WorkerRuntimeConfig } from "./config";
+import {
+  ensureSimulationControlState,
+  pauseBotsAfterInvariantViolation,
+  stopSimulationAfterInvariantViolation
+} from "./simulation-control";
+import { acquireSimulationLease, releaseSimulationLease } from "./simulation-lease";
 import { runWorkerIteration } from "./worker-loop";
 
 interface TickJobData {
@@ -11,6 +19,25 @@ interface TickJobData {
 
 export interface QueueRuntimeHandle {
   stop: () => Promise<void>;
+}
+
+const PROCESSOR_LEASE_NAME = "simulation.tick.processor";
+const SCHEDULER_LEASE_NAME = "simulation.tick.scheduler";
+
+function buildWorkerInstanceId(config: WorkerRuntimeConfig): string {
+  return `${config.bullmq.queueName}:${hostname()}:${process.pid}:${randomUUID()}`;
+}
+
+function resolveJobExecutionKey(
+  config: WorkerRuntimeConfig,
+  job: { id?: string | number | null; repeatJobKey?: string | null }
+): string | undefined {
+  const keyPart = job.id ?? job.repeatJobKey;
+  if (keyPart === undefined || keyPart === null) {
+    return undefined;
+  }
+
+  return `${config.bullmq.prefix}:${config.bullmq.queueName}:${String(keyPart)}`;
 }
 
 function buildRedisOptions(config: WorkerRuntimeConfig): RedisOptions {
@@ -106,7 +133,34 @@ export async function startQueueRuntime(
     defaultJobOptions: buildDefaultJobOptions(config)
   });
 
+  const workerInstanceId = buildWorkerInstanceId(config);
+  const processorLeaseTtlMs = Math.max(config.tickIntervalMs * 2, 120_000);
+  const schedulerLeaseTtlMs = Math.max(config.tickIntervalMs * 5, 300_000);
+  let schedulerHeartbeat: NodeJS.Timeout | null = null;
+  let schedulerLeaseHeld = false;
+
+  await ensureSimulationControlState(prisma);
+
   if (config.bullmq.schedulerEnabled) {
+    schedulerLeaseHeld = await acquireSimulationLease(prisma, {
+      name: SCHEDULER_LEASE_NAME,
+      ownerId: workerInstanceId,
+      ttlMs: schedulerLeaseTtlMs
+    }, { allowReentry: true });
+    if (!schedulerLeaseHeld) {
+      throw new Error("scheduler authority lease is held by another worker instance");
+    }
+
+    schedulerHeartbeat = setInterval(() => {
+      void acquireSimulationLease(prisma, {
+        name: SCHEDULER_LEASE_NAME,
+        ownerId: workerInstanceId,
+        ttlMs: schedulerLeaseTtlMs
+      }, { allowReentry: true }).catch((error: unknown) => {
+        console.error("[worker] scheduler lease heartbeat failed", error);
+      });
+    }, Math.max(1_000, Math.floor(schedulerLeaseTtlMs / 2)));
+
     await ensureTickScheduler(queue, config);
     console.log(
       `[worker] scheduler enabled queue=${config.bullmq.queueName} every=${config.tickIntervalMs}ms`
@@ -114,24 +168,37 @@ export async function startQueueRuntime(
   }
 
   let worker: Worker<TickJobData> | null = null;
-  let stopped = false;
-  let botsPaused = false;
+  let shuttingDown = false;
 
   if (config.bullmq.workerEnabled) {
     worker = new Worker<TickJobData>(
       config.bullmq.queueName,
       async (job) => {
-        if (stopped) {
+        if (shuttingDown) {
           return;
         }
 
-        const runBots = !botsPaused;
+        const controlState = await ensureSimulationControlState(prisma);
+        if (controlState.processingStopped) {
+          console.log("[worker] processing stopped by persisted control state");
+          return;
+        }
+
+        const runBots = !controlState.botsPaused;
         const ticksOverride =
           typeof job.data.ticksOverride === "number" ? job.data.ticksOverride : undefined;
+        const executionKey = resolveJobExecutionKey(config, {
+          id: job.id,
+          repeatJobKey: job.repeatJobKey
+        });
 
         const result = await runWorkerIteration(prisma, config, {
           ticksOverride,
-          runBots
+          runBots,
+          executionKey,
+          leaseName: PROCESSOR_LEASE_NAME,
+          leaseOwnerId: workerInstanceId,
+          leaseTtlMs: processorLeaseTtlMs
         });
 
         console.log(
@@ -162,12 +229,12 @@ export async function startQueueRuntime(
         console.error("[worker] invariant violation detected", logPayload);
 
         if (config.onInvariantViolation === "pause_bots") {
-          botsPaused = true;
+          await pauseBotsAfterInvariantViolation(prisma, result.tickAfter);
           return;
         }
 
         if (config.onInvariantViolation === "stop") {
-          stopped = true;
+          await stopSimulationAfterInvariantViolation(prisma, result.tickAfter);
           await worker?.pause(true);
         }
       },
@@ -197,10 +264,21 @@ export async function startQueueRuntime(
 
   return {
     stop: async () => {
-      stopped = true;
+      shuttingDown = true;
+
+      if (schedulerHeartbeat) {
+        clearInterval(schedulerHeartbeat);
+      }
 
       if (worker) {
         await worker.close();
+      }
+
+      if (schedulerLeaseHeld) {
+        await releaseSimulationLease(prisma, {
+          name: SCHEDULER_LEASE_NAME,
+          ownerId: workerInstanceId
+        });
       }
 
       await queue.close();

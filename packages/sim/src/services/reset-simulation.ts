@@ -2,6 +2,9 @@ import { PrismaClient } from "@prisma/client";
 
 export async function resetSimulationData(prisma: PrismaClient): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    await tx.simulationTickExecution.deleteMany();
+    await tx.simulationLease.deleteMany();
+    await tx.simulationControlState.deleteMany();
     await tx.researchJob.deleteMany();
     await tx.companyResearch.deleteMany();
     await tx.researchPrerequisite.deleteMany();
@@ -31,6 +34,16 @@ export async function resetSimulationData(prisma: PrismaClient): Promise<void> {
         currentTick: 0,
         lockVersion: 0,
         lastAdvancedAt: null
+      }
+    });
+
+    await tx.simulationControlState.create({
+      data: {
+        id: 1,
+        botsPaused: false,
+        processingStopped: false,
+        lastInvariantViolationTick: null,
+        lastInvariantViolationAt: null
       }
     });
   });

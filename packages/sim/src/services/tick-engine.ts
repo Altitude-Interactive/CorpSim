@@ -24,6 +24,16 @@ export interface AdvanceTickOptions {
   contractConfig?: Partial<ContractLifecycleConfig>;
 }
 
+export interface AdvanceSingleTickOptions extends AdvanceTickOptions {
+  executionKey?: string;
+}
+
+export interface AdvanceSingleTickResult {
+  tickBefore: number;
+  tickAfter: number;
+  advanced: boolean;
+}
+
 async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldState> {
   const existing = await tx.worldTickState.findUnique({
     where: { id: 1 },
@@ -47,27 +57,96 @@ async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldStat
   return created;
 }
 
-export async function advanceSimulationTicks(
-  prisma: PrismaClient,
-  ticks: number,
-  options: AdvanceTickOptions = {}
-): Promise<void> {
-  if (!Number.isInteger(ticks) || ticks <= 0) {
-    throw new DomainInvariantError("ticks must be a positive integer");
-  }
-
+function validateExpectedLockVersion(expectedLockVersion: number | undefined): void {
   if (
-    options.expectedLockVersion !== undefined &&
-    (!Number.isInteger(options.expectedLockVersion) || options.expectedLockVersion < 0)
+    expectedLockVersion !== undefined &&
+    (!Number.isInteger(expectedLockVersion) || expectedLockVersion < 0)
   ) {
     throw new DomainInvariantError("expectedLockVersion must be a non-negative integer");
   }
+}
 
-  for (let i = 0; i < ticks; i += 1) {
-    await prisma.$transaction(async (tx) => {
+function normalizeExecutionKey(executionKey: string | undefined): string | undefined {
+  if (executionKey === undefined) {
+    return undefined;
+  }
+
+  const normalized = executionKey.trim();
+  if (normalized.length === 0) {
+    throw new DomainInvariantError("executionKey must be a non-empty string when provided");
+  }
+
+  return normalized;
+}
+
+function isTickExecutionConflict(error: unknown, executionKey: string | undefined): boolean {
+  if (executionKey === undefined) {
+    return false;
+  }
+
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (error.code !== "P2002") {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  if (typeof target === "string") {
+    return target.includes("SimulationTickExecution") || target.includes("executionKey");
+  }
+
+  if (!Array.isArray(target)) {
+    return false;
+  }
+
+  return target.some(
+    (entry) =>
+      typeof entry === "string" &&
+      (entry.includes("SimulationTickExecution") || entry.includes("executionKey"))
+  );
+}
+
+async function runTickPipeline(
+  tx: Prisma.TransactionClient,
+  nextTick: number,
+  options: AdvanceSingleTickOptions
+): Promise<void> {
+  // Tick pipeline order:
+  // 1) bot actions (orders / production starts)
+  // 2) production completions
+  // 3) research completions and recipe unlocks
+  // 4) market matching and settlement
+  // 5) shipment deliveries
+  // 6) contract lifecycle (expire and generate)
+  // 7) market candle aggregation (OHLC/VWAP/volume)
+  // 8) finalize world tick state
+  if (options.runBots) {
+    await runBotsForTick(tx, nextTick, options.botConfig);
+  }
+
+  await completeDueProductionJobs(tx, nextTick);
+  await completeDueResearchJobs(tx, nextTick);
+  // Matching runs in tick processing, not in request path.
+  await runMarketMatchingForTick(tx, nextTick);
+  await deliverDueShipmentsForTick(tx, nextTick);
+  await runContractLifecycleForTick(tx, nextTick, options.contractConfig);
+  await upsertMarketCandlesForTick(tx, nextTick);
+}
+
+export async function advanceSimulationTick(
+  prisma: PrismaClient,
+  options: AdvanceSingleTickOptions = {}
+): Promise<AdvanceSingleTickResult> {
+  validateExpectedLockVersion(options.expectedLockVersion);
+  const executionKey = normalizeExecutionKey(options.executionKey);
+
+  try {
+    return await prisma.$transaction(async (tx) => {
       const world = await ensureWorldState(tx);
 
-      if (i === 0 && options.expectedLockVersion !== undefined) {
+      if (options.expectedLockVersion !== undefined) {
         if (world.lockVersion !== options.expectedLockVersion) {
           throw new OptimisticLockConflictError(
             `expected lockVersion ${options.expectedLockVersion} but found ${world.lockVersion}`
@@ -75,28 +154,30 @@ export async function advanceSimulationTicks(
         }
       }
 
-      const nextTick = world.currentTick + 1;
+      if (executionKey) {
+        const existingExecution = await tx.simulationTickExecution.findUnique({
+          where: { executionKey },
+          select: { executionKey: true }
+        });
+        if (existingExecution) {
+          return {
+            tickBefore: world.currentTick,
+            tickAfter: world.currentTick,
+            advanced: false
+          };
+        }
 
-      // Tick pipeline order:
-      // 1) bot actions (orders / production starts)
-      // 2) production completions
-      // 3) research completions and recipe unlocks
-      // 4) market matching and settlement
-      // 5) shipment deliveries
-      // 6) contract lifecycle (expire and generate)
-      // 7) market candle aggregation (OHLC/VWAP/volume)
-      // 8) finalize world tick state
-      if (options.runBots) {
-        await runBotsForTick(tx, nextTick, options.botConfig);
+        await tx.simulationTickExecution.create({
+          data: {
+            executionKey,
+            tickBefore: world.currentTick,
+            tickAfter: world.currentTick
+          }
+        });
       }
 
-      await completeDueProductionJobs(tx, nextTick);
-      await completeDueResearchJobs(tx, nextTick);
-      // Matching runs in tick processing, not in request path.
-      await runMarketMatchingForTick(tx, nextTick);
-      await deliverDueShipmentsForTick(tx, nextTick);
-      await runContractLifecycleForTick(tx, nextTick, options.contractConfig);
-      await upsertMarketCandlesForTick(tx, nextTick);
+      const nextTick = world.currentTick + 1;
+      await runTickPipeline(tx, nextTick, options);
 
       const result = await tx.worldTickState.updateMany({
         where: {
@@ -115,6 +196,55 @@ export async function advanceSimulationTicks(
           "world tick state changed during tick advance; retry operation"
         );
       }
+
+      if (executionKey) {
+        await tx.simulationTickExecution.update({
+          where: { executionKey },
+          data: {
+            tickBefore: world.currentTick,
+            tickAfter: nextTick
+          }
+        });
+      }
+
+      return {
+        tickBefore: world.currentTick,
+        tickAfter: nextTick,
+        advanced: true
+      };
+    });
+  } catch (error: unknown) {
+    if (!isTickExecutionConflict(error, executionKey)) {
+      throw error;
+    }
+
+    const world = await getWorldTickState(prisma);
+    const currentTick = world?.currentTick ?? 0;
+    return {
+      tickBefore: currentTick,
+      tickAfter: currentTick,
+      advanced: false
+    };
+  }
+}
+
+export async function advanceSimulationTicks(
+  prisma: PrismaClient,
+  ticks: number,
+  options: AdvanceTickOptions = {}
+): Promise<void> {
+  if (!Number.isInteger(ticks) || ticks <= 0) {
+    throw new DomainInvariantError("ticks must be a positive integer");
+  }
+
+  validateExpectedLockVersion(options.expectedLockVersion);
+
+  for (let i = 0; i < ticks; i += 1) {
+    await advanceSimulationTick(prisma, {
+      expectedLockVersion: i === 0 ? options.expectedLockVersion : undefined,
+      runBots: options.runBots,
+      botConfig: options.botConfig,
+      contractConfig: options.contractConfig
     });
   }
 }

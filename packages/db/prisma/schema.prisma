@@ -459,3 +459,32 @@ model MaintenanceState {
   enabledBy String?
   scope     String   @default("all")
 }
+
+model SimulationLease {
+  name      String   @id
+  ownerId   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+model SimulationTickExecution {
+  executionKey String   @id
+  tickBefore   Int
+  tickAfter    Int
+  createdAt    DateTime @default(now())
+
+  @@index([tickAfter])
+}
+
+model SimulationControlState {
+  id                        Int      @id @default(1)
+  botsPaused                Boolean  @default(false)
+  processingStopped         Boolean  @default(false)
+  lastInvariantViolationTick Int?
+  lastInvariantViolationAt  DateTime?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}

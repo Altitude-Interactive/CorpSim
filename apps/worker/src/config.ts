@@ -147,6 +147,14 @@ function parseInvariantPolicy(raw: string | undefined): "stop" | "pause_bots" | 
   throw new Error("ON_INVARIANT_VIOLATION must be one of: stop, pause_bots, log_only");
 }
 
+function validateDeterministicBullMqConfig(bullmq: BullMqConfig): void {
+  if (bullmq.workerEnabled && bullmq.workerConcurrency !== 1) {
+    throw new Error(
+      "BULLMQ_WORKER_CONCURRENCY must be 1 to preserve deterministic globally serialized ticks"
+    );
+  }
+}
+
 export function loadWorkerConfig(): WorkerRuntimeConfig {
   const botConfig = resolveBotRuntimeConfig({
     enabled: parseBooleanEnv("BOT_ENABLED", true),
@@ -186,6 +194,7 @@ export function loadWorkerConfig(): WorkerRuntimeConfig {
     removeOnComplete: parseNonNegativeIntegerEnv("BULLMQ_REMOVE_ON_COMPLETE", 500),
     removeOnFail: parseNonNegativeIntegerEnv("BULLMQ_REMOVE_ON_FAIL", 1000)
   };
+  validateDeterministicBullMqConfig(bullmq);
 
   return {
     tickIntervalMs: parseIntegerEnv("TICK_INTERVAL_MS", 60_000),

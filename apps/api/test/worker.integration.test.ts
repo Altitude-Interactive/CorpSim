@@ -3,6 +3,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
 import { createPrismaClient } from "@corpsim/db";
 import { WorkerConfig } from "../../worker/src/config";
+import {
+  acquireSimulationLease,
+  releaseSimulationLease
+} from "../../worker/src/simulation-lease";
 import { runWorkerIteration } from "../../worker/src/worker-loop";
 
 describe("worker iteration integration", () => {
@@ -128,6 +132,63 @@ describe("worker iteration integration", () => {
     });
 
     expect(openContracts).toBeGreaterThan(0);
+  });
+
+  it("treats duplicate execution keys as idempotent and avoids double advancement", async () => {
+    const beforeTick = await prisma.worldTickState.findUniqueOrThrow({
+      where: { id: 1 },
+      select: { currentTick: true }
+    });
+
+    const first = await runWorkerIteration(prisma, config, {
+      ticksOverride: 3,
+      maxConflictRetries: 0,
+      executionKey: "integration:duplicate-job"
+    });
+    const second = await runWorkerIteration(prisma, config, {
+      ticksOverride: 3,
+      maxConflictRetries: 0,
+      executionKey: "integration:duplicate-job"
+    });
+
+    const afterTick = await prisma.worldTickState.findUniqueOrThrow({
+      where: { id: 1 },
+      select: { currentTick: true }
+    });
+
+    expect(first.ticksAdvanced).toBe(3);
+    expect(second.ticksAdvanced).toBe(0);
+    expect(afterTick.currentTick).toBe(beforeTick.currentTick + 3);
+  });
+
+  it("rejects iteration when a competing processor lease is already held", async () => {
+    const leaseName = "integration:processor-lease";
+    const ownerA = "integration-owner-a";
+    const ownerB = "integration-owner-b";
+
+    const acquired = await acquireSimulationLease(prisma, {
+      name: leaseName,
+      ownerId: ownerA,
+      ttlMs: 120_000
+    });
+    expect(acquired).toBe(true);
+
+    try {
+      await expect(
+        runWorkerIteration(prisma, config, {
+          ticksOverride: 1,
+          maxConflictRetries: 0,
+          leaseName,
+          leaseOwnerId: ownerB,
+          leaseTtlMs: 120_000
+        })
+      ).rejects.toThrow("global simulation lease is currently held");
+    } finally {
+      await releaseSimulationLease(prisma, {
+        name: leaseName,
+        ownerId: ownerA
+      });
+    }
   });
 });
 
