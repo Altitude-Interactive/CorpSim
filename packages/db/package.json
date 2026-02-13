@@ -17,7 +17,8 @@
     "tsx": "^4.21.0"
   },
   "scripts": {
-    "generate": "dotenv -e ../../.env -v PRISMA_GENERATE_SKIP_AUTOINSTALL=1 -- prisma generate --schema prisma/schema.prisma",
+    "generate": "node ../../scripts/prisma-generate.mjs",
+    "generate:raw": "dotenv -e ../../.env -v PRISMA_GENERATE_SKIP_AUTOINSTALL=1 -- prisma generate --schema prisma/schema.prisma",
     "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev --schema prisma/schema.prisma",
     "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy --schema prisma/schema.prisma",
     "seed": "tsx seed.ts"

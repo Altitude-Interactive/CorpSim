@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "echo Use app-specific dev commands",
-    "prisma:generate": "pnpm --dir packages/db run generate",
+    "prisma:generate": "node scripts/prisma-generate.mjs",
     "postinstall": "pnpm prisma:generate",
     "preapi:dev": "pnpm prisma:generate",
     "api:dev": "pnpm -C apps/api dev",
