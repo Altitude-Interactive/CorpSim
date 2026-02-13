@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { ICON_PACK_DEFINITIONS } from "@corpsim/shared";
 import { ItemLabel } from "@/components/items/item-label";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,13 @@ interface CatalogSnapshot {
 interface CatalogConsistencyIssue {
   id: string;
   message: string;
+}
+
+interface ItemCatalogRow {
+  item: ItemCatalogItem;
+  usage: ItemUsageSummary | undefined;
+  meta: ItemIconMeta;
+  searchText: string;
 }
 
 interface ItemIconMeta {
@@ -130,6 +137,9 @@ export function DevCatalogPage() {
     useState<(typeof RESEARCH_PAGE_SIZE_OPTIONS)[number]>(20);
   const [researchPage, setResearchPage] = useState(1);
   const [isConsistencyCheckEnabled, setIsConsistencyCheckEnabled] = useState(false);
+  const deferredItemSearch = useDeferredValue(itemSearch);
+  const deferredRecipeSearch = useDeferredValue(recipeSearch);
+  const deferredResearchSearch = useDeferredValue(researchSearch);
 
   const loadSnapshot = useCallback(async () => {
     setIsLoading(true);
@@ -234,19 +244,27 @@ export function DevCatalogPage() {
     return rows;
   }, [iconPackCountBySeries, snapshot]);
 
-  const filteredItems = useMemo(() => {
+  const itemRows = useMemo(() => {
     if (!snapshot) {
-      return [] as ItemCatalogItem[];
+      return [] as ItemCatalogRow[];
     }
 
-    const needle = itemSearch.trim().toLowerCase();
+    return snapshot.items.map((item) => ({
+      item,
+      usage: itemUsageById.get(item.id),
+      meta: itemMetaById.get(item.id) ?? { source: "BASE", series: null, tier: null },
+      searchText: `${item.code} ${item.name}`.toLowerCase()
+    }));
+  }, [itemMetaById, itemUsageById, snapshot]);
 
-    return snapshot.items.filter((item) => {
-      const meta = itemMetaById.get(item.id) ?? { source: "BASE", series: null, tier: null };
+  const filteredItems = useMemo(() => {
+    const needle = deferredItemSearch.trim().toLowerCase();
+
+    return itemRows.filter((row) => {
+      const meta = row.meta;
 
       if (needle.length > 0) {
-        const haystack = `${item.code} ${item.name}`.toLowerCase();
-        if (!haystack.includes(needle)) {
+        if (!row.searchText.includes(needle)) {
           return false;
         }
       }
@@ -264,7 +282,7 @@ export function DevCatalogPage() {
 
       return true;
     });
-  }, [itemMetaById, itemSearch, itemSourceFilter, itemTierFilter, snapshot]);
+  }, [deferredItemSearch, itemRows, itemSourceFilter, itemTierFilter]);
 
   useEffect(() => {
     setItemPage(1);
@@ -300,7 +318,7 @@ export function DevCatalogPage() {
       return [] as ProductionRecipe[];
     }
 
-    const needle = recipeSearch.trim().toLowerCase();
+    const needle = deferredRecipeSearch.trim().toLowerCase();
     if (!needle) {
       return snapshot.recipes;
     }
@@ -311,7 +329,7 @@ export function DevCatalogPage() {
         `${recipe.code} ${recipe.name} ${recipe.outputItem.code} ${recipe.outputItem.name} ${inputNames}`.toLowerCase();
       return haystack.includes(needle);
     });
-  }, [recipeSearch, snapshot]);
+  }, [deferredRecipeSearch, snapshot]);
 
   useEffect(() => {
     setRecipePage(1);
@@ -348,7 +366,7 @@ export function DevCatalogPage() {
       return [] as ResearchNode[];
     }
 
-    const needle = researchSearch.trim().toLowerCase();
+    const needle = deferredResearchSearch.trim().toLowerCase();
 
     return snapshot.researchNodes.filter((node) => {
       if (researchStatusFilter !== "ALL" && node.status !== researchStatusFilter) {
@@ -362,7 +380,7 @@ export function DevCatalogPage() {
       const haystack = `${node.code} ${node.name} ${node.description}`.toLowerCase();
       return haystack.includes(needle);
     });
-  }, [researchSearch, researchStatusFilter, snapshot]);
+  }, [deferredResearchSearch, researchStatusFilter, snapshot]);
 
   useEffect(() => {
     setResearchPage(1);
@@ -679,6 +697,7 @@ export function DevCatalogPage() {
             <p>
               Showing {itemRangeLabel} of {filteredItems.length} filtered items ({snapshot.items.length} total)
             </p>
+            {deferredItemSearch !== itemSearch ? <p>Updating results...</p> : null}
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -713,8 +732,8 @@ export function DevCatalogPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagedItems.map((item) => {
-                const usage = itemUsageById.get(item.id);
+              {pagedItems.map((row) => {
+                const { item, usage } = row;
                 return (
                   <TableRow key={item.id}>
                     <TableCell>
