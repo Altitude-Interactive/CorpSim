@@ -143,7 +143,7 @@ describe("workforce service", () => {
           id: "company-1",
           cashCents: 100_000n,
           reservedCashCents: 0n,
-          workforceCapacity: 5,
+          workforceCapacity: 10,
           workforceAllocationOpsPct: 40,
           workforceAllocationRngPct: 20,
           workforceAllocationLogPct: 20,
@@ -166,13 +166,13 @@ describe("workforce service", () => {
       appliedImmediately: true,
       tickRequested: 15,
       tickArrives: null,
-      workforceCapacity: 0,
+      workforceCapacity: 5,
       orgEfficiencyBps: 0
     });
     expect(companyUpdate).toHaveBeenCalledWith({
       where: { id: "company-1" },
       data: {
-        workforceCapacity: 0,
+        workforceCapacity: 5,
         orgEfficiencyBps: 0
       }
     });
