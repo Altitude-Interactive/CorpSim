@@ -11,6 +11,7 @@ import { runMarketMatchingForTick } from "./market-matching";
 import { completeDueProductionJobs } from "./production";
 import { completeDueResearchJobs } from "./research";
 import { deliverDueShipmentsForTick } from "./shipments";
+import { runWorkforceForTick, WorkforceRuntimeConfig } from "./workforce";
 
 interface WorldState {
   id: number;
@@ -24,6 +25,7 @@ export interface AdvanceTickOptions {
   botConfig?: Partial<BotRuntimeConfig>;
   demandConfig?: Partial<DemandSinkConfig>;
   contractConfig?: Partial<ContractLifecycleConfig>;
+  workforceConfig?: Partial<WorkforceRuntimeConfig>;
 }
 
 export interface AdvanceSingleTickOptions extends AdvanceTickOptions {
@@ -121,10 +123,11 @@ async function runTickPipeline(
   // 3) research completions and recipe unlocks
   // 4) market matching and settlement
   // 5) shipment deliveries
-  // 6) baseline demand sink consumption
-  // 7) contract lifecycle (expire and generate)
-  // 8) market candle aggregation (OHLC/VWAP/volume)
-  // 9) finalize world tick state
+  // 6) workforce update (scheduled arrivals, salary ledger, efficiency)
+  // 7) baseline demand sink consumption
+  // 8) contract lifecycle (expire and generate)
+  // 9) market candle aggregation (OHLC/VWAP/volume)
+  // 10) finalize world tick state
   if (options.runBots) {
     await runBotsForTick(tx, nextTick, options.botConfig);
   }
@@ -134,6 +137,7 @@ async function runTickPipeline(
   // Matching runs in tick processing, not in request path.
   await runMarketMatchingForTick(tx, nextTick);
   await deliverDueShipmentsForTick(tx, nextTick);
+  await runWorkforceForTick(tx, nextTick, options.workforceConfig);
   await runDemandSinkForTick(tx, nextTick, options.demandConfig);
   await runContractLifecycleForTick(tx, nextTick, options.contractConfig);
   await upsertMarketCandlesForTick(tx, nextTick);
@@ -249,7 +253,8 @@ export async function advanceSimulationTicks(
       runBots: options.runBots,
       botConfig: options.botConfig,
       demandConfig: options.demandConfig,
-      contractConfig: options.contractConfig
+      contractConfig: options.contractConfig,
+      workforceConfig: options.workforceConfig
     });
   }
 }

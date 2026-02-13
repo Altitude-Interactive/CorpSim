@@ -6,6 +6,7 @@ export const UI_COPY = {
     market: "Market",
     production: "Production",
     research: "Research",
+    workforce: "Workforce",
     inventory: "Inventory",
     logistics: "Logistics",
     contracts: "Contracts",
@@ -96,6 +97,7 @@ export const UI_COPY = {
       "/market": "/pages/market",
       "/production": "/pages/production",
       "/research": "/pages/research",
+      "/workforce": "/pages/workforce",
       "/inventory": "/pages/inventory",
       "/logistics": "/pages/logistics",
       "/contracts": "/pages/contracts",
@@ -240,6 +242,8 @@ const CODE_LABEL_OVERRIDES: Record<string, string> = {
   RESEARCH_PAYMENT: "Research payment",
   PRODUCTION_COMPLETION: "Production completion",
   PRODUCTION_COST: "Production cost",
+  WORKFORCE_SALARY_EXPENSE: "Workforce salary expense",
+  WORKFORCE_RECRUITMENT_EXPENSE: "Workforce recruitment expense",
   MANUAL_ADJUSTMENT: "Manual adjustment"
 };
 

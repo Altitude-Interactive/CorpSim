@@ -17,6 +17,7 @@ export async function resetSimulationData(prisma: PrismaClient): Promise<void> {
     await tx.trade.deleteMany();
     await tx.marketOrder.deleteMany();
     await tx.productionJob.deleteMany();
+    await tx.workforceCapacityDelta.deleteMany();
     await tx.ledgerEntry.deleteMany();
     await tx.itemTickCandle.deleteMany();
     await tx.recipeInput.deleteMany();

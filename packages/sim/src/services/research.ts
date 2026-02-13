@@ -6,6 +6,10 @@ import {
   ResearchJobStatus
 } from "@prisma/client";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
+import {
+  applyDurationMultiplierTicks,
+  resolveWorkforceRuntimeModifiers
+} from "./workforce";
 
 export interface ListResearchForCompanyInput {
   companyId: string;
@@ -61,6 +65,12 @@ async function assertResearchableCompany(
 ): Promise<{
   id: string;
   cashCents: bigint;
+  workforceCapacity: number;
+  workforceAllocationOpsPct: number;
+  workforceAllocationRngPct: number;
+  workforceAllocationLogPct: number;
+  workforceAllocationCorpPct: number;
+  orgEfficiencyBps: number;
 }> {
   const company = await tx.company.findUnique({
     where: { id: companyId },
@@ -68,7 +78,13 @@ async function assertResearchableCompany(
       id: true,
       isPlayer: true,
       ownerPlayerId: true,
-      cashCents: true
+      cashCents: true,
+      workforceCapacity: true,
+      workforceAllocationOpsPct: true,
+      workforceAllocationRngPct: true,
+      workforceAllocationLogPct: true,
+      workforceAllocationCorpPct: true,
+      orgEfficiencyBps: true
     }
   });
 
@@ -81,7 +97,13 @@ async function assertResearchableCompany(
 
   return {
     id: company.id,
-    cashCents: company.cashCents
+    cashCents: company.cashCents,
+    workforceCapacity: company.workforceCapacity,
+    workforceAllocationOpsPct: company.workforceAllocationOpsPct,
+    workforceAllocationRngPct: company.workforceAllocationRngPct,
+    workforceAllocationLogPct: company.workforceAllocationLogPct,
+    workforceAllocationCorpPct: company.workforceAllocationCorpPct,
+    orgEfficiencyBps: company.orgEfficiencyBps
   };
 }
 
@@ -299,7 +321,19 @@ export async function startResearch(prisma: PrismaClient, input: StartResearchIn
       }
     });
 
-    const tickCompletes = tick + node.durationTicks;
+    const workforceModifiers = resolveWorkforceRuntimeModifiers({
+      workforceCapacity: company.workforceCapacity,
+      workforceAllocationOpsPct: company.workforceAllocationOpsPct,
+      workforceAllocationRngPct: company.workforceAllocationRngPct,
+      workforceAllocationLogPct: company.workforceAllocationLogPct,
+      workforceAllocationCorpPct: company.workforceAllocationCorpPct,
+      orgEfficiencyBps: company.orgEfficiencyBps
+    });
+    const adjustedDurationTicks = applyDurationMultiplierTicks(
+      node.durationTicks,
+      workforceModifiers.researchDurationMultiplierBps
+    );
+    const tickCompletes = tick + adjustedDurationTicks;
     const job = await tx.researchJob.create({
       data: {
         companyId: input.companyId,

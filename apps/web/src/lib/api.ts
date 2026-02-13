@@ -1,4 +1,5 @@
 import type {
+  CompanyWorkforce,
   CompanyDetails,
   CompanySummary,
   ContractFulfillmentResult,
@@ -27,13 +28,17 @@ import type {
   RegionSummary,
   ResearchJob,
   ResearchNode,
+  RequestWorkforceCapacityChangeInput,
+  SetWorkforceAllocationInput,
   ShipmentRecord,
+  WorkforceCapacityChangeResult,
   WorldHealth,
   WorldTickState
 } from "@corpsim/shared";
 import { fetchJson, isRecord, readArray, readString } from "./api-client";
 import {
   parseCompanyDetails,
+  parseCompanyWorkforce,
   parseCompanySummary,
   parseContractFulfillmentResult,
   parseContractRecord,
@@ -53,6 +58,7 @@ import {
   parseResearchJob,
   parseResearchNode,
   parseShipmentRecord,
+  parseWorkforceCapacityChangeResult,
   parseWorldHealth,
   parseWorldTickState
 } from "./api-parsers";
@@ -72,6 +78,34 @@ export async function listCompanies(): Promise<CompanySummary[]> {
 
 export async function getCompany(companyId: string): Promise<CompanyDetails> {
   return fetchJson(`/v1/companies/${companyId}`, parseCompanyDetails);
+}
+
+export async function getCompanyWorkforce(companyId: string): Promise<CompanyWorkforce> {
+  const params = new URLSearchParams();
+  params.set("companyId", companyId);
+  return fetchJson(`/v1/company/workforce?${params.toString()}`, parseCompanyWorkforce);
+}
+
+export async function setCompanyWorkforceAllocation(
+  input: SetWorkforceAllocationInput
+): Promise<CompanyWorkforce> {
+  return fetchJson("/v1/company/workforce/allocation", parseCompanyWorkforce, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function requestCompanyWorkforceCapacityChange(
+  input: RequestWorkforceCapacityChangeInput
+): Promise<WorkforceCapacityChangeResult> {
+  return fetchJson(
+    "/v1/company/workforce/capacity-change",
+    parseWorkforceCapacityChangeResult,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
 }
 
 export async function getMePlayer(): Promise<PlayerIdentity> {

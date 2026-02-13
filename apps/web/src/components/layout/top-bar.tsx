@@ -17,6 +17,7 @@ const TITLES: Record<string, string> = {
   "/market": UI_COPY.modules.market,
   "/production": UI_COPY.modules.production,
   "/research": UI_COPY.modules.research,
+  "/workforce": UI_COPY.modules.workforce,
   "/inventory": UI_COPY.modules.inventory,
   "/logistics": UI_COPY.modules.logistics,
   "/contracts": UI_COPY.modules.contracts,

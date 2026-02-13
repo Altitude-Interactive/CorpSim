@@ -9,6 +9,10 @@ import {
   NotFoundError
 } from "../domain/errors";
 import { availableCash } from "../domain/reservations";
+import {
+  applyDurationMultiplierTicks,
+  resolveWorkforceRuntimeModifiers
+} from "./workforce";
 
 interface RecipeInputRow {
   itemId: string;
@@ -286,7 +290,16 @@ export async function createProductionJobWithTx(
   const [company, recipe, companyRecipe] = await Promise.all([
     tx.company.findUnique({
       where: { id: input.companyId },
-      select: { id: true, regionId: true }
+      select: {
+        id: true,
+        regionId: true,
+        workforceCapacity: true,
+        workforceAllocationOpsPct: true,
+        workforceAllocationRngPct: true,
+        workforceAllocationLogPct: true,
+        workforceAllocationCorpPct: true,
+        orgEfficiencyBps: true
+      }
     }),
     tx.recipe.findUnique({
       where: { id: input.recipeId },
@@ -395,6 +408,19 @@ export async function createProductionJobWithTx(
     });
   }
 
+  const workforceModifiers = resolveWorkforceRuntimeModifiers({
+    workforceCapacity: company.workforceCapacity,
+    workforceAllocationOpsPct: company.workforceAllocationOpsPct,
+    workforceAllocationRngPct: company.workforceAllocationRngPct,
+    workforceAllocationLogPct: company.workforceAllocationLogPct,
+    workforceAllocationCorpPct: company.workforceAllocationCorpPct,
+    orgEfficiencyBps: company.orgEfficiencyBps
+  });
+  const adjustedDurationTicks = applyDurationMultiplierTicks(
+    recipe.durationTicks,
+    workforceModifiers.productionDurationMultiplierBps
+  );
+
   return tx.productionJob.create({
     data: {
       companyId: input.companyId,
@@ -402,7 +428,7 @@ export async function createProductionJobWithTx(
       status: ProductionJobStatus.IN_PROGRESS,
       runs: input.quantity,
       startedTick: tick,
-      dueTick: tick + recipe.durationTicks
+      dueTick: tick + adjustedDurationTicks
     },
     include: {
       company: {

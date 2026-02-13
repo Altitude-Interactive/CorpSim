@@ -29,6 +29,8 @@ import { ShipmentsController } from "./shipments/shipments.controller";
 import { ShipmentsService } from "./shipments/shipments.service";
 import { WorldController } from "./world/world.controller";
 import { WorldService } from "./world/world.service";
+import { WorkforceController } from "./workforce/workforce.controller";
+import { WorkforceService } from "./workforce/workforce.service";
 
 @Module({
   imports: [],
@@ -47,7 +49,8 @@ import { WorldService } from "./world/world.service";
     RegionsController,
     ShipmentsController,
     ProductionController,
-    ResearchController
+    ResearchController,
+    WorkforceController
   ],
   providers: [
     PrismaService,
@@ -63,7 +66,8 @@ import { WorldService } from "./world/world.service";
     RegionsService,
     ShipmentsService,
     ProductionService,
-    ResearchService
+    ResearchService,
+    WorkforceService
   ]
 })
 export class AppModule implements NestModule {

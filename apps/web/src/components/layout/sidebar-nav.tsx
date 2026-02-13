@@ -15,7 +15,8 @@ import {
   LineChart,
   PackageSearch,
   Truck,
-  TrendingUp
+  TrendingUp,
+  Users
 } from "lucide-react";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/market", label: UI_COPY.modules.market, icon: TrendingUp },
   { href: "/production", label: UI_COPY.modules.production, icon: Factory },
   { href: "/research", label: UI_COPY.modules.research, icon: FlaskConical },
+  { href: "/workforce", label: UI_COPY.modules.workforce, icon: Users },
   { href: "/inventory", label: UI_COPY.modules.inventory, icon: PackageSearch },
   { href: "/logistics", label: UI_COPY.modules.logistics, icon: Truck },
   { href: "/contracts", label: UI_COPY.modules.contracts, icon: ClipboardList },

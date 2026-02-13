@@ -61,6 +61,8 @@ enum LedgerEntryType {
   RESEARCH_PAYMENT
   PRODUCTION_COMPLETION
   PRODUCTION_COST
+  WORKFORCE_SALARY_EXPENSE
+  WORKFORCE_RECRUITMENT_EXPENSE
   MANUAL_ADJUSTMENT
 }
 
@@ -73,6 +75,12 @@ model Company {
   regionId          String
   cashCents         BigInt
   reservedCashCents BigInt       @default(0)
+  workforceCapacity Int          @default(0)
+  workforceAllocationOpsPct Int  @default(40)
+  workforceAllocationRngPct Int  @default(20)
+  workforceAllocationLogPct Int  @default(20)
+  workforceAllocationCorpPct Int @default(20)
+  orgEfficiencyBps  Int          @default(7000)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   ownerPlayer       Player?      @relation(fields: [ownerPlayerId], references: [id], onDelete: SetNull)
@@ -85,6 +93,7 @@ model Company {
   researchJobs      ResearchJob[]
   shipments         Shipment[]
   ledgerEntries     LedgerEntry[]
+  workforceCapacityDeltas WorkforceCapacityDelta[]
   buyContracts      Contract[]    @relation("ContractBuyerCompany")
   sellContracts     Contract[]    @relation("ContractSellerCompany")
   contractFulfillments ContractFulfillment[] @relation("ContractFulfillmentSellerCompany")
@@ -458,6 +467,19 @@ model MaintenanceState {
   reason    String   @default("Systems are currently being updated.")
   enabledBy String?
   scope     String   @default("all")
+}
+
+model WorkforceCapacityDelta {
+  id            String   @id @default(cuid())
+  companyId     String
+  deltaCapacity Int
+  tickArrives   Int
+  tickApplied   Int?
+  createdAt     DateTime @default(now())
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, tickArrives])
+  @@index([tickArrives, tickApplied])
 }
 
 model SimulationLease {

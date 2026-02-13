@@ -1,5 +1,6 @@
 import type {
   CompanyDetails,
+  CompanyWorkforce,
   CompanySummary,
   ContractFulfillmentResult,
   ContractRecord,
@@ -23,6 +24,7 @@ import type {
   ResearchNode,
   ResearchNodeStatus,
   ShipmentRecord,
+  WorkforceCapacityChangeResult,
   WorldHealth,
   WorldTickState
 } from "@corpsim/shared";
@@ -597,6 +599,8 @@ export function parseFinanceLedgerEntryType(value: unknown): FinanceLedgerEntryT
     entryType !== "RESEARCH_PAYMENT" &&
     entryType !== "PRODUCTION_COMPLETION" &&
     entryType !== "PRODUCTION_COST" &&
+    entryType !== "WORKFORCE_SALARY_EXPENSE" &&
+    entryType !== "WORKFORCE_RECRUITMENT_EXPENSE" &&
     entryType !== "MANUAL_ADJUSTMENT"
   ) {
     throw new Error("Invalid finance ledger entry type");
@@ -658,5 +662,96 @@ export function parseFinanceSummary(value: unknown): FinanceSummary {
       value.productionsCompletedCount,
       "productionsCompletedCount"
     )
+  };
+}
+
+export function parseCompanyWorkforce(value: unknown): CompanyWorkforce {
+  if (!isRecord(value)) {
+    throw new Error("Invalid workforce payload");
+  }
+  if (!isRecord(value.projectedModifiers)) {
+    throw new Error("Invalid workforce projected modifiers payload");
+  }
+
+  return {
+    companyId: readString(value.companyId, "companyId"),
+    workforceCapacity: readNumber(value.workforceCapacity, "workforceCapacity"),
+    workforceAllocationOpsPct: readNumber(
+      value.workforceAllocationOpsPct,
+      "workforceAllocationOpsPct"
+    ),
+    workforceAllocationRngPct: readNumber(
+      value.workforceAllocationRngPct,
+      "workforceAllocationRngPct"
+    ),
+    workforceAllocationLogPct: readNumber(
+      value.workforceAllocationLogPct,
+      "workforceAllocationLogPct"
+    ),
+    workforceAllocationCorpPct: readNumber(
+      value.workforceAllocationCorpPct,
+      "workforceAllocationCorpPct"
+    ),
+    orgEfficiencyBps: readNumber(value.orgEfficiencyBps, "orgEfficiencyBps"),
+    weeklySalaryBurnCents: readString(value.weeklySalaryBurnCents, "weeklySalaryBurnCents"),
+    projectedModifiers: {
+      productionSpeedBonusBps: readNumber(
+        value.projectedModifiers.productionSpeedBonusBps,
+        "projectedModifiers.productionSpeedBonusBps"
+      ),
+      productionDurationMultiplierBps: readNumber(
+        value.projectedModifiers.productionDurationMultiplierBps,
+        "projectedModifiers.productionDurationMultiplierBps"
+      ),
+      researchSpeedBonusBps: readNumber(
+        value.projectedModifiers.researchSpeedBonusBps,
+        "projectedModifiers.researchSpeedBonusBps"
+      ),
+      researchDurationMultiplierBps: readNumber(
+        value.projectedModifiers.researchDurationMultiplierBps,
+        "projectedModifiers.researchDurationMultiplierBps"
+      ),
+      logisticsTravelReductionBps: readNumber(
+        value.projectedModifiers.logisticsTravelReductionBps,
+        "projectedModifiers.logisticsTravelReductionBps"
+      ),
+      logisticsTravelMultiplierBps: readNumber(
+        value.projectedModifiers.logisticsTravelMultiplierBps,
+        "projectedModifiers.logisticsTravelMultiplierBps"
+      )
+    },
+    pendingHiringArrivals: readArray(value.pendingHiringArrivals, "pendingHiringArrivals").map(
+      (row) => {
+        if (!isRecord(row)) {
+          throw new Error("Invalid pending hiring arrival row");
+        }
+        return {
+          id: readString(row.id, "pendingHiringArrivals.id"),
+          deltaCapacity: readNumber(row.deltaCapacity, "pendingHiringArrivals.deltaCapacity"),
+          tickArrives: readNumber(row.tickArrives, "pendingHiringArrivals.tickArrives"),
+          createdAt: readString(row.createdAt, "pendingHiringArrivals.createdAt")
+        };
+      }
+    ),
+    updatedAt: readString(value.updatedAt, "updatedAt")
+  };
+}
+
+export function parseWorkforceCapacityChangeResult(
+  value: unknown
+): WorkforceCapacityChangeResult {
+  if (!isRecord(value)) {
+    throw new Error("Invalid workforce capacity change payload");
+  }
+
+  return {
+    companyId: readString(value.companyId, "companyId"),
+    deltaCapacity: readNumber(value.deltaCapacity, "deltaCapacity"),
+    appliedImmediately: readBoolean(value.appliedImmediately, "appliedImmediately"),
+    tickRequested: readNumber(value.tickRequested, "tickRequested"),
+    tickArrives: value.tickArrives === null ? null : readNumber(value.tickArrives, "tickArrives"),
+    recruitmentCostCents: readString(value.recruitmentCostCents, "recruitmentCostCents"),
+    workforceCapacity: readNumber(value.workforceCapacity, "workforceCapacity"),
+    orgEfficiencyBps: readNumber(value.orgEfficiencyBps, "orgEfficiencyBps")
   };
 }

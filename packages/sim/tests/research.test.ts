@@ -28,7 +28,13 @@ describe("research service", () => {
           id: "company-1",
           isPlayer: true,
           ownerPlayerId: "player-1",
-          cashCents: 100_000n
+          cashCents: 100_000n,
+          workforceCapacity: 0,
+          workforceAllocationOpsPct: 40,
+          workforceAllocationRngPct: 20,
+          workforceAllocationLogPct: 20,
+          workforceAllocationCorpPct: 20,
+          orgEfficiencyBps: 7000
         }),
         update: companyUpdate
       },
@@ -92,7 +98,13 @@ describe("research service", () => {
           id: "company-1",
           isPlayer: true,
           ownerPlayerId: "player-1",
-          cashCents: 50_000n
+          cashCents: 50_000n,
+          workforceCapacity: 0,
+          workforceAllocationOpsPct: 40,
+          workforceAllocationRngPct: 20,
+          workforceAllocationLogPct: 20,
+          workforceAllocationCorpPct: 20,
+          orgEfficiencyBps: 7000
         }),
         update: companyUpdate
       },

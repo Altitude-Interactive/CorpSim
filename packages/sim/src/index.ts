@@ -6,6 +6,7 @@ export * from "./services/market-candles";
 export * from "./services/invariants";
 export * from "./services/read-models";
 export * from "./services/demand-sink";
+export * from "./services/workforce";
 export * from "./services/players";
 export * from "./services/production";
 export * from "./services/research";

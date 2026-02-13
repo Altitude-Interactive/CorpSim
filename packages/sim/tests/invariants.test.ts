@@ -10,12 +10,24 @@ describe("invariants scanner", () => {
       {
         id: "company-a",
         cashCents: -1n,
-        reservedCashCents: 0n
+        reservedCashCents: 0n,
+        workforceCapacity: 0,
+        workforceAllocationOpsPct: 40,
+        workforceAllocationRngPct: 20,
+        workforceAllocationLogPct: 20,
+        workforceAllocationCorpPct: 20,
+        orgEfficiencyBps: 7000
       },
       {
         id: "company-b",
         cashCents: 100n,
-        reservedCashCents: 200n
+        reservedCashCents: 200n,
+        workforceCapacity: 0,
+        workforceAllocationOpsPct: 40,
+        workforceAllocationRngPct: 20,
+        workforceAllocationLogPct: 20,
+        workforceAllocationCorpPct: 20,
+        orgEfficiencyBps: 7000
       }
     ]);
 

@@ -386,6 +386,8 @@ export type FinanceLedgerEntryType =
   | "RESEARCH_PAYMENT"
   | "PRODUCTION_COMPLETION"
   | "PRODUCTION_COST"
+  | "WORKFORCE_SALARY_EXPENSE"
+  | "WORKFORCE_RECRUITMENT_EXPENSE"
   | "MANUAL_ADJUSTMENT";
 
 export interface FinanceLedgerEntry {
@@ -433,4 +435,58 @@ export interface FinanceSummary {
   ordersPlacedCount: number;
   ordersCancelledCount: number;
   productionsCompletedCount: number;
+}
+
+export interface WorkforceProjectedModifiers {
+  productionSpeedBonusBps: number;
+  productionDurationMultiplierBps: number;
+  researchSpeedBonusBps: number;
+  researchDurationMultiplierBps: number;
+  logisticsTravelReductionBps: number;
+  logisticsTravelMultiplierBps: number;
+}
+
+export interface WorkforcePendingHiringArrival {
+  id: string;
+  deltaCapacity: number;
+  tickArrives: number;
+  createdAt: string;
+}
+
+export interface CompanyWorkforce {
+  companyId: string;
+  workforceCapacity: number;
+  workforceAllocationOpsPct: number;
+  workforceAllocationRngPct: number;
+  workforceAllocationLogPct: number;
+  workforceAllocationCorpPct: number;
+  orgEfficiencyBps: number;
+  weeklySalaryBurnCents: string;
+  projectedModifiers: WorkforceProjectedModifiers;
+  pendingHiringArrivals: WorkforcePendingHiringArrival[];
+  updatedAt: string;
+}
+
+export interface SetWorkforceAllocationInput {
+  companyId: string;
+  operationsPct: number;
+  researchPct: number;
+  logisticsPct: number;
+  corporatePct: number;
+}
+
+export interface RequestWorkforceCapacityChangeInput {
+  companyId: string;
+  deltaCapacity: number;
+}
+
+export interface WorkforceCapacityChangeResult {
+  companyId: string;
+  deltaCapacity: number;
+  appliedImmediately: boolean;
+  tickRequested: number;
+  tickArrives: number | null;
+  recruitmentCostCents: string;
+  workforceCapacity: number;
+  orgEfficiencyBps: number;
 }

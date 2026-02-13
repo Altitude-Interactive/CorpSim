@@ -9,6 +9,10 @@ import {
   NotFoundError,
   OptimisticLockConflictError
 } from "../domain/errors";
+import {
+  applyDurationMultiplierTicks,
+  resolveWorkforceRuntimeModifiers
+} from "./workforce";
 
 export interface ShipmentRuntimeConfig {
   baseFeeCents: bigint;
@@ -201,7 +205,13 @@ export async function createShipmentWithTx(
         id: true,
         regionId: true,
         cashCents: true,
-        reservedCashCents: true
+        reservedCashCents: true,
+        workforceCapacity: true,
+        workforceAllocationOpsPct: true,
+        workforceAllocationRngPct: true,
+        workforceAllocationLogPct: true,
+        workforceAllocationCorpPct: true,
+        orgEfficiencyBps: true
       }
     }),
     tx.region.findUnique({
@@ -243,7 +253,19 @@ export async function createShipmentWithTx(
     throw new NotFoundError(`region ${company.regionId} not found`);
   }
 
-  const travelTimeTicks = resolveTravelTimeTicks(fromRegion.code, toRegion.code);
+  const baseTravelTimeTicks = resolveTravelTimeTicks(fromRegion.code, toRegion.code);
+  const workforceModifiers = resolveWorkforceRuntimeModifiers({
+    workforceCapacity: company.workforceCapacity,
+    workforceAllocationOpsPct: company.workforceAllocationOpsPct,
+    workforceAllocationRngPct: company.workforceAllocationRngPct,
+    workforceAllocationLogPct: company.workforceAllocationLogPct,
+    workforceAllocationCorpPct: company.workforceAllocationCorpPct,
+    orgEfficiencyBps: company.orgEfficiencyBps
+  });
+  const travelTimeTicks = applyDurationMultiplierTicks(
+    baseTravelTimeTicks,
+    workforceModifiers.logisticsTravelMultiplierBps
+  );
   const feeCents = computeShipmentFeeCents(input.quantity, config);
 
   const fromInventory = await tx.inventory.findUnique({
