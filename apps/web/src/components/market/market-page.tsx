@@ -343,7 +343,10 @@ export function MarketPage() {
             <CardTitle>Order Book Filters</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-3 md:grid-cols-6" onSubmit={submitOrderBookFilters}>
+            <form
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)_7rem_auto]"
+              onSubmit={submitOrderBookFilters}
+            >
               <Select
                 value={selectedRegionId || "ALL"}
                 onValueChange={(value) => setSelectedRegionId(value === "ALL" ? "" : value)}
@@ -417,6 +420,7 @@ export function MarketPage() {
                 onChange={(event) =>
                   setOrderFilters((prev) => ({ ...prev, limit: event.target.value }))
                 }
+                inputMode="numeric"
               />
               <Button type="submit">Apply</Button>
             </form>
