@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     path: string[];
-  };
+  }>;
 };
 
 const REQUEST_BLOCKED_HEADERS = new Set([
@@ -57,8 +57,9 @@ function resolveApiUpstreamBaseUrl(): string {
 }
 
 async function proxyToApi(request: NextRequest, context: RouteContext): Promise<NextResponse> {
+  const { path } = await context.params;
   const upstreamUrl = new URL(
-    `${resolveApiUpstreamBaseUrl()}/v1/${context.params.path.join("/")}`
+    `${resolveApiUpstreamBaseUrl()}/v1/${path.join("/")}`
   );
   upstreamUrl.search = request.nextUrl.search;
 
