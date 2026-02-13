@@ -27,6 +27,12 @@ describe("worker iteration integration", () => {
       spreadBps: 500,
       maxNotionalPerTickCents: 50_000n
     },
+    demandConfig: {
+      enabled: false,
+      itemCodes: ["HAND_TOOLS"],
+      baseQuantityPerCompany: 1,
+      variabilityQuantity: 0
+    },
     contractConfig: {
       contractsPerTick: 2,
       ttlTicks: 50,
@@ -214,6 +220,54 @@ describe("worker iteration integration", () => {
     });
 
     expect(rows.map((entry) => entry.tickAfter)).toEqual([4, 5]);
+  });
+
+  it("consumes bot inventory through deterministic demand sink", async () => {
+    const sinkConfig: WorkerConfig = {
+      ...config,
+      demandConfig: {
+        enabled: true,
+        itemCodes: ["HAND_TOOLS"],
+        baseQuantityPerCompany: 5,
+        variabilityQuantity: 0
+      }
+    };
+
+    const handToolsItem = await prisma.item.findUniqueOrThrow({
+      where: { code: "HAND_TOOLS" },
+      select: { id: true }
+    });
+    const before = await prisma.inventory.aggregate({
+      where: {
+        itemId: handToolsItem.id,
+        company: {
+          isPlayer: false,
+          ownerPlayerId: null
+        }
+      },
+      _sum: { quantity: true }
+    });
+
+    await runWorkerIteration(prisma, sinkConfig, {
+      ticksOverride: 1,
+      maxConflictRetries: 0,
+      runBots: false
+    });
+
+    const after = await prisma.inventory.aggregate({
+      where: {
+        itemId: handToolsItem.id,
+        company: {
+          isPlayer: false,
+          ownerPlayerId: null
+        }
+      },
+      _sum: { quantity: true }
+    });
+
+    expect(before._sum.quantity).not.toBeNull();
+    expect(after._sum.quantity).not.toBeNull();
+    expect(after._sum.quantity as number).toBe((before._sum.quantity as number) - 5);
   });
 });
 

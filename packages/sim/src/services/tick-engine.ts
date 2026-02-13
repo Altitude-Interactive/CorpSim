@@ -5,6 +5,7 @@ import {
   ContractLifecycleConfig,
   runContractLifecycleForTick
 } from "./contracts";
+import { DemandSinkConfig, runDemandSinkForTick } from "./demand-sink";
 import { upsertMarketCandlesForTick } from "./market-candles";
 import { runMarketMatchingForTick } from "./market-matching";
 import { completeDueProductionJobs } from "./production";
@@ -21,6 +22,7 @@ export interface AdvanceTickOptions {
   expectedLockVersion?: number;
   runBots?: boolean;
   botConfig?: Partial<BotRuntimeConfig>;
+  demandConfig?: Partial<DemandSinkConfig>;
   contractConfig?: Partial<ContractLifecycleConfig>;
 }
 
@@ -119,9 +121,10 @@ async function runTickPipeline(
   // 3) research completions and recipe unlocks
   // 4) market matching and settlement
   // 5) shipment deliveries
-  // 6) contract lifecycle (expire and generate)
-  // 7) market candle aggregation (OHLC/VWAP/volume)
-  // 8) finalize world tick state
+  // 6) baseline demand sink consumption
+  // 7) contract lifecycle (expire and generate)
+  // 8) market candle aggregation (OHLC/VWAP/volume)
+  // 9) finalize world tick state
   if (options.runBots) {
     await runBotsForTick(tx, nextTick, options.botConfig);
   }
@@ -131,6 +134,7 @@ async function runTickPipeline(
   // Matching runs in tick processing, not in request path.
   await runMarketMatchingForTick(tx, nextTick);
   await deliverDueShipmentsForTick(tx, nextTick);
+  await runDemandSinkForTick(tx, nextTick, options.demandConfig);
   await runContractLifecycleForTick(tx, nextTick, options.contractConfig);
   await upsertMarketCandlesForTick(tx, nextTick);
 }
@@ -244,6 +248,7 @@ export async function advanceSimulationTicks(
       expectedLockVersion: i === 0 ? options.expectedLockVersion : undefined,
       runBots: options.runBots,
       botConfig: options.botConfig,
+      demandConfig: options.demandConfig,
       contractConfig: options.contractConfig
     });
   }

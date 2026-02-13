@@ -79,6 +79,7 @@ async function runSingleTickWithRetries(
       const result = await advanceSimulationTick(prisma, {
         runBots: options.runBots,
         botConfig: options.config.botConfig,
+        demandConfig: options.config.demandConfig,
         contractConfig: options.config.contractConfig,
         executionKey: options.executionKey
       });

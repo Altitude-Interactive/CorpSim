@@ -3,6 +3,7 @@ import {
   ContractLifecycleConfig,
   resolveContractLifecycleConfig
 } from "@corpsim/sim";
+import { DemandSinkConfig, resolveDemandSinkConfig } from "@corpsim/sim";
 
 export interface WorkerConfig {
   tickIntervalMs: number;
@@ -13,6 +14,7 @@ export interface WorkerConfig {
   invariantsCheckEveryTicks: number;
   onInvariantViolation: "stop" | "pause_bots" | "log_only";
   botConfig: Partial<BotRuntimeConfig>;
+  demandConfig: Partial<DemandSinkConfig>;
   contractConfig: Partial<ContractLifecycleConfig>;
 }
 
@@ -173,6 +175,15 @@ export function loadWorkerConfig(): WorkerRuntimeConfig {
     itemCodes: parseItemCodes(process.env.CONTRACT_ITEM_CODES),
     priceBandBps: parseNonNegativeIntegerEnv("CONTRACT_PRICE_BAND_BPS", 500)
   });
+  const demandConfig = resolveDemandSinkConfig({
+    enabled: parseBooleanEnv("DEMAND_SINK_ENABLED", true),
+    itemCodes: parseItemCodes(process.env.DEMAND_SINK_ITEMS),
+    baseQuantityPerCompany: parseNonNegativeIntegerEnv(
+      "DEMAND_SINK_BASE_QUANTITY_PER_COMPANY",
+      1
+    ),
+    variabilityQuantity: parseNonNegativeIntegerEnv("DEMAND_SINK_VARIABILITY_QUANTITY", 2)
+  });
 
   const redis: RedisConfig = {
     host: parseStringEnv("REDIS_HOST", "localhost"),
@@ -213,6 +224,7 @@ export function loadWorkerConfig(): WorkerRuntimeConfig {
     invariantsCheckEveryTicks: parseIntegerEnv("INVARIANTS_CHECK_EVERY_TICKS", 10),
     onInvariantViolation: parseInvariantPolicy(process.env.ON_INVARIANT_VIOLATION),
     botConfig,
+    demandConfig,
     contractConfig,
     redis,
     bullmq

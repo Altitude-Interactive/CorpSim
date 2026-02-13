@@ -39,7 +39,20 @@ describe("worker config", () => {
 
     expect(config).toMatchObject({
       tickExecutionRetentionTicks: 100_000,
-      tickExecutionCleanupEveryTicks: 100
+      tickExecutionCleanupEveryTicks: 100,
+      demandConfig: {
+        enabled: true,
+        itemCodes: [
+          "CONVEYOR_MODULE",
+          "HAND_TOOLS",
+          "INDUSTRIAL_PRESS",
+          "MACHINE_PARTS",
+          "POWER_UNIT",
+          "TOOL_KIT"
+        ],
+        baseQuantityPerCompany: 1,
+        variabilityQuantity: 2
+      }
     });
   });
 
