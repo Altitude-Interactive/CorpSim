@@ -111,6 +111,7 @@
 
 ## Long-Term Vision
 
+* Long-term persistence
 * Fully player-driven economy
 * Persistent world cycles
 * Optional seasonal resets
