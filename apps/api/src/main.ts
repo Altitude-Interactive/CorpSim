@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { ensureEnvironmentLoaded } from "../../../packages/db/src/env";
+import { ensureEnvironmentLoaded } from "@corpsim/db";
 import { AppModule } from "./app.module";
 import { HttpErrorFilter } from "./common/filters/http-error.filter";
 
@@ -102,3 +102,4 @@ bootstrap().catch((error: unknown) => {
   console.error("API bootstrap failed", error);
   process.exitCode = 1;
 });
+

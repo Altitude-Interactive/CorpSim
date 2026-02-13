@@ -1,19 +1,19 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { ContractStatus } from "@prisma/client";
+import { ContractStatus as PrismaContractStatus } from "@prisma/client";
+import type {
+  ContractFulfillmentResult,
+  ContractRecord,
+  ContractStatus,
+  ListContractsFilters
+} from "@corpsim/shared";
 import {
   acceptContract,
   assertCompanyOwnedByPlayer,
   fulfillContract,
   listContractsForPlayer,
   resolvePlayerByHandle
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
-
-interface ListContractsInput {
-  status?: ContractStatus;
-  itemId?: string;
-  limit?: number;
-}
 
 function mapContractToDto(contract: {
   id: string;
@@ -23,7 +23,7 @@ function mapContractToDto(contract: {
   quantity: number;
   remainingQuantity: number;
   priceCents: bigint;
-  status: ContractStatus;
+  status: string;
   tickCreated: number;
   tickExpires: number;
   tickAccepted: number | null;
@@ -33,7 +33,7 @@ function mapContractToDto(contract: {
   item: { id: string; code: string; name: string };
   buyerCompany: { id: string; code: string; name: string };
   sellerCompany: { id: string; code: string; name: string } | null;
-}) {
+}): ContractRecord {
   return {
     id: contract.id,
     buyerCompanyId: contract.buyerCompanyId,
@@ -42,13 +42,13 @@ function mapContractToDto(contract: {
     quantity: contract.quantity,
     remainingQuantity: contract.remainingQuantity,
     priceCents: contract.priceCents.toString(),
-    status: contract.status,
+    status: contract.status as ContractStatus,
     tickCreated: contract.tickCreated,
     tickExpires: contract.tickExpires,
     tickAccepted: contract.tickAccepted,
     tickClosed: contract.tickClosed,
-    createdAt: contract.createdAt,
-    updatedAt: contract.updatedAt,
+    createdAt: contract.createdAt.toISOString(),
+    updatedAt: contract.updatedAt.toISOString(),
     item: {
       id: contract.item.id,
       code: contract.item.code,
@@ -77,11 +77,11 @@ export class ContractsService {
     this.prisma = prisma;
   }
 
-  async listContracts(input: ListContractsInput, playerHandle: string) {
+  async listContracts(input: ListContractsFilters, playerHandle: string): Promise<ContractRecord[]> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     const contracts = await listContractsForPlayer(this.prisma, {
       playerId: player.id,
-      status: input.status,
+      status: input.status as PrismaContractStatus | undefined,
       itemId: input.itemId,
       limit: input.limit
     });
@@ -89,7 +89,11 @@ export class ContractsService {
     return contracts.map(mapContractToDto);
   }
 
-  async acceptContract(contractId: string, sellerCompanyId: string, playerHandle: string) {
+  async acceptContract(
+    contractId: string,
+    sellerCompanyId: string,
+    playerHandle: string
+  ): Promise<ContractRecord> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, sellerCompanyId);
 
@@ -106,7 +110,7 @@ export class ContractsService {
     sellerCompanyId: string,
     quantity: number,
     playerHandle: string
-  ) {
+  ): Promise<ContractFulfillmentResult> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, sellerCompanyId);
 
@@ -126,8 +130,9 @@ export class ContractsService {
         quantity: result.fulfillment.quantity,
         priceCents: result.fulfillment.priceCents.toString(),
         tick: result.fulfillment.tick,
-        createdAt: result.fulfillment.createdAt
+        createdAt: result.fulfillment.createdAt.toISOString()
       }
     };
   }
 }
+

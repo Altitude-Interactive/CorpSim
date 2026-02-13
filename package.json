@@ -24,6 +24,7 @@
     "sim:advance": "tsx scripts/sim-advance.ts",
     "sim:reset": "tsx scripts/sim-reset.ts",
     "sim:seed": "pnpm -C packages/db seed",
+    "sim:stats": "tsx scripts/sim-stats.ts",
     "release:entry": "node scripts/release-entry.mjs",
     "release:check": "node scripts/check-release-entry.mjs",
     "release:check-tag": "node scripts/check-tag-version.mjs",
@@ -33,28 +34,31 @@
     "maintenance:status": "node scripts/maintenance.mjs status"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.8",
-    "@nestjs/core": "^11.1.8",
-    "@nestjs/platform-express": "^11.1.8",
-    "@prisma/client": "^6.2.1",
-    "dotenv": "^16.4.7"
+    "@corpsim/db": "workspace:*",
+    "@corpsim/shared": "workspace:*",
+    "@corpsim/sim": "workspace:*",
+    "@nestjs/common": "^11.1.13",
+    "@nestjs/core": "^11.1.13",
+    "@nestjs/platform-express": "^11.1.13",
+    "@prisma/client": "^6.19.2",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
-    "@nestjs/testing": "^11.1.8",
-    "@types/node": "^22.13.1",
+    "@nestjs/testing": "^11.1.13",
+    "@types/node": "^22.19.11",
     "@types/supertest": "^6.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.24.1",
-    "@typescript-eslint/parser": "^8.24.1",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
     "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2",
+    "class-validator": "^0.14.3",
     "dotenv-cli": "^8.0.0",
     "eslint": "^8.57.1",
-    "prisma": "^6.2.1",
+    "prisma": "^6.19.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "supertest": "^7.1.4",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "supertest": "^7.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

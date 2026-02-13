@@ -1,11 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { seedWorld } from "../../../../packages/db/src/seed-world";
+import type { WorldHealth, WorldTickState } from "@corpsim/shared";
+import { seedWorld } from "@corpsim/db";
 import {
   advanceSimulationTicks,
   getSimulationHealth,
   getWorldTickState,
   resetSimulationData
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -16,17 +17,17 @@ export class WorldService {
     this.prisma = prisma;
   }
 
-  async getTickState() {
+  async getTickState(): Promise<WorldTickState> {
     const tickState = await getWorldTickState(this.prisma);
 
     return {
       currentTick: tickState?.currentTick ?? 0,
       lockVersion: tickState?.lockVersion ?? 0,
-      lastAdvancedAt: tickState?.lastAdvancedAt ?? null
+      lastAdvancedAt: tickState?.lastAdvancedAt?.toISOString() ?? null
     };
   }
 
-  async getHealth() {
+  async getHealth(): Promise<WorldHealth> {
     const health = await getSimulationHealth(this.prisma, {
       invariantIssueLimit: 20
     });
@@ -34,7 +35,7 @@ export class WorldService {
     return {
       currentTick: health.currentTick,
       lockVersion: health.lockVersion,
-      lastAdvancedAt: health.lastAdvancedAt,
+      lastAdvancedAt: health.lastAdvancedAt?.toISOString() ?? null,
       ordersOpenCount: health.ordersOpenCount,
       ordersTotalCount: health.ordersTotalCount,
       tradesLast100Count: health.tradesLast100Count,
@@ -50,12 +51,12 @@ export class WorldService {
     };
   }
 
-  async advance(ticks: number, expectedLockVersion?: number) {
+  async advance(ticks: number, expectedLockVersion?: number): Promise<WorldTickState> {
     await advanceSimulationTicks(this.prisma, ticks, { expectedLockVersion });
     return this.getTickState();
   }
 
-  async reset(reseed: boolean) {
+  async reset(reseed: boolean): Promise<WorldTickState> {
     await resetSimulationData(this.prisma);
 
     if (reseed) {
@@ -65,3 +66,4 @@ export class WorldService {
     return this.getTickState();
   }
 }
+

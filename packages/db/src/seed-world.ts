@@ -1,6 +1,6 @@
 import { OrderSide, PrismaClient } from "@prisma/client";
-import { placeMarketOrder } from "../../sim/src/services/market-orders";
-import { resetSimulationData } from "../../sim/src/services/reset-simulation";
+import { placeMarketOrder } from "@corpsim/sim";
+import { resetSimulationData } from "@corpsim/sim";
 
 export interface SeedWorldOptions {
   reset?: boolean;
@@ -652,3 +652,4 @@ export async function seedWorld(
     )
   };
 }
+

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { listRegions } from "../../../../packages/sim/src";
+import type { RegionSummary } from "@corpsim/shared";
+import { listRegions } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -10,7 +11,8 @@ export class RegionsService {
     this.prisma = prisma;
   }
 
-  async listRegions() {
+  async listRegions(): Promise<RegionSummary[]> {
     return listRegions(this.prisma);
   }
 }
+

@@ -1,5 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ShipmentStatus } from "@prisma/client";
+import type {
+  CreateShipmentInput,
+  ListShipmentsFilters,
+  ShipmentRecord
+} from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   assertShipmentOwnedByPlayer,
@@ -7,21 +12,8 @@ import {
   createShipment,
   listShipments,
   resolvePlayerByHandle
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
-
-interface ListShipmentsInput {
-  companyId?: string;
-  status?: ShipmentStatus;
-  limit?: number;
-}
-
-interface CreateShipmentInput {
-  companyId: string;
-  toRegionId: string;
-  itemId: string;
-  quantity: number;
-}
 
 interface ShipmentLike {
   id: string;
@@ -67,7 +59,7 @@ function parseNonNegativeBigIntEnv(name: string, fallback: bigint): bigint {
   return parsed;
 }
 
-function mapShipmentToDto(shipment: ShipmentLike) {
+function mapShipmentToDto(shipment: ShipmentLike): ShipmentRecord {
   return {
     id: shipment.id,
     companyId: shipment.companyId,
@@ -75,12 +67,12 @@ function mapShipmentToDto(shipment: ShipmentLike) {
     toRegionId: shipment.toRegionId,
     itemId: shipment.itemId,
     quantity: shipment.quantity,
-    status: shipment.status,
+    status: shipment.status as ShipmentRecord["status"],
     tickCreated: shipment.tickCreated,
     tickArrives: shipment.tickArrives,
     tickClosed: shipment.tickClosed,
-    createdAt: shipment.createdAt,
-    updatedAt: shipment.updatedAt,
+    createdAt: shipment.createdAt.toISOString(),
+    updatedAt: shipment.updatedAt.toISOString(),
     item: shipment.item,
     fromRegion: shipment.fromRegion,
     toRegion: shipment.toRegion
@@ -102,7 +94,7 @@ export class ShipmentsService {
     };
   }
 
-  async list(input: ListShipmentsInput, playerHandle: string) {
+  async list(input: ListShipmentsFilters, playerHandle: string): Promise<ShipmentRecord[]> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     if (input.companyId) {
       await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
@@ -111,14 +103,14 @@ export class ShipmentsService {
     const rows = await listShipments(this.prisma, {
       playerId: player.id,
       companyId: input.companyId,
-      status: input.status,
+      status: input.status as ShipmentStatus | undefined,
       limit: input.limit
     });
 
     return rows.map(mapShipmentToDto);
   }
 
-  async create(input: CreateShipmentInput, playerHandle: string) {
+  async create(input: CreateShipmentInput, playerHandle: string): Promise<ShipmentRecord> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
@@ -136,7 +128,7 @@ export class ShipmentsService {
     return mapShipmentToDto(shipment);
   }
 
-  async cancel(shipmentId: string, playerHandle: string) {
+  async cancel(shipmentId: string, playerHandle: string): Promise<ShipmentRecord> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertShipmentOwnedByPlayer(this.prisma, player.id, shipmentId);
 
@@ -144,3 +136,4 @@ export class ShipmentsService {
     return mapShipmentToDto(shipment);
   }
 }
+

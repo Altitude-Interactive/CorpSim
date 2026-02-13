@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { listItems } from "../../../../packages/sim/src";
+import type { ItemCatalogItem } from "@corpsim/shared";
+import { listItems } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -10,7 +11,8 @@ export class ItemsService {
     this.prisma = prisma;
   }
 
-  async listItems() {
+  async listItems(): Promise<ItemCatalogItem[]> {
     return listItems(this.prisma);
   }
 }
+

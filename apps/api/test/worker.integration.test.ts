@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { seedWorld } from "../../../packages/db/src/seed-world";
-import { createPrismaClient } from "../../../packages/db/src/client";
+import { seedWorld } from "@corpsim/db";
+import { createPrismaClient } from "@corpsim/db";
 import { WorkerConfig } from "../../worker/src/config";
 import { runWorkerIteration } from "../../worker/src/worker-loop";
 
@@ -130,3 +130,4 @@ describe("worker iteration integration", () => {
     expect(openContracts).toBeGreaterThan(0);
   });
 });
+

@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { describe, afterAll, beforeAll, beforeEach, expect, it } from "vitest";
-import { seedWorld } from "../../../packages/db/src/seed-world";
+import { seedWorld } from "@corpsim/db";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { AppModule } from "../src/app.module";
@@ -103,3 +103,4 @@ describe("world API integration", () => {
     expect(after.body.lockVersion).toBe(before.body.lockVersion);
   });
 });
+

@@ -10,7 +10,7 @@ import {
   ForbiddenError,
   NotFoundError,
   OptimisticLockConflictError
-} from "../../../../../packages/sim/src/domain/errors";
+} from "@corpsim/sim";
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {

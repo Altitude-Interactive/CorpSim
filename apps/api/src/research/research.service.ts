@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ResearchJobStatus } from "@prisma/client";
+import type { ResearchJob, ResearchNode } from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   cancelResearch,
@@ -8,7 +9,7 @@ import {
   listResearchForCompany,
   resolvePlayerByHandle,
   startResearch
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
 function mapNodeToDto(node: {
@@ -29,7 +30,7 @@ function mapNodeToDto(node: {
     recipeCode: string;
     recipeName: string;
   }>;
-}) {
+}): ResearchNode {
   return {
     id: node.id,
     code: node.code,
@@ -37,7 +38,7 @@ function mapNodeToDto(node: {
     description: node.description,
     costCashCents: node.costCashCents.toString(),
     durationTicks: node.durationTicks,
-    status: node.status,
+    status: node.status as ResearchNode["status"],
     tickStarted: node.tickStarted,
     tickCompletes: node.tickCompletes,
     prerequisites: node.prerequisites,
@@ -67,7 +68,10 @@ export class ResearchService {
     return first.id;
   }
 
-  async listResearch(companyId: string | undefined, playerHandle: string) {
+  async listResearch(
+    companyId: string | undefined,
+    playerHandle: string
+  ): Promise<{ companyId: string; nodes: ResearchNode[] }> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     const resolvedCompanyId = await this.resolveOwnedCompanyId(player.id, companyId);
     const nodes = await listResearchForCompany(this.prisma, {
@@ -80,7 +84,11 @@ export class ResearchService {
     };
   }
 
-  async startNode(nodeId: string, companyId: string | undefined, playerHandle: string) {
+  async startNode(
+    nodeId: string,
+    companyId: string | undefined,
+    playerHandle: string
+  ): Promise<ResearchJob> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     const resolvedCompanyId = await this.resolveOwnedCompanyId(player.id, companyId);
 
@@ -98,12 +106,16 @@ export class ResearchService {
       tickStarted: job.tickStarted,
       tickCompletes: job.tickCompletes,
       tickClosed: job.tickClosed,
-      createdAt: job.createdAt,
-      updatedAt: job.updatedAt
+      createdAt: job.createdAt.toISOString(),
+      updatedAt: job.updatedAt.toISOString()
     };
   }
 
-  async cancelNode(nodeId: string, companyId: string | undefined, playerHandle: string) {
+  async cancelNode(
+    nodeId: string,
+    companyId: string | undefined,
+    playerHandle: string
+  ): Promise<ResearchJob> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     const resolvedCompanyId = await this.resolveOwnedCompanyId(player.id, companyId);
 
@@ -121,8 +133,9 @@ export class ResearchService {
       tickStarted: job.tickStarted,
       tickCompletes: job.tickCompletes,
       tickClosed: job.tickClosed,
-      createdAt: job.createdAt,
-      updatedAt: job.updatedAt
+      createdAt: job.createdAt.toISOString(),
+      updatedAt: job.updatedAt.toISOString()
     };
   }
 }
+

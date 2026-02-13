@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { createPrismaClient } from "../../../packages/db/src/client";
+import { createPrismaClient } from "@corpsim/db";
 import { loadWorkerConfig } from "./config";
 import { runWorkerIteration, startWorkerLoop } from "./worker-loop";
 
@@ -69,3 +69,4 @@ main().catch((error: unknown) => {
   console.error("[worker] bootstrap failed", error);
   process.exitCode = 1;
 });
+

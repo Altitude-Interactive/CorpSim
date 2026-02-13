@@ -1,6 +1,11 @@
 {
   "name": "@corpsim/api",
   "private": true,
+  "dependencies": {
+    "@corpsim/db": "workspace:*",
+    "@corpsim/shared": "workspace:*",
+    "@corpsim/sim": "workspace:*"
+  },
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",

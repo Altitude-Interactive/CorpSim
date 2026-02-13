@@ -1,23 +1,19 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { LedgerEntryType } from "@prisma/client";
+import { LedgerEntryType as PrismaLedgerEntryType } from "@prisma/client";
+import type {
+  FinanceLedgerEntry,
+  FinanceLedgerEntryType,
+  FinanceLedgerFilters,
+  FinanceLedgerResult,
+  FinanceSummary
+} from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   getCompanyLedger,
   getFinanceSummary,
   resolvePlayerByHandle
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
-
-interface LedgerFilterInput {
-  companyId: string;
-  fromTick?: number;
-  toTick?: number;
-  entryType?: LedgerEntryType;
-  referenceType?: string;
-  referenceId?: string;
-  limit?: number;
-  cursor?: string;
-}
 
 interface FinanceSummaryInput {
   companyId: string;
@@ -32,29 +28,32 @@ export class FinanceService {
     this.prisma = prisma;
   }
 
-  async listLedger(filters: LedgerFilterInput, playerHandle: string) {
+  async listLedger(filters: FinanceLedgerFilters, playerHandle: string): Promise<FinanceLedgerResult> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, filters.companyId);
 
-    const result = await getCompanyLedger(this.prisma, filters);
+    const result = await getCompanyLedger(this.prisma, {
+      ...filters,
+      entryType: filters.entryType as PrismaLedgerEntryType | undefined
+    });
 
     return {
-      entries: result.entries.map((entry) => ({
+      entries: result.entries.map<FinanceLedgerEntry>((entry) => ({
         id: entry.id,
         tick: entry.tick,
-        entryType: entry.entryType,
+        entryType: entry.entryType as FinanceLedgerEntryType,
         referenceType: entry.referenceType,
         referenceId: entry.referenceId,
         deltaCashCents: entry.deltaCashCents.toString(),
         deltaReservedCashCents: entry.deltaReservedCashCents.toString(),
         balanceAfterCents: entry.balanceAfterCents.toString(),
-        createdAt: entry.createdAt
+        createdAt: entry.createdAt.toISOString()
       })),
       nextCursor: result.nextCursor
     };
   }
 
-  async getSummary(input: FinanceSummaryInput, playerHandle: string) {
+  async getSummary(input: FinanceSummaryInput, playerHandle: string): Promise<FinanceSummary> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
@@ -78,3 +77,4 @@ export class FinanceService {
     };
   }
 }
+

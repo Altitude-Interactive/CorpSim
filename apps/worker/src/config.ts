@@ -1,8 +1,8 @@
-import { BotRuntimeConfig, resolveBotRuntimeConfig } from "../../../packages/sim/src/bots/bot-runner";
+import { BotRuntimeConfig, resolveBotRuntimeConfig } from "@corpsim/sim";
 import {
   ContractLifecycleConfig,
   resolveContractLifecycleConfig
-} from "../../../packages/sim/src/services/contracts";
+} from "@corpsim/sim";
 
 export interface WorkerConfig {
   tickIntervalMs: number;
@@ -126,3 +126,4 @@ export function loadWorkerConfig(): WorkerConfig {
     contractConfig
   };
 }
+

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { CompanyDetails, CompanySummary, InventoryRow } from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   getCompanyById,
@@ -6,7 +7,7 @@ import {
   listCompanies,
   listCompanyInventory,
   resolvePlayerByHandle
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -17,16 +18,22 @@ export class CompaniesService {
     this.prisma = prisma;
   }
 
-  async listCompanies() {
+  async listCompanies(): Promise<CompanySummary[]> {
     const companies = await listCompanies(this.prisma);
 
     return companies.map((company) => ({
-      ...company,
-      cashCents: company.cashCents.toString()
+      id: company.id,
+      code: company.code,
+      name: company.name,
+      isBot: company.isBot,
+      cashCents: company.cashCents.toString(),
+      regionId: company.regionId,
+      regionCode: company.regionCode,
+      regionName: company.regionName
     }));
   }
 
-  async listMyCompanies(playerHandle: string) {
+  async listMyCompanies(playerHandle: string): Promise<CompanySummary[]> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     const companies = await listCompaniesOwnedByPlayer(this.prisma, player.id);
 
@@ -42,7 +49,7 @@ export class CompaniesService {
     }));
   }
 
-  async getCompany(companyId: string, playerHandle: string) {
+  async getCompany(companyId: string, playerHandle: string): Promise<CompanyDetails> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
 
@@ -58,12 +65,16 @@ export class CompaniesService {
       regionId: company.regionId,
       regionCode: company.regionCode,
       regionName: company.regionName,
-      createdAt: company.createdAt,
-      updatedAt: company.updatedAt
+      createdAt: company.createdAt.toISOString(),
+      updatedAt: company.updatedAt.toISOString()
     };
   }
 
-  async getInventory(companyId: string, playerHandle: string, regionId?: string) {
+  async getInventory(
+    companyId: string,
+    playerHandle: string,
+    regionId?: string
+  ): Promise<InventoryRow[]> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
 
@@ -79,3 +90,4 @@ export class CompaniesService {
     }));
   }
 }
+

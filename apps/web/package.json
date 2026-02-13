@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@corpsim/shared": "workspace:*",
     "@radix-ui/react-popover": "^1.1.4",
     "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-slot": "^1.1.1",

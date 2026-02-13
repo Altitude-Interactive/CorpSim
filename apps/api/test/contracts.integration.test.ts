@@ -4,7 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ContractStatus } from "@prisma/client";
-import { seedWorld } from "../../../packages/db/src/seed-world";
+import { seedWorld } from "@corpsim/db";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -269,3 +269,4 @@ describe("contracts API integration", () => {
       .expect(400);
   });
 });
+

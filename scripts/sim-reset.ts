@@ -1,6 +1,5 @@
-import { createPrismaClient } from "../packages/db/src/client";
-import { seedWorld } from "../packages/db/src/seed-world";
-import { resetSimulationData } from "../packages/sim/src/services/reset-simulation";
+import { createPrismaClient, seedWorld } from "@corpsim/db";
+import { resetSimulationData } from "@corpsim/sim";
 
 function shouldSeedWorld(args: string[]): boolean {
   return !args.includes("--no-seed");
@@ -27,3 +26,4 @@ main().catch((error: unknown) => {
   console.error("Simulation reset failed", error);
   process.exitCode = 1;
 });
+

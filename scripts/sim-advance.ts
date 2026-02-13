@@ -1,8 +1,8 @@
-import { createPrismaClient } from "../packages/db/src/client";
+import { createPrismaClient } from "@corpsim/db";
 import {
   advanceSimulationTicks,
   getWorldTickState
-} from "../packages/sim/src/services/tick-engine";
+} from "@corpsim/sim";
 
 function parseTicks(args: string[]): number {
   const ticksFlag = args.find((entry) => entry.startsWith("--ticks="));
@@ -50,3 +50,4 @@ main().catch((error: unknown) => {
   console.error("Simulation advance failed", error);
   process.exitCode = 1;
 });
+

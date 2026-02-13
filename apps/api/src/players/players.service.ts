@@ -1,8 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type { CompanySummary, PlayerIdentity } from "@corpsim/shared";
 import {
   listCompaniesOwnedByPlayer,
   resolvePlayerByHandle
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -13,11 +14,17 @@ export class PlayersService {
     this.prisma = prisma;
   }
 
-  async getCurrentPlayer(playerHandle: string) {
-    return resolvePlayerByHandle(this.prisma, playerHandle);
+  async getCurrentPlayer(playerHandle: string): Promise<PlayerIdentity> {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    return {
+      id: player.id,
+      handle: player.handle,
+      createdAt: player.createdAt.toISOString(),
+      updatedAt: player.updatedAt.toISOString()
+    };
   }
 
-  async listCurrentPlayerCompanies(playerHandle: string) {
+  async listCurrentPlayerCompanies(playerHandle: string): Promise<CompanySummary[]> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     const companies = await listCompaniesOwnedByPlayer(this.prisma, player.id);
 
@@ -33,3 +40,4 @@ export class PlayersService {
     }));
   }
 }
+

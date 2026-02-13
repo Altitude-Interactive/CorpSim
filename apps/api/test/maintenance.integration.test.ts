@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { seedWorld } from "../../../packages/db/src/seed-world";
+import { seedWorld } from "@corpsim/db";
 import { AppModule } from "../src/app.module";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -110,3 +110,4 @@ describe("maintenance mode integration", () => {
       .expect(201);
   });
 });
+

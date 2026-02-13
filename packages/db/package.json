@@ -1,6 +1,16 @@
 {
   "name": "@corpsim/db",
   "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@corpsim/sim": "workspace:*",
+    "@prisma/client": "^6.19.2",
+    "dotenv": "^16.6.1"
+  },
   "scripts": {
     "generate": "dotenv -e ../../.env -- prisma generate --schema prisma/schema.prisma",
     "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev --schema prisma/schema.prisma",

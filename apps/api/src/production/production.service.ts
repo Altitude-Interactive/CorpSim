@@ -1,5 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ProductionJobStatus } from "@prisma/client";
+import type {
+  CreateProductionJobInput,
+  ProductionJob,
+  ProductionRecipe
+} from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   assertProductionJobOwnedByPlayer,
@@ -8,7 +13,7 @@ import {
   listProductionJobs,
   listRecipes,
   resolvePlayerByHandle
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 import { ProductionJobStatusFilter } from "./dto/list-production-jobs.dto";
 
@@ -16,12 +21,6 @@ interface ProductionJobFilterInput {
   companyId?: string;
   status?: ProductionJobStatusFilter;
   limit?: number;
-}
-
-interface CreateProductionJobInput {
-  companyId: string;
-  recipeId: string;
-  quantity: number;
 }
 
 function mapJobStatusToApi(status: ProductionJobStatus): ProductionJobStatusFilter {
@@ -84,7 +83,7 @@ function mapJobToDto(job: {
       };
     }>;
   };
-}) {
+}): ProductionJob {
   return {
     id: job.id,
     companyId: job.companyId,
@@ -94,8 +93,8 @@ function mapJobToDto(job: {
     tickStarted: job.startedTick,
     tickCompletionExpected: job.dueTick,
     tickCompleted: job.completedTick,
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
+    createdAt: job.createdAt.toISOString(),
+    updatedAt: job.updatedAt.toISOString(),
     recipe: {
       id: job.recipe.id,
       code: job.recipe.code,
@@ -129,7 +128,7 @@ export class ProductionService {
     this.prisma = prisma;
   }
 
-  async listRecipes() {
+  async listRecipes(): Promise<ProductionRecipe[]> {
     const recipes = await listRecipes(this.prisma);
 
     return recipes.map((recipe) => ({
@@ -155,7 +154,7 @@ export class ProductionService {
     }));
   }
 
-  async listJobs(filters: ProductionJobFilterInput, playerHandle: string) {
+  async listJobs(filters: ProductionJobFilterInput, playerHandle: string): Promise<ProductionJob[]> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
 
     if (filters.companyId) {
@@ -171,7 +170,7 @@ export class ProductionService {
     return jobs.map(mapJobToDto);
   }
 
-  async createJob(input: CreateProductionJobInput, playerHandle: string) {
+  async createJob(input: CreateProductionJobInput, playerHandle: string): Promise<ProductionJob> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
@@ -184,7 +183,7 @@ export class ProductionService {
     return mapJobToDto(job);
   }
 
-  async cancelJob(jobId: string, playerHandle: string) {
+  async cancelJob(jobId: string, playerHandle: string): Promise<ProductionJob> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertProductionJobOwnedByPlayer(this.prisma, player.id, jobId);
 
@@ -192,3 +191,4 @@ export class ProductionService {
     return mapJobToDto(job);
   }
 }
+

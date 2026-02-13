@@ -4,7 +4,7 @@ import {
   advanceSimulationTicks,
   getWorldTickState,
   scanSimulationInvariants
-} from "../../../packages/sim/src";
+} from "@corpsim/sim";
 import { WorkerConfig } from "./config";
 
 export interface RunWorkerIterationOptions {
@@ -170,3 +170,4 @@ export function startWorkerLoop(prisma: PrismaClient, config: WorkerConfig): Wor
     }
   };
 }
+

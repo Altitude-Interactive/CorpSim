@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { seedWorld } from "../../../packages/db/src/seed-world";
+import { seedWorld } from "@corpsim/db";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -239,3 +239,4 @@ describe("shipments API integration", () => {
     ).toBe(true);
   });
 });
+

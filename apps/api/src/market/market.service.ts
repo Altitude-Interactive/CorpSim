@@ -1,4 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
+import type {
+  MarketAnalyticsSummary,
+  MarketCandle,
+  MarketCandleFilters,
+  MarketOrder,
+  MarketOrderFilters,
+  MarketTrade,
+  MarketTradeFilters,
+  PlaceMarketOrderInput
+} from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   getMarketAnalyticsSummary,
@@ -9,46 +19,8 @@ import {
   listMarketOrders,
   placeMarketOrder,
   resolvePlayerByHandle
-} from "../../../../packages/sim/src";
+} from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
-
-export interface MarketOrderFilterInput {
-  itemId?: string;
-  regionId?: string;
-  side?: "BUY" | "SELL";
-  companyId?: string;
-  limit?: number;
-}
-
-export interface PlaceOrderInput {
-  companyId: string;
-  itemId: string;
-  regionId?: string;
-  side: "BUY" | "SELL";
-  priceCents: number;
-  quantity: number;
-}
-
-export interface MarketTradeFilterInput {
-  itemId?: string;
-  regionId?: string;
-  companyId?: string;
-  limit?: number;
-}
-
-export interface MarketCandleFilterInput {
-  itemId: string;
-  regionId: string;
-  fromTick?: number;
-  toTick?: number;
-  limit?: number;
-}
-
-export interface MarketAnalyticsSummaryInput {
-  itemId: string;
-  regionId: string;
-  windowTicks?: number;
-}
 
 interface OrderLike {
   id: string;
@@ -97,7 +69,7 @@ interface CandleLike {
   updatedAt: Date;
 }
 
-function mapOrderToDto(order: OrderLike) {
+function mapOrderToDto(order: OrderLike): MarketOrder {
   return {
     id: order.id,
     companyId: order.companyId,
@@ -112,13 +84,13 @@ function mapOrderToDto(order: OrderLike) {
     reservedQuantity: order.reservedQuantity,
     tickPlaced: order.tickPlaced,
     tickClosed: order.tickClosed,
-    createdAt: order.createdAt,
-    updatedAt: order.updatedAt,
-    closedAt: order.closedAt
+    createdAt: order.createdAt.toISOString(),
+    updatedAt: order.updatedAt.toISOString(),
+    closedAt: order.closedAt?.toISOString() ?? null
   };
 }
 
-function mapTradeToDto(trade: TradeLike) {
+function mapTradeToDto(trade: TradeLike): MarketTrade {
   return {
     id: trade.id,
     tick: trade.tick,
@@ -128,11 +100,11 @@ function mapTradeToDto(trade: TradeLike) {
     sellerId: trade.sellerCompanyId,
     priceCents: trade.unitPriceCents.toString(),
     quantity: trade.quantity,
-    createdAt: trade.createdAt
+    createdAt: trade.createdAt.toISOString()
   };
 }
 
-function mapCandleToDto(candle: CandleLike) {
+function mapCandleToDto(candle: CandleLike): MarketCandle {
   return {
     id: candle.id,
     itemId: candle.itemId,
@@ -145,8 +117,8 @@ function mapCandleToDto(candle: CandleLike) {
     volumeQty: candle.volumeQty,
     tradeCount: candle.tradeCount,
     vwapCents: candle.vwapCents === null ? null : candle.vwapCents.toString(),
-    createdAt: candle.createdAt,
-    updatedAt: candle.updatedAt
+    createdAt: candle.createdAt.toISOString(),
+    updatedAt: candle.updatedAt.toISOString()
   };
 }
 
@@ -158,7 +130,7 @@ export class MarketService {
     this.prisma = prisma;
   }
 
-  async listOrders(filters: MarketOrderFilterInput, playerHandle: string) {
+  async listOrders(filters: MarketOrderFilters, playerHandle: string): Promise<MarketOrder[]> {
     if (filters.companyId) {
       const player = await resolvePlayerByHandle(this.prisma, playerHandle);
       await assertCompanyOwnedByPlayer(this.prisma, player.id, filters.companyId);
@@ -168,7 +140,7 @@ export class MarketService {
     return orders.map(mapOrderToDto);
   }
 
-  async placeOrder(input: PlaceOrderInput, playerHandle: string) {
+  async placeOrder(input: PlaceMarketOrderInput, playerHandle: string): Promise<MarketOrder> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
@@ -184,7 +156,7 @@ export class MarketService {
     return mapOrderToDto(order);
   }
 
-  async cancelOrder(orderId: string, playerHandle: string) {
+  async cancelOrder(orderId: string, playerHandle: string): Promise<MarketOrder> {
     const player = await resolvePlayerByHandle(this.prisma, playerHandle);
     await assertOrderOwnedByPlayer(this.prisma, player.id, orderId);
 
@@ -192,17 +164,19 @@ export class MarketService {
     return mapOrderToDto(order);
   }
 
-  async listTrades(filters: MarketTradeFilterInput) {
+  async listTrades(filters: MarketTradeFilters): Promise<MarketTrade[]> {
     const trades = await listMarketTrades(this.prisma, filters);
     return trades.map(mapTradeToDto);
   }
 
-  async listCandles(filters: MarketCandleFilterInput) {
+  async listCandles(filters: MarketCandleFilters): Promise<MarketCandle[]> {
     const candles = await listMarketCandles(this.prisma, filters);
     return candles.map(mapCandleToDto);
   }
 
-  async getAnalyticsSummary(input: MarketAnalyticsSummaryInput) {
+  async getAnalyticsSummary(
+    input: { itemId: string; regionId: string; windowTicks?: number }
+  ): Promise<MarketAnalyticsSummary> {
     const summary = await getMarketAnalyticsSummary(this.prisma, input);
 
     return {
@@ -221,3 +195,4 @@ export class MarketService {
     };
   }
 }
+
