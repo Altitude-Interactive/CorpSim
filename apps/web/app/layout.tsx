@@ -14,7 +14,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "CorpSim ERP",
-  description: "Dark ERP dashboard for CorpSim simulation control and monitoring.",
+  description: "A persistent corporate management simulation inspired by ERP systems. Run production chains, trade on regional markets, manage logistics, research technologies, and control your company inside a deterministic economic world.",
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg"
