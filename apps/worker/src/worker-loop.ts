@@ -2,8 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import {
   OptimisticLockConflictError,
   advanceSimulationTicks,
-  getWorldTickState,
-  scanSimulationInvariants
+  getWorldTickState
 } from "@corpsim/sim";
 import { WorkerConfig } from "./config";
 
@@ -19,10 +18,6 @@ export interface WorkerIterationResult {
   tickBefore: number;
   tickAfter: number;
   retries: number;
-}
-
-export interface WorkerLoopHandle {
-  stop: () => Promise<void>;
 }
 
 function delay(ms: number): Promise<void> {
@@ -76,98 +71,4 @@ export async function runWorkerIteration(
   throw new Error("worker iteration failed after conflict retries");
 }
 
-function shouldRunInvariantCheck(
-  previousTick: number,
-  currentTick: number,
-  everyTicks: number
-): boolean {
-  if (everyTicks <= 0 || currentTick <= previousTick) {
-    return false;
-  }
-
-  return (
-    Math.floor(previousTick / everyTicks) < Math.floor(currentTick / everyTicks) ||
-    currentTick % everyTicks === 0
-  );
-}
-
-export function startWorkerLoop(prisma: PrismaClient, config: WorkerConfig): WorkerLoopHandle {
-  let stopped = false;
-  let botsPaused = false;
-  let timer: NodeJS.Timeout | undefined;
-  let currentRun: Promise<void> | null = null;
-
-  const scheduleNext = () => {
-    if (stopped) {
-      return;
-    }
-
-    timer = setTimeout(async () => {
-      const runBots = !botsPaused;
-      currentRun = runWorkerIteration(prisma, config, { runBots })
-        .then((result) => {
-          console.log(
-            `[worker] ticks +${result.ticksAdvanced} (${result.tickBefore} -> ${result.tickAfter}) retries=${result.retries} bots=${runBots ? "on" : "paused"}`
-          );
-
-          if (
-            shouldRunInvariantCheck(
-              result.tickBefore,
-              result.tickAfter,
-              config.invariantsCheckEveryTicks
-            )
-          ) {
-            return scanSimulationInvariants(prisma, 20).then((scan) => {
-              if (!scan.hasViolations) {
-                return;
-              }
-
-              const logPayload = {
-                event: "simulation.invariant_violation",
-                tick: result.tickAfter,
-                policy: config.onInvariantViolation,
-                issues: scan.issues
-              };
-              console.error("[worker] invariant violation detected", logPayload);
-
-              if (config.onInvariantViolation === "pause_bots") {
-                botsPaused = true;
-                return;
-              }
-
-              if (config.onInvariantViolation === "stop") {
-                stopped = true;
-              }
-            });
-          }
-        })
-        .catch((error: unknown) => {
-          console.error("[worker] iteration failed", error);
-        })
-        .finally(() => {
-          currentRun = null;
-          scheduleNext();
-        });
-
-      await currentRun;
-    }, config.tickIntervalMs);
-  };
-
-  scheduleNext();
-
-  return {
-    stop: async () => {
-      stopped = true;
-
-      if (timer) {
-        clearTimeout(timer);
-        timer = undefined;
-      }
-
-      if (currentRun) {
-        await currentRun;
-      }
-    }
-  };
-}
 

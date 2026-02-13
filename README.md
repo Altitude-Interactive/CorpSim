@@ -88,6 +88,23 @@ Worker configuration env knobs:
 * `CONTRACT_PRICE_BAND_BPS` (default `500`)
 * `SHIPMENT_BASE_FEE_CENTS` (default `250`)
 * `SHIPMENT_FEE_PER_UNIT_CENTS` (default `15`)
+* `REDIS_HOST` (default `localhost`)
+* `REDIS_PORT` (default `6379`)
+* `REDIS_DB` (default `0`)
+* `REDIS_USERNAME` (optional)
+* `REDIS_PASSWORD` (optional)
+* `REDIS_TLS` (`true` | `false`, default `false`)
+* `BULLMQ_PREFIX` (default `corpsim`)
+* `BULLMQ_QUEUE_NAME` (default `simulation.tick`)
+* `BULLMQ_SCHEDULER_ID` (default `simulation-tick-scheduler`)
+* `BULLMQ_JOB_NAME` (default `simulation.tick.process`)
+* `BULLMQ_SCHEDULER_ENABLED` (`true` | `false`, default `true`)
+* `BULLMQ_WORKER_ENABLED` (`true` | `false`, default `true`)
+* `BULLMQ_WORKER_CONCURRENCY` (default `1`)
+* `BULLMQ_JOB_ATTEMPTS` (default `1`)
+* `BULLMQ_JOB_BACKOFF_MS` (default `1000`)
+* `BULLMQ_REMOVE_ON_COMPLETE` (default `500`)
+* `BULLMQ_REMOVE_ON_FAIL` (default `1000`)
 
 `/v1/world/health` includes invariant issues and always caps returned issues to 50 max.
 

@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { createPrismaClient } from "@corpsim/db";
 import { loadWorkerConfig } from "./config";
-import { runWorkerIteration, startWorkerLoop } from "./worker-loop";
+import { startQueueRuntime } from "./queue-runtime";
+import { runWorkerIteration } from "./worker-loop";
 
 function parseTicks(args: string[]): number | undefined {
   const withEquals = args.find((entry) => entry.startsWith("--ticks="));
@@ -40,10 +41,8 @@ async function main(): Promise<void> {
     }
   }
 
-  const loop = startWorkerLoop(prisma, config);
-  console.log(
-    `[worker] started interval=${config.tickIntervalMs}ms speed=${config.simulationSpeed} maxTicksPerRun=${config.maxTicksPerRun}`
-  );
+  const runtime = await startQueueRuntime(prisma, config);
+  console.log("[worker] runtime started");
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
@@ -52,7 +51,7 @@ async function main(): Promise<void> {
     }
     shuttingDown = true;
     console.log(`[worker] received ${signal}, stopping...`);
-    await loop.stop();
+    await runtime.stop();
     await prisma.$disconnect();
     console.log("[worker] stopped");
   };

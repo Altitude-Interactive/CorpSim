@@ -14,6 +14,34 @@ export interface WorkerConfig {
   contractConfig: Partial<ContractLifecycleConfig>;
 }
 
+export interface RedisConfig {
+  host: string;
+  port: number;
+  db: number;
+  username?: string;
+  password?: string;
+  tlsEnabled: boolean;
+}
+
+export interface BullMqConfig {
+  prefix: string;
+  queueName: string;
+  schedulerId: string;
+  jobName: string;
+  schedulerEnabled: boolean;
+  workerEnabled: boolean;
+  workerConcurrency: number;
+  jobAttempts: number;
+  jobBackoffMs: number;
+  removeOnComplete: number;
+  removeOnFail: number;
+}
+
+export interface WorkerRuntimeConfig extends WorkerConfig {
+  redis: RedisConfig;
+  bullmq: BullMqConfig;
+}
+
 function parseIntegerEnv(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) {
@@ -54,6 +82,26 @@ function parseBigIntEnv(name: string, fallback: bigint): bigint {
   }
 
   return parsed;
+}
+
+function parseStringEnv(name: string, fallback: string): string {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const value = raw.trim();
+  return value.length > 0 ? value : fallback;
+}
+
+function parseOptionalStringEnv(name: string): string | undefined {
+  const raw = process.env[name];
+  if (!raw) {
+    return undefined;
+  }
+
+  const value = raw.trim();
+  return value.length > 0 ? value : undefined;
 }
 
 function parseBooleanEnv(name: string, fallback: boolean): boolean {
@@ -99,7 +147,7 @@ function parseInvariantPolicy(raw: string | undefined): "stop" | "pause_bots" | 
   throw new Error("ON_INVARIANT_VIOLATION must be one of: stop, pause_bots, log_only");
 }
 
-export function loadWorkerConfig(): WorkerConfig {
+export function loadWorkerConfig(): WorkerRuntimeConfig {
   const botConfig = resolveBotRuntimeConfig({
     enabled: parseBooleanEnv("BOT_ENABLED", true),
     botCount: parseIntegerEnv("BOT_COUNT", 25),
@@ -116,6 +164,29 @@ export function loadWorkerConfig(): WorkerConfig {
     priceBandBps: parseNonNegativeIntegerEnv("CONTRACT_PRICE_BAND_BPS", 500)
   });
 
+  const redis: RedisConfig = {
+    host: parseStringEnv("REDIS_HOST", "localhost"),
+    port: parseIntegerEnv("REDIS_PORT", 6379),
+    db: parseNonNegativeIntegerEnv("REDIS_DB", 0),
+    username: parseOptionalStringEnv("REDIS_USERNAME"),
+    password: parseOptionalStringEnv("REDIS_PASSWORD"),
+    tlsEnabled: parseBooleanEnv("REDIS_TLS", false)
+  };
+
+  const bullmq: BullMqConfig = {
+    prefix: parseStringEnv("BULLMQ_PREFIX", "corpsim"),
+    queueName: parseStringEnv("BULLMQ_QUEUE_NAME", "simulation.tick"),
+    schedulerId: parseStringEnv("BULLMQ_SCHEDULER_ID", "simulation-tick-scheduler"),
+    jobName: parseStringEnv("BULLMQ_JOB_NAME", "simulation.tick.process"),
+    schedulerEnabled: parseBooleanEnv("BULLMQ_SCHEDULER_ENABLED", true),
+    workerEnabled: parseBooleanEnv("BULLMQ_WORKER_ENABLED", true),
+    workerConcurrency: parseIntegerEnv("BULLMQ_WORKER_CONCURRENCY", 1),
+    jobAttempts: parseIntegerEnv("BULLMQ_JOB_ATTEMPTS", 1),
+    jobBackoffMs: parseNonNegativeIntegerEnv("BULLMQ_JOB_BACKOFF_MS", 1000),
+    removeOnComplete: parseNonNegativeIntegerEnv("BULLMQ_REMOVE_ON_COMPLETE", 500),
+    removeOnFail: parseNonNegativeIntegerEnv("BULLMQ_REMOVE_ON_FAIL", 1000)
+  };
+
   return {
     tickIntervalMs: parseIntegerEnv("TICK_INTERVAL_MS", 60_000),
     simulationSpeed: parseIntegerEnv("SIMULATION_SPEED", 1),
@@ -123,7 +194,9 @@ export function loadWorkerConfig(): WorkerConfig {
     invariantsCheckEveryTicks: parseIntegerEnv("INVARIANTS_CHECK_EVERY_TICKS", 10),
     onInvariantViolation: parseInvariantPolicy(process.env.ON_INVARIANT_VIOLATION),
     botConfig,
-    contractConfig
+    contractConfig,
+    redis,
+    bullmq
   };
 }
 
