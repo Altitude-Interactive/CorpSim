@@ -25,7 +25,16 @@ const ITEM_DEFINITIONS = [
   { key: "toolKit", code: "TOOL_KIT", name: "Maintenance Kit" },
   { key: "powerUnit", code: "POWER_UNIT", name: "Battery Module" },
   { key: "conveyorModule", code: "CONVEYOR_MODULE", name: "Roller Module" },
-  { key: "industrialPress", code: "INDUSTRIAL_PRESS", name: "Press Chassis" }
+  { key: "industrialPress", code: "INDUSTRIAL_PRESS", name: "Press Chassis" },
+  { key: "syntheticConduit", code: "SYNTHETIC_CONDUIT", name: "Synthetic Conduit" },
+  { key: "biocellCanister", code: "BIOCELL_CANISTER", name: "Biocell Canister" },
+  { key: "servoDrive", code: "SERVO_DRIVE", name: "Servo Drive" },
+  { key: "opticModule", code: "OPTIC_MODULE", name: "Optic Module" },
+  { key: "neuralInterface", code: "NEURAL_INTERFACE", name: "Neural Interface" },
+  { key: "ocularImplant", code: "OCULAR_IMPLANT", name: "Ocular Implant" },
+  { key: "cyberArmature", code: "CYBER_ARMATURE", name: "Cyber Armature" },
+  { key: "spinalLink", code: "SPINAL_LINK", name: "Spinal Link" },
+  { key: "cyberneticSuite", code: "CYBERNETIC_SUITE", name: "Cybernetic Suite" }
 ] as const;
 
 type ItemKey = (typeof ITEM_DEFINITIONS)[number]["key"];
@@ -161,6 +170,125 @@ const RECIPE_DEFINITIONS = [
       { itemKey: "toolKit", quantity: 1 },
       { itemKey: "fasteners", quantity: 8 }
     ]
+  },
+  {
+    key: "weaveSyntheticConduit",
+    code: "WEAVE_SYNTHETIC_CONDUIT",
+    name: "Weave Synthetic Conduit",
+    durationTicks: 4,
+    outputItemKey: "syntheticConduit",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "coal", quantity: 2 },
+      { itemKey: "copperIngot", quantity: 1 }
+    ]
+  },
+  {
+    key: "assembleBiocellCanister",
+    code: "ASSEMBLE_BIOCELL_CANISTER",
+    name: "Assemble Biocell Canister",
+    durationTicks: 5,
+    outputItemKey: "biocellCanister",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "powerUnit", quantity: 1 },
+      { itemKey: "coal", quantity: 1 },
+      { itemKey: "copperIngot", quantity: 1 }
+    ]
+  },
+  {
+    key: "machineServoDrive",
+    code: "MACHINE_SERVO_DRIVE",
+    name: "Machine Servo Drive",
+    durationTicks: 5,
+    outputItemKey: "servoDrive",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "steelIngot", quantity: 2 },
+      { itemKey: "fasteners", quantity: 2 },
+      { itemKey: "machineParts", quantity: 1 }
+    ]
+  },
+  {
+    key: "machineOpticModule",
+    code: "MACHINE_OPTIC_MODULE",
+    name: "Machine Optic Module",
+    durationTicks: 5,
+    outputItemKey: "opticModule",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "copperIngot", quantity: 2 },
+      { itemKey: "machineParts", quantity: 1 },
+      { itemKey: "steelIngot", quantity: 1 }
+    ]
+  },
+  {
+    key: "assembleNeuralInterface",
+    code: "ASSEMBLE_NEURAL_INTERFACE",
+    name: "Assemble Neural Interface",
+    durationTicks: 6,
+    outputItemKey: "neuralInterface",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "opticModule", quantity: 1 },
+      { itemKey: "biocellCanister", quantity: 1 },
+      { itemKey: "machineParts", quantity: 1 }
+    ]
+  },
+  {
+    key: "assembleOcularImplant",
+    code: "ASSEMBLE_OCULAR_IMPLANT",
+    name: "Assemble Ocular Implant",
+    durationTicks: 7,
+    outputItemKey: "ocularImplant",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "opticModule", quantity: 2 },
+      { itemKey: "neuralInterface", quantity: 1 },
+      { itemKey: "syntheticConduit", quantity: 1 }
+    ]
+  },
+  {
+    key: "assembleCyberArmature",
+    code: "ASSEMBLE_CYBER_ARMATURE",
+    name: "Assemble Cyber Armature",
+    durationTicks: 7,
+    outputItemKey: "cyberArmature",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "servoDrive", quantity: 1 },
+      { itemKey: "neuralInterface", quantity: 1 },
+      { itemKey: "steelBeam", quantity: 1 },
+      { itemKey: "fasteners", quantity: 3 }
+    ]
+  },
+  {
+    key: "integrateSpinalLink",
+    code: "INTEGRATE_SPINAL_LINK",
+    name: "Integrate Spinal Link",
+    durationTicks: 7,
+    outputItemKey: "spinalLink",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "syntheticConduit", quantity: 2 },
+      { itemKey: "biocellCanister", quantity: 1 },
+      { itemKey: "machineParts", quantity: 1 }
+    ]
+  },
+  {
+    key: "buildCyberneticSuite",
+    code: "BUILD_CYBERNETIC_SUITE",
+    name: "Build Cybernetic Suite",
+    durationTicks: 9,
+    outputItemKey: "cyberneticSuite",
+    outputQuantity: 1,
+    inputs: [
+      { itemKey: "cyberArmature", quantity: 1 },
+      { itemKey: "ocularImplant", quantity: 1 },
+      { itemKey: "spinalLink", quantity: 1 },
+      { itemKey: "toolKit", quantity: 1 },
+      { itemKey: "powerUnit", quantity: 1 }
+    ]
   }
 ] as const;
 
@@ -228,7 +356,7 @@ const RESEARCH_DEFINITIONS = [
     description: "Introduces integrated electromechanical battery module design.",
     costCashCents: 220_000n,
     durationTicks: 6,
-    unlockRecipeKeys: ["assemblePowerUnit"]
+    unlockRecipeKeys: ["assemblePowerUnit", "weaveSyntheticConduit", "assembleBiocellCanister"]
   },
   {
     key: "automationLines",
@@ -237,7 +365,12 @@ const RESEARCH_DEFINITIONS = [
     description: "Adds modular roller assembly for repeatable factory throughput.",
     costCashCents: 260_000n,
     durationTicks: 7,
-    unlockRecipeKeys: ["assembleConveyorModule"]
+    unlockRecipeKeys: [
+      "assembleConveyorModule",
+      "machineServoDrive",
+      "machineOpticModule",
+      "integrateSpinalLink"
+    ]
   },
   {
     key: "heavyIndustry",
@@ -246,7 +379,13 @@ const RESEARCH_DEFINITIONS = [
     description: "Final-stage system integration for complete press chassis builds.",
     costCashCents: 320_000n,
     durationTicks: 8,
-    unlockRecipeKeys: ["buildIndustrialPress"]
+    unlockRecipeKeys: [
+      "buildIndustrialPress",
+      "assembleNeuralInterface",
+      "assembleOcularImplant",
+      "assembleCyberArmature",
+      "buildCyberneticSuite"
+    ]
   }
 ] as const satisfies ReadonlyArray<{
   key: string;
@@ -404,6 +543,15 @@ export async function seedWorld(
     { companyId: playerCompany.id, itemKey: "powerUnit", quantity: 0 },
     { companyId: playerCompany.id, itemKey: "conveyorModule", quantity: 0 },
     { companyId: playerCompany.id, itemKey: "industrialPress", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "syntheticConduit", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "biocellCanister", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "servoDrive", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "opticModule", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "neuralInterface", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "ocularImplant", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "cyberArmature", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "spinalLink", quantity: 0 },
+    { companyId: playerCompany.id, itemKey: "cyberneticSuite", quantity: 0 },
 
     { companyId: botMiner.id, itemKey: "ironOre", quantity: 700 },
     { companyId: botMiner.id, itemKey: "coal", quantity: 650 },
@@ -414,13 +562,22 @@ export async function seedWorld(
     { companyId: botSmelter.id, itemKey: "steelIngot", quantity: 180 },
     { companyId: botSmelter.id, itemKey: "fasteners", quantity: 300 },
     { companyId: botSmelter.id, itemKey: "steelBeam", quantity: 70 },
+    { companyId: botSmelter.id, itemKey: "syntheticConduit", quantity: 190 },
+    { companyId: botSmelter.id, itemKey: "biocellCanister", quantity: 120 },
+    { companyId: botSmelter.id, itemKey: "servoDrive", quantity: 90 },
+    { companyId: botSmelter.id, itemKey: "opticModule", quantity: 80 },
 
     { companyId: botTrader.id, itemKey: "handTools", quantity: 140 },
     { companyId: botTrader.id, itemKey: "machineParts", quantity: 70 },
     { companyId: botTrader.id, itemKey: "toolKit", quantity: 36 },
     { companyId: botTrader.id, itemKey: "powerUnit", quantity: 16 },
     { companyId: botTrader.id, itemKey: "conveyorModule", quantity: 10 },
-    { companyId: botTrader.id, itemKey: "industrialPress", quantity: 2 }
+    { companyId: botTrader.id, itemKey: "industrialPress", quantity: 2 },
+    { companyId: botTrader.id, itemKey: "neuralInterface", quantity: 45 },
+    { companyId: botTrader.id, itemKey: "ocularImplant", quantity: 24 },
+    { companyId: botTrader.id, itemKey: "cyberArmature", quantity: 18 },
+    { companyId: botTrader.id, itemKey: "spinalLink", quantity: 22 },
+    { companyId: botTrader.id, itemKey: "cyberneticSuite", quantity: 3 }
   ];
 
   await prisma.inventory.createMany({
@@ -572,11 +729,67 @@ export async function seedWorld(
       unitPriceCents: 150n
     },
     {
+      companyId: botSmelter.id,
+      itemKey: "syntheticConduit",
+      side: OrderSide.SELL,
+      quantity: 110,
+      unitPriceCents: 520n
+    },
+    {
+      companyId: botSmelter.id,
+      itemKey: "biocellCanister",
+      side: OrderSide.SELL,
+      quantity: 80,
+      unitPriceCents: 780n
+    },
+    {
+      companyId: botSmelter.id,
+      itemKey: "servoDrive",
+      side: OrderSide.SELL,
+      quantity: 44,
+      unitPriceCents: 1_450n
+    },
+    {
+      companyId: botSmelter.id,
+      itemKey: "opticModule",
+      side: OrderSide.SELL,
+      quantity: 40,
+      unitPriceCents: 1_820n
+    },
+    {
       companyId: botTrader.id,
       itemKey: "handTools",
       side: OrderSide.SELL,
       quantity: 40,
       unitPriceCents: 360n
+    },
+    {
+      companyId: botTrader.id,
+      itemKey: "neuralInterface",
+      side: OrderSide.SELL,
+      quantity: 24,
+      unitPriceCents: 3_600n
+    },
+    {
+      companyId: botTrader.id,
+      itemKey: "ocularImplant",
+      side: OrderSide.SELL,
+      quantity: 12,
+      unitPriceCents: 8_200n
+    },
+    {
+      companyId: botTrader.id,
+      itemKey: "cyberArmature",
+      side: OrderSide.SELL,
+      quantity: 10,
+      unitPriceCents: 9_400n
+    },
+    {
+      companyId: botTrader.id,
+      itemKey: "spinalLink",
+      side: OrderSide.SELL,
+      quantity: 12,
+      unitPriceCents: 7_600n
     },
     {
       companyId: botTrader.id,
@@ -612,6 +825,13 @@ export async function seedWorld(
       side: OrderSide.BUY,
       quantity: 4,
       unitPriceCents: 11_500n
+    },
+    {
+      companyId: botTrader.id,
+      itemKey: "cyberneticSuite",
+      side: OrderSide.BUY,
+      quantity: 3,
+      unitPriceCents: 24_000n
     }
   ];
 

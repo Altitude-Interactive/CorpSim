@@ -24,7 +24,16 @@ const FALLBACK_PRICE_CENTS_BY_ITEM_CODE = new Map<string, bigint>([
   ["TOOL_KIT", 2_100n],
   ["POWER_UNIT", 2_550n],
   ["CONVEYOR_MODULE", 4_250n],
-  ["INDUSTRIAL_PRESS", 11_500n]
+  ["INDUSTRIAL_PRESS", 11_500n],
+  ["SYNTHETIC_CONDUIT", 520n],
+  ["BIOCELL_CANISTER", 780n],
+  ["SERVO_DRIVE", 1_450n],
+  ["OPTIC_MODULE", 1_820n],
+  ["NEURAL_INTERFACE", 3_600n],
+  ["SPINAL_LINK", 7_600n],
+  ["OCULAR_IMPLANT", 8_200n],
+  ["CYBER_ARMATURE", 9_400n],
+  ["CYBERNETIC_SUITE", 24_000n]
 ]);
 
 const FALLBACK_QUANTITY_BY_ITEM_CODE = new Map<string, number>([
@@ -41,7 +50,16 @@ const FALLBACK_QUANTITY_BY_ITEM_CODE = new Map<string, number>([
   ["TOOL_KIT", 2],
   ["POWER_UNIT", 2],
   ["CONVEYOR_MODULE", 1],
-  ["INDUSTRIAL_PRESS", 1]
+  ["INDUSTRIAL_PRESS", 1],
+  ["SYNTHETIC_CONDUIT", 8],
+  ["BIOCELL_CANISTER", 6],
+  ["SERVO_DRIVE", 4],
+  ["OPTIC_MODULE", 4],
+  ["NEURAL_INTERFACE", 2],
+  ["SPINAL_LINK", 2],
+  ["OCULAR_IMPLANT", 2],
+  ["CYBER_ARMATURE", 2],
+  ["CYBERNETIC_SUITE", 1]
 ]);
 
 export interface ContractLifecycleConfig {
@@ -92,7 +110,16 @@ export const DEFAULT_CONTRACT_LIFECYCLE_CONFIG: ContractLifecycleConfig = {
     "MACHINE_PARTS",
     "TOOL_KIT",
     "POWER_UNIT",
-    "CONVEYOR_MODULE"
+    "CONVEYOR_MODULE",
+    "SYNTHETIC_CONDUIT",
+    "BIOCELL_CANISTER",
+    "SERVO_DRIVE",
+    "OPTIC_MODULE",
+    "NEURAL_INTERFACE",
+    "SPINAL_LINK",
+    "OCULAR_IMPLANT",
+    "CYBER_ARMATURE",
+    "CYBERNETIC_SUITE"
   ],
   priceBandBps: 500
 };

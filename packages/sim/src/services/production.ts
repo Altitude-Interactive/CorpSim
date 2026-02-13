@@ -216,6 +216,24 @@ function resolveFallbackItemPriceCents(itemCode: string): bigint {
       return 4_250n;
     case "INDUSTRIAL_PRESS":
       return 11_500n;
+    case "SYNTHETIC_CONDUIT":
+      return 520n;
+    case "BIOCELL_CANISTER":
+      return 780n;
+    case "SERVO_DRIVE":
+      return 1_450n;
+    case "OPTIC_MODULE":
+      return 1_820n;
+    case "NEURAL_INTERFACE":
+      return 3_600n;
+    case "SPINAL_LINK":
+      return 7_600n;
+    case "OCULAR_IMPLANT":
+      return 8_200n;
+    case "CYBER_ARMATURE":
+      return 9_400n;
+    case "CYBERNETIC_SUITE":
+      return 24_000n;
     default:
       return 100n;
   }

@@ -61,7 +61,16 @@ const DEFAULT_REFERENCE_PRICES = new Map<string, bigint>([
   ["TOOL_KIT", 2_100n],
   ["POWER_UNIT", 2_550n],
   ["CONVEYOR_MODULE", 4_250n],
-  ["INDUSTRIAL_PRESS", 11_500n]
+  ["INDUSTRIAL_PRESS", 11_500n],
+  ["SYNTHETIC_CONDUIT", 520n],
+  ["BIOCELL_CANISTER", 780n],
+  ["SERVO_DRIVE", 1_450n],
+  ["OPTIC_MODULE", 1_820n],
+  ["NEURAL_INTERFACE", 3_600n],
+  ["SPINAL_LINK", 7_600n],
+  ["OCULAR_IMPLANT", 8_200n],
+  ["CYBER_ARMATURE", 9_400n],
+  ["CYBERNETIC_SUITE", 24_000n]
 ]);
 
 export const DEFAULT_BOT_RUNTIME_CONFIG: BotRuntimeConfig = {
@@ -78,7 +87,16 @@ export const DEFAULT_BOT_RUNTIME_CONFIG: BotRuntimeConfig = {
     "STEEL_BEAM",
     "FASTENERS",
     "MACHINE_PARTS",
-    "TOOL_KIT"
+    "TOOL_KIT",
+    "SYNTHETIC_CONDUIT",
+    "BIOCELL_CANISTER",
+    "SERVO_DRIVE",
+    "OPTIC_MODULE",
+    "NEURAL_INTERFACE",
+    "SPINAL_LINK",
+    "OCULAR_IMPLANT",
+    "CYBER_ARMATURE",
+    "CYBERNETIC_SUITE"
   ],
   spreadBps: 500,
   maxNotionalPerTickCents: 50_000n,

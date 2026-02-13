@@ -14,7 +14,16 @@ const ITEM_ICON_BY_CODE: Record<string, string> = {
   TOOL_KIT: "/assets/items/tool_kit.png",
   POWER_UNIT: "/assets/items/power_unit.png",
   CONVEYOR_MODULE: "/assets/items/conveyor_module.png",
-  INDUSTRIAL_PRESS: "/assets/items/industrial_press.png"
+  INDUSTRIAL_PRESS: "/assets/items/industrial_press.png",
+  SYNTHETIC_CONDUIT: "/assets/items/synthetic_conduit.png",
+  BIOCELL_CANISTER: "/assets/items/biocell_canister.png",
+  SERVO_DRIVE: "/assets/items/servo_drive.png",
+  OPTIC_MODULE: "/assets/items/optic_module.png",
+  NEURAL_INTERFACE: "/assets/items/neural_interface.png",
+  OCULAR_IMPLANT: "/assets/items/ocular_implant.png",
+  CYBER_ARMATURE: "/assets/items/cyber_armature.png",
+  SPINAL_LINK: "/assets/items/spinal_link.png",
+  CYBERNETIC_SUITE: "/assets/items/cybernetic_suite.png"
 };
 
 export function getItemIconSrc(itemCode: string | null | undefined): string {
