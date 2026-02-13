@@ -24,3 +24,9 @@ All notable changes to CorpSim are documented in this file.
 - [ci] Set git identity before creating release tags in CI
 - [ci] Allow CI to publish existing version when release tag is missing
 - [ops] Use tag-first image variables in preview compose deployment
+
+## 0.2.1 - 2026-02-13
+
+### Patch
+- [ops] Remove local build fallback from preview compose services
+- [web] Fix production proxy response decoding and maintenance/version endpoint fallbacks
