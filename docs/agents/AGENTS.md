@@ -127,6 +127,16 @@ Agents must NEVER run:
 
 Remote operations are strictly reserved for the human operator.
 
+## 4.4 Golden Rule #4 - Never Kill Shared Dev Processes
+
+Agents must NEVER kill processes that may interfere with Codex terminals, developer terminals, or active local services.
+
+### Hard Constraints
+
+* Do NOT run broad process-kill commands (`Stop-Process` without strict PID targeting, `taskkill /IM node.exe /F`, `pkill node`, `killall node`, etc.)
+* Do NOT terminate terminal hosts or shell processes used by developers/Codex
+* Only terminate a process when the human operator explicitly requests it and the exact target process is unambiguous
+
 # 5. Core Architecture Rules (Non-Negotiable)
 
 ## 5.1 Server is Authoritative
