@@ -1,3 +1,4 @@
 - Architecture / coding rules → docs/agents/AGENTS.md
 - UI design system → docs/design/DESIGN_GUIDELINES.md
 - Project files (Agents are forbidden to write in there) → docs/project/ROADMAP.md
+- Architecture decisions -> docs/adr/0001-worker-runtime-bullmq.md
