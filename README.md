@@ -5,7 +5,7 @@
 [![pnpm 9+](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Security Policy](https://img.shields.io/badge/security-policy-blue)](./SECURITY.md)
 
-CorpSim is a solo-first, SimCompanies-inspired management and economy webgame.
+CorpSim is a SimCompanies-inspired management and economy webgame.
 It runs a persistent simulation with AI/bot companies, market dynamics, regional flows, and an ERP-style interface.
 
 ## Contents
