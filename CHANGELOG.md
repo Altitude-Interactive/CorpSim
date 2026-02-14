@@ -86,3 +86,8 @@ All notable changes to CorpSim are documented in this file.
 - [web] Set Market page table pagination defaults to 10 rows per page.
 - [web] Default production recipe pagination to 10 rows per page.
 - [web] Reduce heavy-page loading flicker by keeping background refreshes non-disruptive.
+
+## 0.5.0 - 2026-02-14
+
+### Minor
+- [web] Add hidden public player registry page with company holdings and item codes
