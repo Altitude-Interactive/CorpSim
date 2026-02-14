@@ -52,6 +52,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CORS_ORIGIN: ${CORS_ORIGIN:-https://corpsim.altitude-interactive.com}
+      ENFORCE_SCHEMA_READINESS: ${ENFORCE_SCHEMA_READINESS:-true}
+      PRISMA_MIGRATIONS_DIR: ${PRISMA_MIGRATIONS_DIR:-/app/packages/db/prisma/migrations}
       SHIPMENT_BASE_FEE_CENTS: ${SHIPMENT_BASE_FEE_CENTS:-250}
       SHIPMENT_FEE_PER_UNIT_CENTS: ${SHIPMENT_FEE_PER_UNIT_CENTS:-15}
     depends_on:
