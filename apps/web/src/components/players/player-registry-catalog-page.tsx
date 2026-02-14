@@ -180,7 +180,7 @@ export function PlayerRegistryCatalogPage() {
                     <div key={company.id} className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium">{company.name}</p>
-                        <Badge variant="outline" className="font-mono text-[10px]">
+                        <Badge variant="muted" className="font-mono text-[10px]">
                           {company.code}
                         </Badge>
                         <Badge variant={company.isBot ? "warning" : "success"}>
