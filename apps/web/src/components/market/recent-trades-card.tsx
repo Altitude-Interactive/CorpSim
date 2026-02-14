@@ -29,27 +29,37 @@ export function RecentTradesCard({
   companyNameById
 }: RecentTradesCardProps) {
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState<(typeof RECENT_TRADES_PAGE_SIZE_OPTIONS)[number]>(50);
+  const [pageSize, setPageSize] = useState<(typeof RECENT_TRADES_PAGE_SIZE_OPTIONS)[number]>(20);
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
+
+  const indexedTrades = useMemo(
+    () =>
+      trades.map((trade) => {
+        const item = itemMetaById[trade.itemId];
+        const itemName = item?.name ?? "";
+        const itemCode = item?.code ?? "";
+        const buyer = companyNameById[trade.buyerId] ?? "";
+        const seller = companyNameById[trade.sellerId] ?? "";
+        const region = regionNameById[trade.regionId] ?? "";
+        return {
+          trade,
+          searchText: `${itemCode} ${itemName} ${buyer} ${seller} ${region}`.toLowerCase()
+        };
+      }),
+    [companyNameById, itemMetaById, regionNameById, trades]
+  );
 
   const filteredTrades = useMemo(() => {
     const needle = deferredSearch.trim().toLowerCase();
     if (!needle) {
-      return trades;
+      return indexedTrades.map((entry) => entry.trade);
     }
 
-    return trades.filter((trade) => {
-      const item = itemMetaById[trade.itemId];
-      const itemName = item?.name ?? "";
-      const itemCode = item?.code ?? "";
-      const buyer = companyNameById[trade.buyerId] ?? "";
-      const seller = companyNameById[trade.sellerId] ?? "";
-      const region = regionNameById[trade.regionId] ?? "";
-      const haystack = `${itemCode} ${itemName} ${buyer} ${seller} ${region}`.toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [companyNameById, deferredSearch, itemMetaById, regionNameById, trades]);
+    return indexedTrades
+      .filter((entry) => entry.searchText.includes(needle))
+      .map((entry) => entry.trade);
+  }, [deferredSearch, indexedTrades]);
 
   useEffect(() => {
     setPage(1);

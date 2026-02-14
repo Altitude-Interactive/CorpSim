@@ -9,6 +9,7 @@ import type {
   MarketTradeFilters,
   PlaceMarketOrderInput
 } from "@corpsim/shared";
+import { OrderStatus } from "@prisma/client";
 import {
   assertCompanyOwnedByPlayer,
   getMarketAnalyticsSummary,
@@ -28,7 +29,7 @@ interface OrderLike {
   itemId: string;
   regionId: string;
   side: "BUY" | "SELL";
-  status: string;
+  status: OrderStatus;
   quantity: number;
   remainingQuantity: number;
   unitPriceCents: bigint;

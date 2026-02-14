@@ -12,6 +12,7 @@ export interface MarketOrderFilters {
   itemId?: string;
   regionId?: string;
   side?: OrderSide;
+  status?: OrderStatus;
   companyId?: string;
   limit?: number;
 }
@@ -277,6 +278,7 @@ export async function listMarketOrders(
       itemId: filters.itemId,
       regionId: filters.regionId,
       side: filters.side,
+      status: filters.status,
       companyId: filters.companyId
     },
     orderBy: [{ createdAt: "desc" }],

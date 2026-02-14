@@ -112,7 +112,7 @@ export interface MarketOrder {
   itemId: string;
   regionId: string;
   side: "BUY" | "SELL";
-  status: string;
+  status: MarketOrderStatus;
   quantity: number;
   remainingQuantity: number;
   priceCents: string;
@@ -125,10 +125,13 @@ export interface MarketOrder {
   closedAt: string | null;
 }
 
+export type MarketOrderStatus = "OPEN" | "FILLED" | "CANCELLED";
+
 export interface MarketOrderFilters {
   itemId?: string;
   regionId?: string;
   side?: "BUY" | "SELL";
+  status?: MarketOrderStatus;
   companyId?: string;
   limit?: number;
 }

@@ -1,8 +1,8 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import Image from "next/image";
 import { resolveItemIcon } from "@/lib/item-icons";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,7 @@ function warnMissingIconOnce(key: string, message: string, details: Record<strin
   console.warn(message, details);
 }
 
-export function ItemIcon({ itemCode, itemName, size = 16, className }: ItemIconProps) {
+export const ItemIcon = memo(function ItemIcon({ itemCode, itemName, size = 16, className }: ItemIconProps) {
   const resolution = useMemo(() => resolveItemIcon(itemCode), [itemCode]);
   const [hasLoadError, setHasLoadError] = useState(false);
 
@@ -78,16 +78,18 @@ export function ItemIcon({ itemCode, itemName, size = 16, className }: ItemIconP
   }
 
   return (
-    <Image
+    <img
       src={resolution.src}
       alt={itemName}
       width={size}
       height={size}
       className={cn("rounded-sm", className)}
       style={{ imageRendering: "pixelated" }}
+      loading="lazy"
+      decoding="async"
       onError={() => {
         setHasLoadError(true);
       }}
     />
   );
-}
+});

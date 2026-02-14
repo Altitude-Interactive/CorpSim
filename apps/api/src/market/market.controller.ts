@@ -125,6 +125,7 @@ export class MarketController {
       itemId: query.itemId,
       regionId: query.regionId,
       side: query.side,
+      status: query.status,
       companyId: query.companyId,
       limit: parseLimit(query.limit)
     }, playerHandle);

@@ -220,6 +220,10 @@ export function parseMarketOrder(value: unknown): MarketOrder {
   if (side !== "BUY" && side !== "SELL") {
     throw new Error("Invalid market order side");
   }
+  const status = readString(value.status, "status");
+  if (status !== "OPEN" && status !== "FILLED" && status !== "CANCELLED") {
+    throw new Error("Invalid market order status");
+  }
 
   const tickClosedValue = value.tickClosed;
 
@@ -229,7 +233,7 @@ export function parseMarketOrder(value: unknown): MarketOrder {
     itemId: readString(value.itemId, "itemId"),
     regionId: readString(value.regionId, "regionId"),
     side,
-    status: readString(value.status, "status"),
+    status,
     quantity: readNumber(value.quantity, "quantity"),
     remainingQuantity: readNumber(value.remainingQuantity, "remainingQuantity"),
     priceCents: readString(value.priceCents, "priceCents"),

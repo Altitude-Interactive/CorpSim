@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -41,6 +41,7 @@ const MARKET_REFRESH_DEBOUNCE_MS = 500;
 interface OrderBookFilters {
   itemId: string;
   side: "ALL" | "BUY" | "SELL";
+  status: "ALL" | "OPEN" | "FILLED" | "CANCELLED";
   companyId: string;
   limit: string;
 }
@@ -53,6 +54,7 @@ interface TradeFilters {
 const INITIAL_ORDER_FILTERS: OrderBookFilters = {
   itemId: "",
   side: "ALL",
+  status: "OPEN",
   companyId: "",
   limit: String(DEFAULT_ORDER_LIMIT)
 };
@@ -91,6 +93,8 @@ export function MarketPage() {
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [orderFilters, setOrderFilters] = useState<OrderBookFilters>(INITIAL_ORDER_FILTERS);
   const [tradeFilters, setTradeFilters] = useState<TradeFilters>(INITIAL_TRADE_FILTERS);
+  const orderFiltersRef = useRef(orderFilters);
+  const tradeFiltersRef = useRef(tradeFilters);
 
   const [orderBook, setOrderBook] = useState<MarketOrder[]>([]);
   const [myOrders, setMyOrders] = useState<MarketOrder[]>([]);
@@ -103,7 +107,7 @@ export function MarketPage() {
   const [isCancellingOrderId, setIsCancellingOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadCatalog = useCallback(async () => {
+  const loadCatalog = useCallback(async (): Promise<string> => {
     const [itemRows, regionRows, companyRows] = await Promise.all([
       listItems(),
       listRegions(),
@@ -132,15 +136,20 @@ export function MarketPage() {
     setItems(itemRows);
     setRegions(regionRows);
     setCompanies(companyRows);
+    let resolvedRegionId = "";
     setSelectedRegionId((current) => {
       if (current && regionRows.some((region) => region.id === current)) {
+        resolvedRegionId = current;
         return current;
       }
       if (activeCompany?.regionId && regionRows.some((region) => region.id === activeCompany.regionId)) {
+        resolvedRegionId = activeCompany.regionId;
         return activeCompany.regionId;
       }
-      return regionRows[0]?.id ?? "";
+      resolvedRegionId = regionRows[0]?.id ?? "";
+      return resolvedRegionId;
     });
+    return resolvedRegionId;
   }, [activeCompany?.regionId, activeCompanyId]);
 
   useEffect(() => {
@@ -150,14 +159,30 @@ export function MarketPage() {
     setSelectedRegionId(activeCompany.regionId);
   }, [activeCompany?.regionId]);
 
-  const loadOrderBook = useCallback(async (filters: OrderBookFilters, regionId: string) => {
-    setIsLoadingOrderBook(true);
+  useEffect(() => {
+    orderFiltersRef.current = orderFilters;
+  }, [orderFilters]);
+
+  useEffect(() => {
+    tradeFiltersRef.current = tradeFilters;
+  }, [tradeFilters]);
+
+  const loadOrderBook = useCallback(async (
+    filters: OrderBookFilters,
+    regionId: string,
+    options?: { showLoadingState?: boolean }
+  ) => {
+    const showLoadingState = options?.showLoadingState ?? true;
+    if (showLoadingState) {
+      setIsLoadingOrderBook(true);
+    }
     try {
       const parsedLimit = Number.parseInt(filters.limit, 10);
       const rows = await listMarketOrders({
         regionId: regionId || undefined,
         itemId: filters.itemId || undefined,
         side: filters.side === "ALL" ? undefined : filters.side,
+        status: filters.status === "ALL" ? undefined : filters.status,
         companyId: filters.companyId || undefined,
         limit: Number.isInteger(parsedLimit) ? parsedLimit : DEFAULT_ORDER_LIMIT
       });
@@ -166,18 +191,26 @@ export function MarketPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load market orders");
     } finally {
-      setIsLoadingOrderBook(false);
+      if (showLoadingState) {
+        setIsLoadingOrderBook(false);
+      }
     }
   }, []);
 
-  const loadMyOrders = useCallback(async (regionId: string) => {
+  const loadMyOrders = useCallback(async (
+    regionId: string,
+    options?: { showLoadingState?: boolean }
+  ) => {
     if (!activeCompanyId) {
       setMyOrders([]);
       setIsLoadingMyOrders(false);
       return;
     }
 
-    setIsLoadingMyOrders(true);
+    const showLoadingState = options?.showLoadingState ?? true;
+    if (showLoadingState) {
+      setIsLoadingMyOrders(true);
+    }
     try {
       const rows = await listMarketOrders({
         companyId: activeCompanyId,
@@ -189,12 +222,21 @@ export function MarketPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load company orders");
     } finally {
-      setIsLoadingMyOrders(false);
+      if (showLoadingState) {
+        setIsLoadingMyOrders(false);
+      }
     }
   }, [activeCompanyId]);
 
-  const loadTrades = useCallback(async (filters: TradeFilters, regionId: string) => {
-    setIsLoadingTrades(true);
+  const loadTrades = useCallback(async (
+    filters: TradeFilters,
+    regionId: string,
+    options?: { showLoadingState?: boolean }
+  ) => {
+    const showLoadingState = options?.showLoadingState ?? true;
+    if (showLoadingState) {
+      setIsLoadingTrades(true);
+    }
     try {
       const rows = await listMarketTrades({
         regionId: regionId || undefined,
@@ -207,32 +249,43 @@ export function MarketPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load trades");
     } finally {
-      setIsLoadingTrades(false);
+      if (showLoadingState) {
+        setIsLoadingTrades(false);
+      }
     }
   }, [activeCompanyId]);
 
-  const refreshMarketData = useCallback(async () => {
+  const refreshMarketData = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? true;
     await Promise.all([
-      loadOrderBook(orderFilters, selectedRegionId),
-      loadMyOrders(selectedRegionId),
-      loadTrades(tradeFilters, selectedRegionId)
+      loadOrderBook(orderFilters, selectedRegionId, { showLoadingState }),
+      loadMyOrders(selectedRegionId, { showLoadingState }),
+      loadTrades(tradeFilters, selectedRegionId, { showLoadingState })
     ]);
   }, [loadMyOrders, loadOrderBook, loadTrades, orderFilters, tradeFilters, selectedRegionId]);
 
   useEffect(() => {
+    let isMounted = true;
     void (async () => {
       try {
-        await loadCatalog();
-        await refreshMarketData();
+        const resolvedRegionId = await loadCatalog();
+        if (!isMounted) {
+          return;
+        }
+
+        await Promise.all([
+          loadOrderBook(orderFiltersRef.current, resolvedRegionId, { showLoadingState: true }),
+          loadMyOrders(resolvedRegionId, { showLoadingState: true }),
+          loadTrades(tradeFiltersRef.current, resolvedRegionId, { showLoadingState: true })
+        ]);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Failed to initialize market page");
       }
     })();
-  }, [loadCatalog, refreshMarketData]);
-
-  useEffect(() => {
-    void loadMyOrders(selectedRegionId);
-  }, [activeCompanyId, loadMyOrders, selectedRegionId]);
+    return () => {
+      isMounted = false;
+    };
+  }, [loadCatalog, loadMyOrders, loadOrderBook, loadTrades]);
 
   useEffect(() => {
     const tick = health?.currentTick;
@@ -241,20 +294,26 @@ export function MarketPage() {
     }
 
     const timeout = setTimeout(() => {
-      void refreshMarketData();
+      void Promise.all([
+        loadOrderBook(orderFilters, selectedRegionId, { showLoadingState: false }),
+        loadTrades(tradeFilters, selectedRegionId, { showLoadingState: false })
+      ]);
     }, MARKET_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
-  }, [health?.currentTick, refreshMarketData]);
+  }, [health?.currentTick, loadOrderBook, loadTrades, orderFilters, selectedRegionId, tradeFilters]);
 
   const submitOrderBookFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void loadOrderBook(orderFilters, selectedRegionId);
+    void Promise.all([
+      loadOrderBook(orderFilters, selectedRegionId, { showLoadingState: true }),
+      loadMyOrders(selectedRegionId, { showLoadingState: false })
+    ]);
   };
 
   const submitTradesFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void loadTrades(tradeFilters, selectedRegionId);
+    void loadTrades(tradeFilters, selectedRegionId, { showLoadingState: true });
   };
 
   const handlePlaceOrder = async (input: {
@@ -273,7 +332,7 @@ export function MarketPage() {
         description: `${formatCodeLabel(input.side)} ${input.quantity} @ ${formatCents(String(input.priceCents))}`,
         variant: "success"
       });
-      await Promise.all([refreshMarketData(), refreshHealth()]);
+      await Promise.all([refreshMarketData({ showLoadingState: false }), refreshHealth()]);
     } catch (caught) {
       const message = mapApiErrorToMessage(caught);
       showToast({
@@ -305,7 +364,7 @@ export function MarketPage() {
         });
       }
 
-      await Promise.all([refreshMarketData(), refreshHealth()]);
+      await Promise.all([refreshMarketData({ showLoadingState: false }), refreshHealth()]);
     } catch (caught) {
       showToast({
         title: "Cancel failed",
@@ -388,7 +447,7 @@ export function MarketPage() {
           </CardHeader>
           <CardContent>
             <form
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)_7rem_auto]"
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)_7rem_auto]"
               onSubmit={submitOrderBookFilters}
             >
               <Select
@@ -420,6 +479,22 @@ export function MarketPage() {
                   <SelectItem value="ALL">All sides</SelectItem>
                   <SelectItem value="BUY">{formatCodeLabel("BUY")}</SelectItem>
                   <SelectItem value="SELL">{formatCodeLabel("SELL")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={orderFilters.status}
+                onValueChange={(value) =>
+                  setOrderFilters((prev) => ({ ...prev, status: value as OrderBookFilters["status"] }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All statuses</SelectItem>
+                  <SelectItem value="OPEN">{formatCodeLabel("OPEN")}</SelectItem>
+                  <SelectItem value="FILLED">{formatCodeLabel("FILLED")}</SelectItem>
+                  <SelectItem value="CANCELLED">{formatCodeLabel("CANCELLED")}</SelectItem>
                 </SelectContent>
               </Select>
               <Select

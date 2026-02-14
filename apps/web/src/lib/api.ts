@@ -217,6 +217,9 @@ export async function listMarketOrders(filters: MarketOrderFilters): Promise<Mar
   if (filters.side) {
     params.set("side", filters.side);
   }
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
   if (filters.companyId) {
     params.set("companyId", filters.companyId);
   }

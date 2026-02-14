@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -24,6 +24,7 @@ export function InventoryPage() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const deferredSearch = useDeferredValue(search);
 
   const loadInventory = useCallback(async () => {
     if (!activeCompanyId) {
@@ -91,7 +92,7 @@ export function InventoryPage() {
   }, [health?.currentTick, loadInventory, activeCompanyId]);
 
   const filteredRows = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    const needle = deferredSearch.trim().toLowerCase();
     if (!needle) {
       return rows;
     }
@@ -101,7 +102,7 @@ export function InventoryPage() {
         row.itemCode.toLowerCase().includes(needle) || row.itemName.toLowerCase().includes(needle)
       );
     });
-  }, [rows, search]);
+  }, [deferredSearch, rows]);
 
   return (
     <div className="space-y-4">
@@ -147,6 +148,9 @@ export function InventoryPage() {
               </label>
             </div>
           </div>
+          {deferredSearch !== search ? (
+            <p className="text-xs text-muted-foreground">Updating inventory search...</p>
+          ) : null}
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
         </CardContent>
       </Card>

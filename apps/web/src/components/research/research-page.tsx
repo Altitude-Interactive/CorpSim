@@ -103,7 +103,7 @@ export function ResearchPage() {
     useState<"ALL" | ResearchNode["status"]>("ALL");
   const [nodePage, setNodePage] = useState(1);
   const [nodePageSize, setNodePageSize] =
-    useState<(typeof RESEARCH_NODE_PAGE_SIZE_OPTIONS)[number]>(50);
+    useState<(typeof RESEARCH_NODE_PAGE_SIZE_OPTIONS)[number]>(20);
   const deferredNodeSearch = useDeferredValue(nodeSearch);
 
   const loadResearch = useCallback(async (options?: { force?: boolean }) => {

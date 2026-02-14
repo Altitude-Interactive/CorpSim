@@ -63,7 +63,7 @@ export function ProductionPage() {
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipePage, setRecipePage] = useState(1);
   const [recipePageSize, setRecipePageSize] =
-    useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(50);
+    useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(20);
   const [quantityInput, setQuantityInput] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

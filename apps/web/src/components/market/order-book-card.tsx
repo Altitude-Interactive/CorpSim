@@ -30,27 +30,37 @@ export function OrderBookCard({
   companyNameById
 }: OrderBookCardProps) {
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState<(typeof ORDER_BOOK_PAGE_SIZE_OPTIONS)[number]>(50);
+  const [pageSize, setPageSize] = useState<(typeof ORDER_BOOK_PAGE_SIZE_OPTIONS)[number]>(20);
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
+
+  const indexedOrders = useMemo(
+    () =>
+      orders.map((order) => {
+        const item = itemMetaById[order.itemId];
+        const itemName = item?.name ?? "";
+        const itemCode = item?.code ?? "";
+        const companyName = companyNameById[order.companyId] ?? "";
+        const regionName = regionNameById[order.regionId] ?? "";
+        return {
+          order,
+          searchText:
+            `${itemCode} ${itemName} ${companyName} ${regionName} ${order.side} ${order.status}`.toLowerCase()
+        };
+      }),
+    [companyNameById, itemMetaById, orders, regionNameById]
+  );
 
   const filteredOrders = useMemo(() => {
     const needle = deferredSearch.trim().toLowerCase();
     if (!needle) {
-      return orders;
+      return indexedOrders.map((entry) => entry.order);
     }
 
-    return orders.filter((order) => {
-      const item = itemMetaById[order.itemId];
-      const itemName = item?.name ?? "";
-      const itemCode = item?.code ?? "";
-      const companyName = companyNameById[order.companyId] ?? "";
-      const regionName = regionNameById[order.regionId] ?? "";
-      const haystack =
-        `${itemCode} ${itemName} ${companyName} ${regionName} ${order.side} ${order.status}`.toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [companyNameById, deferredSearch, itemMetaById, orders, regionNameById]);
+    return indexedOrders
+      .filter((entry) => entry.searchText.includes(needle))
+      .map((entry) => entry.order);
+  }, [deferredSearch, indexedOrders]);
 
   useEffect(() => {
     setPage(1);

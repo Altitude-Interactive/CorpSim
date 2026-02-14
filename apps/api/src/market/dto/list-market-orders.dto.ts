@@ -1,4 +1,4 @@
-import { OrderSide } from "@prisma/client";
+import { OrderSide, OrderStatus } from "@prisma/client";
 import { IsEnum, IsNumberString, IsOptional, IsString, MinLength } from "class-validator";
 
 export class ListMarketOrdersDto {
@@ -15,6 +15,10 @@ export class ListMarketOrdersDto {
   @IsOptional()
   @IsEnum(OrderSide)
   side?: OrderSide;
+
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  status?: OrderStatus;
 
   @IsOptional()
   @IsString()
