@@ -55,6 +55,49 @@ export function readArray(value: unknown, field: string): unknown[] {
   return value;
 }
 
+function sanitizeApiErrorMessage(status: number, rawMessage: string): string {
+  const message = rawMessage.trim().replace(/\s+/g, " ");
+  const normalized = message.toLowerCase();
+
+  if (status >= 500) {
+    return "The server failed to process the request. Please try again.";
+  }
+
+  if (normalized.includes("insufficient input inventory for item")) {
+    return "Insufficient input inventory for one or more required items.";
+  }
+  if (normalized.includes("insufficient input inventory")) {
+    return "Insufficient input inventory for this operation.";
+  }
+  if (normalized.includes("is not unlocked for company")) {
+    return "This recipe is not unlocked for the active company.";
+  }
+  if (normalized.includes("not found")) {
+    if (normalized.includes("company")) {
+      return "The selected company was not found. Refresh and try again.";
+    }
+    if (normalized.includes("item")) {
+      return "The selected item was not found. Refresh and try again.";
+    }
+    if (normalized.includes("region")) {
+      return "The selected region was not found. Refresh and try again.";
+    }
+    return "The requested record was not found.";
+  }
+  if (normalized.includes("cursor is invalid")) {
+    return "The list state is no longer valid. Refresh and try again.";
+  }
+
+  // Do not surface internal identifiers in user-facing errors.
+  if (/\b[a-z0-9]{20,}\b/i.test(message)) {
+    return status >= 400 && status < 500
+      ? "The request could not be completed. Please review your input and try again."
+      : "Request failed. Please try again.";
+  }
+
+  return message;
+}
+
 function resolvePlayerHandle(): string {
   if (typeof window === "undefined") {
     return DEFAULT_PLAYER_HANDLE;
@@ -112,7 +155,7 @@ export async function fetchJson<T>(
         message = payload.message.filter((entry) => typeof entry === "string").join(", ");
       }
     }
-    throw new ApiClientError(response.status, message);
+    throw new ApiClientError(response.status, sanitizeApiErrorMessage(response.status, message));
   }
 
   return parser(payload);
