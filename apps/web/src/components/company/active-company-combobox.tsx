@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast-manager";
 import { cn } from "@/lib/utils";
 import { useActiveCompany } from "./active-company-provider";
 
@@ -98,3 +98,4 @@ export function ActiveCompanyCombobox() {
     </div>
   );
 }
+

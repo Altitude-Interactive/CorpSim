@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TableFillerRows } from "@/components/ui/table-filler-rows";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast-manager";
 import {
   InventoryRow,
   ItemCatalogItem,
@@ -66,7 +66,7 @@ function estimateShipmentFeeCents(quantity: number): number {
 }
 
 export function LogisticsPage() {
-  const { showToast } = useToast();
+  const { showToast, confirmPopup } = useToast();
   const { play } = useUiSfx();
   const { activeCompany, activeCompanyId } = useActiveCompany();
   const { health } = useWorldHealth();
@@ -436,12 +436,15 @@ export function LogisticsPage() {
     }
 
     play("ui_open");
-    const confirmed = window.confirm(
-      `Ship ${quantity} units to ${selectedToRegionLabel} for ${formatCents(
+    const confirmed = await confirmPopup({
+      title: "Confirm shipment",
+      description: `Ship ${quantity} units to ${selectedToRegionLabel} for ${formatCents(
         String(feeCents)
-      )}. ETA ${UI_CADENCE_TERMS.singular.toLowerCase()} ${arrivalTick}.`
-    );
-    play("ui_close");
+      )}. ETA ${UI_CADENCE_TERMS.singular.toLowerCase()} ${arrivalTick}.`,
+      confirmLabel: "Create shipment",
+      cancelLabel: "Cancel",
+      backdrop: "solid"
+    });
     if (!confirmed) {
       return;
     }
@@ -847,3 +850,4 @@ export function LogisticsPage() {
     </div>
   );
 }
+

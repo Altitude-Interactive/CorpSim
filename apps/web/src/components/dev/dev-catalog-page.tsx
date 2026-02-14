@@ -10,6 +10,7 @@ import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/components/ui/toast-manager";
 import {
   CompanySummary,
   ItemCatalogItem,
@@ -120,6 +121,7 @@ async function loadResearchNodesWithFallback(
 }
 
 export function DevCatalogPage() {
+  const { confirmPopup } = useToast();
   const [snapshot, setSnapshot] = useState<CatalogSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -193,9 +195,13 @@ export function DevCatalogPage() {
     }
 
     if (parsed > 10) {
-      const confirmed = window.confirm(
-        `Advance by ${formatCadenceCount(parsed)}? This may process many events.`
-      );
+      const confirmed = await confirmPopup({
+        title: "Advance simulation",
+        description: `Advance by ${formatCadenceCount(parsed)}? This may process many events.`,
+        confirmLabel: "Advance",
+        cancelLabel: "Cancel",
+        backdrop: "solid"
+      });
       if (!confirmed) {
         return;
       }
@@ -213,12 +219,17 @@ export function DevCatalogPage() {
     } finally {
       setIsControlSubmitting(false);
     }
-  }, [loadSnapshot, ticksInput]);
+  }, [confirmPopup, loadSnapshot, ticksInput]);
 
   const runReset = useCallback(async () => {
-    const confirmed = window.confirm(
-      "Reset world and reseed? This will wipe current simulation state."
-    );
+    const confirmed = await confirmPopup({
+      title: "Reset and reseed simulation?",
+      description: "This will wipe current simulation state.",
+      confirmLabel: "Reset + Reseed",
+      cancelLabel: "Cancel",
+      backdrop: "blur",
+      variant: "danger"
+    });
     if (!confirmed) {
       return;
     }
@@ -235,7 +246,7 @@ export function DevCatalogPage() {
     } finally {
       setIsControlSubmitting(false);
     }
-  }, [loadSnapshot]);
+  }, [confirmPopup, loadSnapshot]);
 
   const itemUsageById = useMemo(() => {
     if (!snapshot) {

@@ -7,7 +7,7 @@ import { UiSfxProvider } from "@/components/layout/ui-sfx-provider";
 import { MaintenanceProvider } from "@/components/maintenance/maintenance-provider";
 import { WorldHealthProvider } from "@/components/layout/world-health-provider";
 import { ActiveCompanyProvider } from "@/components/company/active-company-provider";
-import { ToastProvider } from "@/components/ui/toast";
+import { ToastProvider } from "@/components/ui/toast-manager";
 
 const inter = Inter({
   subsets: ["latin"]
@@ -43,3 +43,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+

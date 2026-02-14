@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast-manager";
 import {
   ApiClientError,
   ProductionJob,
@@ -680,3 +680,4 @@ export function ProductionPage() {
     </div>
   );
 }
+
