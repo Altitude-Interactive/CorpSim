@@ -1,28 +1,66 @@
 # CorpSim Roadmap
 
-## Now (Live and Working)
+## Now Core Platform
+* Deterministic simulation engine economy production market contracts research logistics
+* Authoritative Week pipeline with worker and bots
+* Ledger-first accounting with strict invariants
+* Finance dashboard and analytics
+* Company ownership enforcement
+* Better Auth email password Google 2FA
+* Onboarding and maintenance mode
+* Dark ERP dashboard foundation
 
-* Deterministic simulation core (economy, market, production, contracts, research, logistics)
-* Player/company ownership enforcement and Better Auth (email/password, Google, 2FA)
-* Onboarding flow with required first-time tutorial
-* Maintenance mode with simulation pause behavior
-* Toast/control/shortcut systems and in-app profile panel
-* Schema-readiness gate before game boot
+## Next Strengthen the Foundations
+* Enhance tutorial with contextual pop ups around key features
+* Deterministic replay and state hashing
+* Automated invariant and ledger audits
+* Snapshot and rollback tooling
+* Expanded observability and world diagnostics
+* Safer reset and recovery flows
+* Admin and developer dashboard for production operations
+* Role system admin developer moderator with explicit permission matrix
+* Safety tooling maintenance toggles controlled resets controlled snapshots
+* Simulation controls pause resume advance one Week with strict gating
+* Support tools read only impersonation audit logs user and role management
 
-## Next (Priority Work)
+## Next Deepen the Economy
+* Storage limits costs spoilage
+* Dynamic demand and pricing systems
+* Workforce strategic layer
+* Marketing systems
+* Loans credit and bankruptcy mechanics
+* Liquidity safeguards and anti-collapse controls
+* Inflation and deflation monitoring
 
-* Economy depth: storage limits/costs, scarcity, spoilage, demand tuning
-* Business systems: workforce depth, pricing automation, marketing, loans/credit
-* Multiplayer hardening: anti-cheat/exploit detection, stricter concurrency/load validation, and operator runbooks
-* Security hardening: auth abuse protection tuning, recovery/verification flows, and sensitive-action auditing
-* UX polish: stronger dashboard workflows, automation tools, accessibility passes
-* Infra reliability: observability, replay/snapshot tooling, safer reset/backup flows
+## Later Corporate and Market Expansion
+* Structured financial statements Balance Sheet P and L Cash Flow
+* Dividend versus reinvestment controls
+* Advanced analytics and forecasting
+* Automation rules engine production logistics pricing
+* Player to player contracts and alliances
+* Leaderboards and competitive safeguards
+* Anti cheat system detecting multi account abuse capital transfers and collusive patterns
+* Corporate KPI benchmarking versus market averages
+* Scenario planning module simulate decisions without affecting live economy
+* Risk management tools hedging style mechanics for volatile goods
+* Long term contracts with price indexing formulas
 
-## Later (Expansion)
+## Long Term World and Platform Evolution
+* Advanced AI corporations
+* Infrastructure tiers and regional events
+* Replayable simulation history
+* Backtesting sandbox
+* API and modding ecosystem
+* Major industry and sector expansions
+* Energy and resource extraction layer
+* Environmental impact and regulatory pressure system
+* Corporate reputation system tied to performance stability and defaults
+* Data export API for external analytics tools
+* Enterprise style reporting center with scheduled reports
 
-* Multiplayer economy features (player contracts, transfers/mergers, alliances, leaderboards)
-* Advanced world simulation (tariffs, disruptions, infrastructure effects)
-* Deeper market/finance analytics and forecasting tools
-* Smarter long-horizon bot behavior
-* Large content expansions across new sectors and industries
-* Long-term platform goals (mobile UX quality, API/modding ecosystem, release strategy)
+## Guiding Principles
+* Backend simulation remains authoritative
+* No hidden balance mutations
+* Ledger integrity is non negotiable
+* Determinism is preserved at all times
+* UX remains ERP realistic and data dense
