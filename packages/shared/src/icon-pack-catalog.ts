@@ -18,6 +18,11 @@ export interface IconCatalogItemDefinition {
   basePriceCents: bigint;
 }
 
+interface IconNameLexicon {
+  adjectives: readonly string[];
+  nouns: readonly string[];
+}
+
 export const ICON_PACK_DEFINITIONS: ReadonlyArray<IconPackDefinition> = [
   { series: 1, count: 40, codePrefix: "CP_BALLISTIC_PAYLOAD", namePrefix: "Ballistic Payload", basePriceCents: 950 },
   { series: 2, count: 40, codePrefix: "CP_MEDICAL_COMPOUND", namePrefix: "Medical Compound", basePriceCents: 700 },
@@ -58,8 +63,302 @@ const PACK_BY_CODE_PREFIX = new Map<string, IconPackDefinition>(
   ICON_PACK_DEFINITIONS.map((definition) => [definition.codePrefix, definition] as const)
 );
 
+const ICON_NAME_LEXICON_BY_SERIES = new Map<number, IconNameLexicon>([
+  [
+    1,
+    {
+      adjectives: ["Armor-Piercing", "High-Impact", "Tracer", "Hollow-Point", "Tungsten", "Incendiary", "Shock", "Dense"],
+      nouns: ["Round", "Slug", "Shell", "Canister", "Magazine", "Warhead", "Dart", "Charge"]
+    }
+  ],
+  [
+    2,
+    {
+      adjectives: ["Sterile", "Rapid", "Stabilizing", "Regen", "Neuro", "Cardio", "Immune", "Trauma"],
+      nouns: ["Serum", "Medgel", "Injector", "Patch", "Ampoule", "Stim", "Nanodose", "Antidote"]
+    }
+  ],
+  [
+    3,
+    {
+      adjectives: ["Grilled", "Spiced", "Smoked", "Crispy", "Braised", "Savory", "Tangy", "Herbed"],
+      nouns: ["Wrap", "Skewer", "Bun", "Noodle Cup", "Rice Bowl", "Stew", "Taco", "Sandwich"]
+    }
+  ],
+  [
+    4,
+    {
+      adjectives: ["Compact", "Foldable", "Tactical", "Rugged", "Portable", "Precision", "Auto", "Adaptive"],
+      nouns: ["Multitool", "Scanner", "Driver", "Torch", "Beacon", "Grappler", "Welder", "Analyzer"]
+    }
+  ],
+  [
+    5,
+    {
+      adjectives: ["Salted", "Sweet", "Spicy", "Savory", "Roasted", "Smoked", "Honeyed", "Crunchy"],
+      nouns: ["Bites", "Cluster", "Wafer", "Bar", "Cracker", "Stick", "Ration", "Nugget"]
+    }
+  ],
+  [
+    6,
+    {
+      adjectives: ["Refined", "Pressurized", "Dense", "Stable", "Reactive", "Filtered", "Cryo", "Catalyzed"],
+      nouns: ["Canister", "Cell", "Capsule", "Reservoir", "Phial", "Tank", "Vial", "Cylinder"]
+    }
+  ],
+  [
+    8,
+    {
+      adjectives: ["Pocket", "Mini", "Secure", "Signal", "Pulse", "Smart", "Encrypted", "Urban"],
+      nouns: ["Console", "Pad", "Link", "Beacon", "Tracker", "Transceiver", "Projector", "Reader"]
+    }
+  ],
+  [
+    9,
+    {
+      adjectives: ["Synaptic", "Ocular", "Auditory", "Motor", "Reflex", "Memory", "Cortical", "Tactile"],
+      nouns: ["Implant", "Node", "Coil", "Bridge", "Array", "Interface", "Lattice", "Socket"]
+    }
+  ],
+  [
+    10,
+    {
+      adjectives: ["Reinforced", "Insulated", "Hazmat", "Shockproof", "Combat", "Stealth", "Thermal", "Weathered"],
+      nouns: ["Suit", "Vest", "Mask", "Gloves", "Boots", "Cloak", "Helmet", "Harness"]
+    }
+  ],
+  [
+    11,
+    {
+      adjectives: ["Engineered", "Edited", "Adaptive", "Resilient", "Hybrid", "Pristine", "Recombinant", "Cultured"],
+      nouns: ["Genome", "Sample", "Sequence", "Culture", "Splice", "Template", "Matrix", "Archive"]
+    }
+  ],
+  [
+    12,
+    {
+      adjectives: ["Recon", "Survey", "Guard", "Repair", "Courier", "Scout", "Response", "Utility"],
+      nouns: ["Drone", "Rotor", "Frame", "Core", "Module", "Pod", "Unit", "Rig"]
+    }
+  ],
+  [
+    13,
+    {
+      adjectives: ["Machined", "Forged", "Cast", "CNC", "Tempered", "Precision", "Balanced", "Industrial"],
+      nouns: ["Bracket", "Actuator", "Bearing", "Coupler", "Gearbox", "Joint", "Spindle", "Assembly"]
+    }
+  ],
+  [
+    14,
+    {
+      adjectives: ["Raw", "Processed", "Compressed", "Polished", "Alloyed", "Sintered", "Purified", "Milled"],
+      nouns: ["Ingot", "Brick", "Plate", "Billet", "Slab", "Prism", "Core", "Block"]
+    }
+  ],
+  [
+    15,
+    {
+      adjectives: ["Compact", "Suppressed", "Longshot", "Burst", "Heavy", "Precision", "Tactical", "Modular"],
+      nouns: ["Rifle", "Carbine", "Pistol", "SMG", "Shotgun", "Launcher", "Chassis", "Receiver"]
+    }
+  ],
+  [
+    17,
+    {
+      adjectives: ["Urban", "Reinforced", "Neon", "Reactive", "Adaptive", "Thermal", "Stealth", "Patterned"],
+      nouns: ["Jacket", "Coat", "Hoodie", "Pants", "Vest", "Poncho", "Suit", "Shell"]
+    }
+  ],
+  [
+    18,
+    {
+      adjectives: ["Maintenance", "Field", "Precision", "Heavy", "Portable", "Emergency", "Workshop", "Repair"],
+      nouns: ["Wrench", "Driver", "Cutter", "Spanner", "Clamp", "Crimper", "Prybar", "Toolkit"]
+    }
+  ],
+  [
+    19,
+    {
+      adjectives: ["Chromed", "Neon", "Etched", "Augmented", "Luminous", "Reactive", "Polished", "Forged"],
+      nouns: ["Ring", "Pendant", "Bracelet", "Brooch", "Charm", "Band", "Earring", "Amulet"]
+    }
+  ],
+  [
+    20,
+    {
+      adjectives: ["Smart", "Compact", "Efficient", "Modular", "Auto", "Programmable", "Portable", "Household"],
+      nouns: ["Kettle", "Vacuum", "Cooker", "Cleaner", "Filter", "Lamp", "Purifier", "Charger"]
+    }
+  ],
+  [
+    21,
+    {
+      adjectives: ["Protein", "Fiber", "Balanced", "Fortified", "Hearty", "Lean", "Savory", "Fresh"],
+      nouns: ["Meal", "Bowl", "Tray", "Pack", "Ration", "Stew", "Plate", "Portion"]
+    }
+  ],
+  [
+    22,
+    {
+      adjectives: ["Ancient", "Forgotten", "Runed", "Primal", "Arcane", "Mythic", "Echoing", "Lost"],
+      nouns: ["Relic", "Totem", "Idol", "Tablet", "Sigil", "Shard", "Effigy", "Artifact"]
+    }
+  ],
+  [
+    23,
+    {
+      adjectives: ["Tailored", "Patterned", "Minimal", "Retro", "Street", "Bold", "Layered", "Designer"],
+      nouns: ["Shirt", "Top", "Skirt", "Dress", "Jacket", "Pants", "Blazer", "Outfit"]
+    }
+  ],
+  [
+    29,
+    {
+      adjectives: ["Siege", "Tactical", "Heavy", "Modular", "Precision", "Rail", "Pulse", "Assault"],
+      nouns: ["Platform", "Turret", "Chassis", "Battery", "Mount", "Launcher", "Array", "Frame"]
+    }
+  ],
+  [
+    30,
+    {
+      adjectives: ["Street", "Casual", "Layered", "Urban", "Sport", "Techwear", "Relaxed", "Classic"],
+      nouns: ["Hoodie", "Jacket", "Pants", "Cap", "Sneakers", "Shirt", "Vest", "Set"]
+    }
+  ],
+  [
+    31,
+    {
+      adjectives: ["Deep-Core", "Prospector", "Heavy", "Reinforced", "Auto", "Hydraulic", "Rockbreaker", "Industrial"],
+      nouns: ["Drill", "Charge", "Rig", "Extractor", "Bit", "Harvester", "Payload", "Borehead"]
+    }
+  ],
+  [
+    32,
+    {
+      adjectives: ["Servo", "Neural", "Bio", "Reflex", "Stability", "Titan", "Phantom", "Synapse"],
+      nouns: ["Chassis", "Frame", "Socket", "Housing", "Core", "Cradle", "Assembly", "Backbone"]
+    }
+  ],
+  [
+    33,
+    {
+      adjectives: ["Ancient", "Luminous", "Runed", "Prismatic", "Harmonic", "Celestial", "Quantum", "Eternal"],
+      nouns: ["Core", "Nexus", "Heart", "Seed", "Matrix", "Kernel", "Catalyst", "Anchor"]
+    }
+  ],
+  [
+    34,
+    {
+      adjectives: ["Bioluminescent", "Spined", "Rooted", "Blooming", "Spiral", "Velvet", "Verdant", "Mossy"],
+      nouns: ["Fern", "Vine", "Moss", "Pod", "Bloom", "Spore", "Sprout", "Frond"]
+    }
+  ],
+  [
+    37,
+    {
+      adjectives: ["Royal", "Imperial", "Radiant", "Gilded", "Prismatic", "Regal", "Brilliant", "Ornate"],
+      nouns: ["Gem", "Necklace", "Ring", "Crown", "Bracelet", "Pendant", "Brooch", "Tiara"]
+    }
+  ],
+  [
+    38,
+    {
+      adjectives: ["Metro", "Slim", "Tailored", "Lightweight", "Classic", "Contoured", "Modern", "Refined"],
+      nouns: ["Blazer", "Coat", "Trousers", "Shirt", "Dress", "Jacket", "Uniform", "Outfit"]
+    }
+  ]
+]);
+
+const ICON_NAME_OVERRIDES_BY_SERIES = new Map<number, readonly string[]>([
+  [
+    35,
+    [
+      "Potato",
+      "Tomato",
+      "Carrot",
+      "Onion",
+      "Cabbage",
+      "Lettuce",
+      "Spinach",
+      "Broccoli",
+      "Cauliflower",
+      "Cucumber",
+      "Eggplant",
+      "Bell Pepper",
+      "Chili Pepper",
+      "Pumpkin",
+      "Zucchini",
+      "Corn",
+      "Peas",
+      "Green Beans",
+      "Beetroot",
+      "Radish",
+      "Turnip",
+      "Sweet Potato",
+      "Yam",
+      "Garlic",
+      "Ginger",
+      "Mushroom",
+      "Celery",
+      "Leek",
+      "Kale",
+      "Bok Choy",
+      "Avocado",
+      "Okra",
+      "Artichoke",
+      "Asparagus",
+      "Brussels Sprouts",
+      "Parsnip",
+      "Shallot",
+      "Scallion",
+      "Fennel",
+      "Chard"
+    ]
+  ]
+]);
+
+const FALLBACK_NAME_WORDS = [
+  "Alpha",
+  "Bravo",
+  "Charlie",
+  "Delta",
+  "Echo",
+  "Foxtrot",
+  "Gamma",
+  "Helix",
+  "Ion",
+  "Jade",
+  "Kilo",
+  "Lambda",
+  "Metro",
+  "Nova",
+  "Onyx",
+  "Pulse",
+  "Quartz",
+  "Rogue",
+  "Sigma",
+  "Titan"
+] as const;
+
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
+}
+
+function resolveIconItemName(pack: IconPackDefinition, index: number): string {
+  const namesOverride = ICON_NAME_OVERRIDES_BY_SERIES.get(pack.series);
+  const overrideName = namesOverride?.[index - 1];
+  if (overrideName) {
+    return overrideName;
+  }
+
+  const lexicon = ICON_NAME_LEXICON_BY_SERIES.get(pack.series);
+  if (lexicon && lexicon.adjectives.length > 0 && lexicon.nouns.length > 0) {
+    const adjective = lexicon.adjectives[(index - 1) % lexicon.adjectives.length];
+    const noun = lexicon.nouns[Math.floor((index - 1) / lexicon.adjectives.length) % lexicon.nouns.length];
+    return `${adjective} ${noun}`;
+  }
+
+  return `${pack.namePrefix} ${FALLBACK_NAME_WORDS[(index - 1) % FALLBACK_NAME_WORDS.length]}`;
 }
 
 export function resolveIconItemCode(series: number, index: number): string {
@@ -156,7 +455,7 @@ function buildIconCatalogItemsInternal(): IconCatalogItemDefinition[] {
         key: resolveIconItemKey(pack.series, index),
         code: resolveIconItemCode(pack.series, index),
         iconFileName: resolveIconItemAssetFileName(pack.series, index),
-        name: `${pack.namePrefix} ${pad2(index)}`,
+        name: resolveIconItemName(pack, index),
         series: pack.series,
         index,
         tier,
