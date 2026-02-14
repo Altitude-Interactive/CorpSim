@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {children}
+            <div className="mx-auto w-full max-w-[1320px]">{children}</div>
           </main>
           <footer className="border-t border-border/60 px-4 py-2 lg:hidden">
             <AppVersionBadge className="text-[11px]" />
