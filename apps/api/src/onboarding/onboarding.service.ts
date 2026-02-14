@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { DomainInvariantError, resolvePlayerById } from "@corpsim/sim";
 import type { OnboardingStatus } from "@corpsim/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -17,6 +18,8 @@ const STARTER_INVENTORY = [
   { code: "IRON_INGOT", quantity: 12 },
   { code: "COPPER_INGOT", quantity: 6 }
 ] as const;
+const MAX_HANDLE_LENGTH = 32;
+const FALLBACK_HANDLE = "player";
 
 function normalizeCompanyCodeSeed(name: string): string {
   const normalized = name
@@ -33,6 +36,48 @@ function normalizeCompanyCodeSeed(name: string): string {
   return normalized.slice(0, 18);
 }
 
+function normalizeHandleSeed(seed: string): string {
+  const normalized = seed
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized.length > 0 ? normalized : FALLBACK_HANDLE;
+}
+
+function buildHandleCandidate(base: string, suffix: number): string {
+  if (suffix === 0) {
+    return base.slice(0, MAX_HANDLE_LENGTH);
+  }
+
+  const suffixText = `-${suffix + 1}`;
+  const baseMaxLength = Math.max(1, MAX_HANDLE_LENGTH - suffixText.length);
+  const trimmedBase = base.slice(0, baseMaxLength).replace(/-+$/g, "");
+  return `${trimmedBase || FALLBACK_HANDLE}${suffixText}`;
+}
+
+function resolveHandleSeed(user: {
+  username?: string | null;
+  name?: string | null;
+  email?: string | null;
+}): string {
+  if (user.username && user.username.trim().length > 0) {
+    return user.username;
+  }
+  if (user.name && user.name.trim().length > 0) {
+    return user.name;
+  }
+  if (user.email && user.email.trim().length > 0) {
+    return user.email.split("@")[0] ?? user.email;
+  }
+  return FALLBACK_HANDLE;
+}
+
+function isPrismaUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
 function isDefaultUnlockedRecipe(code: string): boolean {
   return code === "SMELT_IRON" || code === "SMELT_COPPER" || code.startsWith("FABRICATE_CP_");
 }
@@ -43,6 +88,59 @@ export class OnboardingService {
 
   constructor(@Inject(PrismaService) prisma: PrismaService) {
     this.prisma = prisma;
+  }
+
+  private async ensurePlayerRecordForUser(playerId: string): Promise<void> {
+    const existing = await this.prisma.player.findUnique({
+      where: { id: playerId },
+      select: { id: true }
+    });
+    if (existing) {
+      return;
+    }
+
+    const authUser = await this.prisma.user.findUnique({
+      where: { id: playerId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        email: true
+      }
+    });
+
+    if (!authUser) {
+      return;
+    }
+
+    const normalizedBase = normalizeHandleSeed(resolveHandleSeed(authUser));
+
+    for (let suffix = 0; suffix < 10_000; suffix += 1) {
+      const handleCandidate = buildHandleCandidate(normalizedBase, suffix);
+      try {
+        await this.prisma.player.create({
+          data: {
+            id: authUser.id,
+            handle: handleCandidate
+          }
+        });
+        return;
+      } catch (error) {
+        if (!isPrismaUniqueViolation(error)) {
+          throw error;
+        }
+
+        const byId = await this.prisma.player.findUnique({
+          where: { id: authUser.id },
+          select: { id: true }
+        });
+        if (byId) {
+          return;
+        }
+      }
+    }
+
+    throw new DomainInvariantError("failed to allocate a unique player handle");
   }
 
   private async getOwnedCompany(playerId: string) {
@@ -58,6 +156,7 @@ export class OnboardingService {
   }
 
   async getStatus(playerId: string): Promise<OnboardingStatus> {
+    await this.ensurePlayerRecordForUser(playerId);
     await resolvePlayerById(this.prisma, playerId);
     const company = await this.getOwnedCompany(playerId);
     return {
@@ -69,6 +168,7 @@ export class OnboardingService {
   }
 
   async complete(input: CompleteOnboardingInput): Promise<OnboardingStatus> {
+    await this.ensurePlayerRecordForUser(input.playerId);
     const player = await resolvePlayerById(this.prisma, input.playerId);
     const companyName = input.companyName.trim();
     if (companyName.length < 2) {
@@ -233,4 +333,3 @@ export class OnboardingService {
     });
   }
 }
-

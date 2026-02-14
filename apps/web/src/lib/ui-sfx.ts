@@ -148,6 +148,25 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
+function hasActiveUserGesture(): boolean {
+  if (!isBrowser()) {
+    return false;
+  }
+
+  const navigatorWithActivation = navigator as Navigator & {
+    userActivation?: {
+      isActive: boolean;
+      hasBeenActive: boolean;
+    };
+  };
+
+  if (!navigatorWithActivation.userActivation) {
+    return true;
+  }
+
+  return navigatorWithActivation.userActivation.isActive;
+}
+
 export class UiSfxManager {
   private settings: UiSfxSettings = DEFAULT_SETTINGS;
   private context: AudioContext | null = null;
@@ -224,6 +243,10 @@ export class UiSfxManager {
 
   async unlock(): Promise<boolean> {
     if (!isBrowser() || !this.supportsAudio) {
+      return false;
+    }
+
+    if (!hasActiveUserGesture()) {
       return false;
     }
 
