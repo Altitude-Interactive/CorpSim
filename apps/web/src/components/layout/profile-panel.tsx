@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ToastOverlay } from "@/components/ui/toast-manager";
@@ -32,7 +32,6 @@ function readErrorMessage(error: unknown): string {
 export function ProfilePanel() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { isPanelOpen, openPanel, closePanel } = useControlManager();
   const { data: session } = authClient.useSession();
   const open = isPanelOpen(PROFILE_PANEL_ID);
@@ -55,12 +54,15 @@ export function ProfilePanel() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get("panel") !== "profile") {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (new URLSearchParams(window.location.search).get("panel") !== "profile") {
       return;
     }
     openPanel(PROFILE_PANEL_ID);
     router.replace(pathname, { scroll: false });
-  }, [openPanel, pathname, router, searchParams]);
+  }, [openPanel, pathname, router]);
 
   useEffect(() => {
     closePanel(PROFILE_PANEL_ID);

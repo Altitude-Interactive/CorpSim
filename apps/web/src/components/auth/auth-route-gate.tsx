@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { OnboardingStatus } from "@corpsim/shared";
 import { getOnboardingStatus } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
@@ -34,8 +34,12 @@ function FullscreenMessage({ message }: { message: string }) {
 export function AuthRouteGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nextPathFromQuery = resolveSafeNextPath(searchParams.get("next"));
+  const nextPathFromQuery = (() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    return resolveSafeNextPath(new URLSearchParams(window.location.search).get("next"));
+  })();
   const { data: session, isPending } = authClient.useSession();
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [onboardingStatusPathname, setOnboardingStatusPathname] = useState<string | null>(null);
