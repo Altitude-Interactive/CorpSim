@@ -1,29 +1,29 @@
 # CorpSim
 
-[![Verify](https://img.shields.io/github/actions/workflow/status/BENZOOgataga/CorpSim/verify.yml?branch=main&label=verify)](https://github.com/BENZOOgataga/CorpSim/actions/workflows/verify.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/BENZOOgataga/CorpSim/release.yml?branch=main&label=release)](https://github.com/BENZOOgataga/CorpSim/actions/workflows/release.yml)
-[![Latest Release](https://img.shields.io/github/v/release/BENZOOgataga/CorpSim?sort=semver)](https://github.com/BENZOOgataga/CorpSim/releases)
+[![Repo](https://img.shields.io/badge/repo-private-informational)](#)
 [![Node 20+](https://img.shields.io/badge/node-20.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm 9+](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Security Policy](https://img.shields.io/badge/security-policy-blue)](./SECURITY.md)
 
-CorpSim is a solo-first, SimCompanies-inspired management and economy webgame.  
+CorpSim is a solo-first, SimCompanies-inspired management and economy webgame.
 It runs a persistent simulation with AI/bot companies, market dynamics, regional flows, and an ERP-style interface.
 
 ## Contents
 
-- [What You Get](#what-you-get)
-- [Tech Stack](#tech-stack)
-- [Monorepo Layout](#monorepo-layout)
-- [Quick Start](#quick-start)
-- [Run Services](#run-services)
-- [Simulation Commands](#simulation-commands)
-- [Quality Gates](#quality-gates)
-- [Key Endpoints](#key-endpoints)
-- [Environment Notes](#environment-notes)
-- [Documentation](#documentation)
-- [Security](#security)
-- [Release Workflow](#release-workflow)
+- [CorpSim](#corpsim)
+  - [Contents](#contents)
+  - [What You Get](#what-you-get)
+  - [Tech Stack](#tech-stack)
+  - [Monorepo Layout](#monorepo-layout)
+  - [Quick Start](#quick-start)
+  - [Run Services](#run-services)
+  - [Simulation Commands](#simulation-commands)
+  - [Quality Gates](#quality-gates)
+  - [Key Endpoints](#key-endpoints)
+  - [Environment Notes](#environment-notes)
+  - [Documentation](#documentation)
+  - [Security](#security)
+  - [Release Workflow](#release-workflow)
 
 ## What You Get
 
@@ -69,12 +69,6 @@ pnpm install
 
 ```bash
 cp .env.example .env
-```
-
-PowerShell:
-
-```powershell
-Copy-Item .env.example .env
 ```
 
 3. Start local infra:
