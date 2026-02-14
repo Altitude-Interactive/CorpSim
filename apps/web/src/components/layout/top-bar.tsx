@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { BookOpenText, RefreshCcw } from "lucide-react";
+import { CircleUserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ActiveCompanyCombobox } from "@/components/company/active-company-combobox";
 import { useActiveCompany } from "@/components/company/active-company-provider";
@@ -46,6 +48,12 @@ export function TopBar() {
           ) : null}
           <StatusIndicator status={apiStatus} />
           <UiSfxSettings />
+          <Button asChild variant="outline" size="sm">
+            <Link href="/profile">
+              <CircleUserRound className="mr-2 h-3.5 w-3.5" />
+              Profile
+            </Link>
+          </Button>
           <Button asChild variant="outline" size="sm">
             <a href={getDocumentationUrl(pathname)} target="_blank" rel="noreferrer">
               <BookOpenText className="mr-2 h-3.5 w-3.5" />
