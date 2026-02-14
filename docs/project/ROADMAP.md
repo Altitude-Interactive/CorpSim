@@ -12,6 +12,26 @@
 * Worker loop + deterministic bots
 * Market analytics (region-scoped candles + KPIs)
 * Regions + logistics (region inventory + shipments)
+* Maintenance mode simulation pause (full world pause during maintenance)
+* Item tier lockers and specialization-aware visibility gates
+
+## Identity, Access, and Onboarding (Implemented / Active)
+
+* Better Auth integration (email/password)
+* Username support with deterministic Player mapping (`auth user id -> Player.id`)
+* Two-factor authentication (TOTP + trust device)
+* Session-guarded API routes (header-based identity removed)
+* Onboarding flow (post-signup company setup + onboarding gate)
+* Profile management popup in-app (sign-out included)
+
+## UX, Controls, and Feedback (Implemented / Active)
+
+* Toast manager for notifications and popups (blur and solid backdrop variants)
+* Unified control manager for keyboard shortcuts (`Ctrl + <key>`)
+* Shortcut help panel and per-player key remapping via local storage
+* Page-search command, inventory quick preview, and gameplay navigation shortcuts
+* UI sound hooks for key actions and important popups
+* Player registry/catalog page for development visibility
 
 ## Economy Depth Expansion (Next Targets)
 
@@ -38,9 +58,16 @@
 * Bankruptcy mechanics
 * Insurance systems
 
+## Auth & Security Hardening (Next Targets)
+
+* Auth rate limiting and abuse protection tuning
+* Account recovery and email verification flows
+* Session/device management UX improvements
+* Audit trail expansion for sensitive account events
+* Optional development fallback identity mode behind explicit env flag
+
 ## Multiplayer Economy Layer (Future)
 
-* Real authentication system
 * Persistent player accounts
 * Company transfers / mergers
 * Player-to-player contracts
@@ -79,24 +106,26 @@
 * AI research progression
 * AI logistics planning
 
-## UX / ERP Interface Evolution
+## Technical Infrastructure (Active / Planned)
 
-* Unified corporate dashboard
-* Notification / event system
-* Task automation panel
-* Scenario simulation sandbox
-* Bulk operations tooling
-* Accessibility improvements
-
-## Technical Infrastructure
-
+* Database schema readiness gate before game boot
+* Startup validation for migration drift and schema mismatches
 * Observability / metrics stack
 * Replayable simulation ticks
 * Snapshot/backtesting system
 * Horizontal worker scaling
 * Caching layer refinement
 * Event bus architecture
-* Migration/versioning framework
+* Data lifecycle tooling (backup/restore, safe reset guardrails)
+
+## UX / ERP Interface Evolution
+
+* Unified corporate dashboard
+* Notification/event center expansion
+* Task automation panel
+* Scenario simulation sandbox
+* Bulk operations tooling
+* Accessibility improvements
 
 ## Content Expansion
 
