@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { BookOpenText, RefreshCcw } from "lucide-react";
 import { CircleUserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -12,6 +11,8 @@ import { InlineHelp } from "@/components/ui/inline-help";
 import { TOP_BAR_TITLES } from "@/lib/page-navigation";
 import { formatCadencePoint } from "@/lib/ui-terms";
 import { getDocumentationUrl, getRegionDescription, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
+import { useControlManager } from "./control-manager";
+import { PROFILE_PANEL_ID } from "./profile-panel";
 import { StatusIndicator } from "./status-indicator";
 import { UiSfxSettings } from "./ui-sfx-settings";
 import { useWorldHealth } from "./world-health-provider";
@@ -19,6 +20,7 @@ import { useWorldHealth } from "./world-health-provider";
 export function TopBar() {
   const pathname = usePathname();
   const { health, apiStatus, refresh, isRefreshing } = useWorldHealth();
+  const { openPanel } = useControlManager();
   const { activeCompany } = useActiveCompany();
   const regionLabel = getRegionLabel({
     code: activeCompany?.regionCode,
@@ -48,11 +50,14 @@ export function TopBar() {
           ) : null}
           <StatusIndicator status={apiStatus} />
           <UiSfxSettings />
-          <Button asChild variant="outline" size="sm">
-            <Link href="/profile">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => openPanel(PROFILE_PANEL_ID)}
+          >
               <CircleUserRound className="mr-2 h-3.5 w-3.5" />
               Profile
-            </Link>
           </Button>
           <Button asChild variant="outline" size="sm">
             <a href={getDocumentationUrl(pathname)} target="_blank" rel="noreferrer">

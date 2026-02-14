@@ -8,6 +8,7 @@ import { AppVersionBadge } from "./app-version-badge";
 import { ControlManagerProvider } from "./control-manager";
 import { InventoryPreviewShortcut } from "./inventory-preview-shortcut";
 import { PageSearchCommand } from "./page-search-command";
+import { ProfilePanel } from "./profile-panel";
 import { ShortcutsHelpShortcut } from "./shortcuts-help-shortcut";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
@@ -87,6 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <PageSearchCommand />
       <InventoryPreviewShortcut />
       <ShortcutsHelpShortcut />
+      <ProfilePanel />
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto flex min-h-screen max-w-[1600px]">
           <SidebarNav />
