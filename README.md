@@ -43,9 +43,11 @@ docker compose up -d
 pnpm install
 pnpm -C packages/db generate
 pnpm -C packages/db migrate:deploy
-pnpm sim:reset
+pnpm sim:seed
 pnpm api:dev
 ```
+
+Use `pnpm sim:reset` only when you intentionally want to wipe and reseed simulation progress.
 
 API endpoint base URL is env-driven via `API_URL` and listens on `PORT` or `API_PORT` (required). Health check route: `GET /health`.
 

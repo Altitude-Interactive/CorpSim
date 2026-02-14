@@ -42,8 +42,10 @@ docker compose up -d postgres redis
 ```bash
 pnpm -C packages/db generate
 pnpm -C packages/db migrate:deploy
-pnpm sim:reset
+pnpm sim:seed
 ```
+
+Use `pnpm sim:reset` only when you intentionally want to wipe and reseed simulation progress.
 
 ## 6) Run services
 
