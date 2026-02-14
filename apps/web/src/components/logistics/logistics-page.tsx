@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
+  InventoryRow,
   ItemCatalogItem,
   MarketAnalyticsSummary,
   RegionSummary,
@@ -18,7 +19,9 @@ import {
   cancelShipment,
   createShipment,
   getMarketAnalyticsSummary,
+  listCompanyInventory,
   listItems,
+  listProductionRecipes,
   listRegions,
   listShipments
 } from "@/lib/api";
@@ -76,8 +79,31 @@ export function LogisticsPage() {
   const loadCatalog = useCallback(async () => {
     try {
       const [regionRows, itemRows] = await Promise.all([listRegions(), listItems()]);
+      const [unlockedRecipes, inventoryRows] = activeCompanyId
+        ? await Promise.all([
+            listProductionRecipes(activeCompanyId),
+            listCompanyInventory(activeCompanyId)
+          ])
+        : [[], [] as InventoryRow[]];
+
+      const selectableItemIds = new Set<string>();
+      for (const recipe of unlockedRecipes) {
+        selectableItemIds.add(recipe.outputItem.id);
+        for (const input of recipe.inputs) {
+          selectableItemIds.add(input.itemId);
+        }
+      }
+      for (const row of inventoryRows) {
+        selectableItemIds.add(row.itemId);
+      }
+
+      const filteredItems =
+        selectableItemIds.size === 0
+          ? itemRows
+          : itemRows.filter((item) => selectableItemIds.has(item.id));
+
       setRegions(regionRows);
-      setItems(itemRows);
+      setItems(filteredItems);
       setToRegionId((current) => {
         if (current && regionRows.some((region) => region.id === current)) {
           return current;
@@ -87,15 +113,15 @@ export function LogisticsPage() {
         return firstNonHome?.id ?? regionRows[0]?.id ?? "";
       });
       setItemId((current) => {
-        if (current && itemRows.some((item) => item.id === current)) {
+        if (current && filteredItems.some((item) => item.id === current)) {
           return current;
         }
-        return itemRows[0]?.id ?? "";
+        return filteredItems[0]?.id ?? "";
       });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load logistics catalog");
     }
-  }, [activeCompany?.regionId]);
+  }, [activeCompany?.regionId, activeCompanyId]);
 
   const loadShipments = useCallback(async () => {
     if (!activeCompanyId) {

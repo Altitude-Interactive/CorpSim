@@ -58,6 +58,10 @@ export interface ProductionJobFilters {
   limit?: number;
 }
 
+export interface RecipeFilters {
+  companyId?: string;
+}
+
 export interface CompanyLedgerFilters {
   companyId: string;
   fromTick?: number;
@@ -564,8 +568,18 @@ export async function listItems(prisma: PrismaClient) {
   });
 }
 
-export async function listRecipes(prisma: PrismaClient) {
+export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters = {}) {
   return prisma.recipe.findMany({
+    where: filters.companyId
+      ? {
+          companyRecipes: {
+            some: {
+              companyId: filters.companyId,
+              isUnlocked: true
+            }
+          }
+        }
+      : undefined,
     orderBy: [{ code: "asc" }],
     select: {
       id: true,

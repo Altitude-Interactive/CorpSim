@@ -149,7 +149,13 @@ export function ProductionPage() {
   }, [runningJobs]);
 
   const loadRecipes = useCallback(async () => {
-    const rows = await listProductionRecipes();
+    if (!activeCompanyId) {
+      setRecipes([]);
+      setSelectedRecipeId("");
+      return;
+    }
+
+    const rows = await listProductionRecipes(activeCompanyId);
     setRecipes(rows);
     setSelectedRecipeId((current) => {
       if (current && rows.some((recipe) => recipe.id === current)) {
@@ -157,7 +163,7 @@ export function ProductionPage() {
       }
       return rows[0]?.id ?? "";
     });
-  }, []);
+  }, [activeCompanyId]);
 
   const loadJobs = useCallback(async () => {
     if (!activeCompanyId) {

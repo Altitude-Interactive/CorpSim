@@ -16,6 +16,7 @@ import {
   getMarketAnalyticsSummary,
   listItems,
   listMarketCandles,
+  listProductionRecipes,
   listRegions
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -66,13 +67,29 @@ export function AnalyticsPage() {
 
   const loadCatalog = useCallback(async () => {
     const [itemRows, regionRows] = await Promise.all([listItems(), listRegions()]);
-    setItems(itemRows);
+    const unlockedRecipes = activeCompany?.id
+      ? await listProductionRecipes(activeCompany.id)
+      : [];
+    const unlockedItemIds = new Set<string>();
+    for (const recipe of unlockedRecipes) {
+      unlockedItemIds.add(recipe.outputItem.id);
+      for (const input of recipe.inputs) {
+        unlockedItemIds.add(input.itemId);
+      }
+    }
+
+    const filteredItems =
+      unlockedItemIds.size === 0
+        ? itemRows
+        : itemRows.filter((item) => unlockedItemIds.has(item.id));
+
+    setItems(filteredItems);
     setRegions(regionRows);
     setSelectedItemId((current) => {
-      if (current && itemRows.some((item) => item.id === current)) {
+      if (current && filteredItems.some((item) => item.id === current)) {
         return current;
       }
-      return itemRows[0]?.id ?? "";
+      return filteredItems[0]?.id ?? "";
     });
     setSelectedRegionId((current) => {
       if (current && regionRows.some((region) => region.id === current)) {
@@ -83,7 +100,7 @@ export function AnalyticsPage() {
       }
       return regionRows[0]?.id ?? "";
     });
-  }, [activeCompany?.regionId]);
+  }, [activeCompany?.id, activeCompany?.regionId]);
 
   const loadAnalytics = useCallback(async () => {
     if (!selectedItemId || !selectedRegionId) {

@@ -15,7 +15,8 @@ import {
   acceptContract,
   fulfillContract,
   listContracts,
-  listItems
+  listItems,
+  listProductionRecipes
 } from "@/lib/api";
 import { UI_COPY } from "@/lib/ui-copy";
 import { AvailableContractsTable } from "./available-contracts-table";
@@ -61,8 +62,22 @@ export function ContractsPage() {
 
   const loadItems = useCallback(async () => {
     const itemRows = await listItems();
-    setItems(itemRows);
-  }, []);
+    const unlockedRecipes = activeCompanyId ? await listProductionRecipes(activeCompanyId) : [];
+    const unlockedSet = new Set<string>();
+    for (const recipe of unlockedRecipes) {
+      unlockedSet.add(recipe.outputItem.id);
+      for (const input of recipe.inputs) {
+        unlockedSet.add(input.itemId);
+      }
+    }
+
+    if (unlockedSet.size === 0) {
+      setItems(itemRows);
+      return;
+    }
+
+    setItems(itemRows.filter((item) => unlockedSet.has(item.id)));
+  }, [activeCompanyId]);
 
   const loadContracts = useCallback(async () => {
     setIsLoading(true);
@@ -100,6 +115,12 @@ export function ContractsPage() {
 
     return () => clearTimeout(timeout);
   }, [health?.currentTick, loadContracts]);
+
+  useEffect(() => {
+    if (itemFilter !== "ALL" && !items.some((item) => item.id === itemFilter)) {
+      setItemFilter("ALL");
+    }
+  }, [itemFilter, items]);
 
   const availableContracts = useMemo(
     () => contracts.filter((contract) => contract.status === "OPEN"),

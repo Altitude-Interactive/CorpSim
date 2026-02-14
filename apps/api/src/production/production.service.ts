@@ -128,8 +128,15 @@ export class ProductionService {
     this.prisma = prisma;
   }
 
-  async listRecipes(): Promise<ProductionRecipe[]> {
-    const recipes = await listRecipes(this.prisma);
+  async listRecipes(companyId: string | undefined, playerHandle: string): Promise<ProductionRecipe[]> {
+    if (companyId) {
+      const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+      await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
+    }
+
+    const recipes = await listRecipes(this.prisma, {
+      companyId
+    });
 
     return recipes.map((recipe) => ({
       id: recipe.id,

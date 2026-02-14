@@ -74,11 +74,16 @@ export type * from "@corpsim/shared";
 
 const CATALOG_CACHE_TTL_MS = 5 * 60 * 1_000;
 const RESEARCH_CACHE_TTL_MS = 1_000;
+const COMPANY_RECIPES_CACHE_TTL_MS = 2_000;
 
 const ITEMS_CACHE_KEY = "catalog:items";
 const REGIONS_CACHE_KEY = "catalog:regions";
-const RECIPES_CACHE_KEY = "catalog:production-recipes";
+const RECIPES_CACHE_KEY_PREFIX = "catalog:production-recipes:";
 const RESEARCH_CACHE_KEY_PREFIX = "research:";
+
+function resolveRecipesCacheKey(companyId?: string): string {
+  return `${RECIPES_CACHE_KEY_PREFIX}${companyId ?? "all"}`;
+}
 
 function resolveResearchCacheKey(companyId?: string): string {
   return `${RESEARCH_CACHE_KEY_PREFIX}${companyId ?? "default"}`;
@@ -87,7 +92,7 @@ function resolveResearchCacheKey(companyId?: string): string {
 function invalidateStaticCatalogCaches(): void {
   invalidateCachedRequest(ITEMS_CACHE_KEY);
   invalidateCachedRequest(REGIONS_CACHE_KEY);
-  invalidateCachedRequest(RECIPES_CACHE_KEY);
+  invalidateCachedRequestPrefix(RECIPES_CACHE_KEY_PREFIX);
 }
 
 function invalidateResearchCaches(): void {
@@ -300,13 +305,22 @@ export async function listItems(options?: CachedRequestOptions): Promise<ItemCat
 }
 
 export async function listProductionRecipes(
+  companyId?: string,
   options?: CachedRequestOptions
 ): Promise<ProductionRecipe[]> {
+  const params = new URLSearchParams();
+  if (companyId) {
+    params.set("companyId", companyId);
+  }
+  const query = params.toString();
+  const path = `/v1/production/recipes${query ? `?${query}` : ""}`;
+
+  const ttl = companyId ? COMPANY_RECIPES_CACHE_TTL_MS : CATALOG_CACHE_TTL_MS;
   return getCachedRequest(
-    RECIPES_CACHE_KEY,
-    CATALOG_CACHE_TTL_MS,
+    resolveRecipesCacheKey(companyId),
+    ttl,
     () =>
-      fetchJson("/v1/production/recipes", (value) =>
+      fetchJson(path, (value) =>
         readArray(value, "recipes").map(parseProductionRecipe)
       ),
     options

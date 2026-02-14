@@ -39,8 +39,11 @@ export class ProductionController {
   }
 
   @Get("recipes")
-  async listRecipes() {
-    return this.productionService.listRecipes();
+  async listRecipes(
+    @Query("companyId") companyId: string | undefined,
+    @CurrentPlayerHandle() playerHandle: string
+  ) {
+    return this.productionService.listRecipes(companyId, playerHandle);
   }
 
   @Get("jobs")

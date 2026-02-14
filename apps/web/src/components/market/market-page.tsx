@@ -12,16 +12,19 @@ import { useToast } from "@/components/ui/toast";
 import {
   ApiClientError,
   CompanySummary,
+  InventoryRow,
   ItemCatalogItem,
   MarketOrder,
   MarketTrade,
   RegionSummary,
   cancelMarketOrder,
+  listCompanyInventory,
   listCompanies,
   listItems,
   listMarketOrders,
   listRegions,
   listMarketTrades,
+  listProductionRecipes,
   placeMarketOrder
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -84,6 +87,7 @@ export function MarketPage() {
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [regions, setRegions] = useState<RegionSummary[]>([]);
+  const [unlockedItemIds, setUnlockedItemIds] = useState<string[]>([]);
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [orderFilters, setOrderFilters] = useState<OrderBookFilters>(INITIAL_ORDER_FILTERS);
   const [tradeFilters, setTradeFilters] = useState<TradeFilters>(INITIAL_TRADE_FILTERS);
@@ -105,6 +109,26 @@ export function MarketPage() {
       listRegions(),
       listCompanies()
     ]);
+
+    const [unlockedRecipeRows, inventoryRows] = activeCompanyId
+      ? await Promise.all([
+          listProductionRecipes(activeCompanyId),
+          listCompanyInventory(activeCompanyId)
+        ])
+      : [[], [] as InventoryRow[]];
+
+    const unlockedIds = new Set<string>();
+    for (const recipe of unlockedRecipeRows) {
+      unlockedIds.add(recipe.outputItem.id);
+      for (const input of recipe.inputs) {
+        unlockedIds.add(input.itemId);
+      }
+    }
+    for (const row of inventoryRows) {
+      unlockedIds.add(row.itemId);
+    }
+
+    setUnlockedItemIds(Array.from(unlockedIds));
     setItems(itemRows);
     setRegions(regionRows);
     setCompanies(companyRows);
@@ -117,7 +141,7 @@ export function MarketPage() {
       }
       return regionRows[0]?.id ?? "";
     });
-  }, [activeCompany?.regionId]);
+  }, [activeCompany?.regionId, activeCompanyId]);
 
   useEffect(() => {
     if (!activeCompany?.regionId) {
@@ -297,6 +321,13 @@ export function MarketPage() {
     () => [...items].sort((left, right) => left.name.localeCompare(right.name)),
     [items]
   );
+  const unlockedItemIdSet = useMemo(() => new Set(unlockedItemIds), [unlockedItemIds]);
+  const sortedSelectableItems = useMemo(() => {
+    if (unlockedItemIdSet.size === 0) {
+      return sortedItems;
+    }
+    return sortedItems.filter((item) => unlockedItemIdSet.has(item.id));
+  }, [sortedItems, unlockedItemIdSet]);
   const sortedCompanies = useMemo(
     () => [...companies].sort((left, right) => left.name.localeCompare(right.name)),
     [companies]
@@ -329,12 +360,24 @@ export function MarketPage() {
     })
     : null;
 
+  useEffect(() => {
+    if (orderFilters.itemId && !sortedSelectableItems.some((item) => item.id === orderFilters.itemId)) {
+      setOrderFilters((prev) => ({ ...prev, itemId: "" }));
+    }
+  }, [orderFilters.itemId, sortedSelectableItems]);
+
+  useEffect(() => {
+    if (tradeFilters.itemId && !sortedSelectableItems.some((item) => item.id === tradeFilters.itemId)) {
+      setTradeFilters((prev) => ({ ...prev, itemId: "" }));
+    }
+  }, [tradeFilters.itemId, sortedSelectableItems]);
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
         <OrderPlacementCard
           activeCompany={activeCompany}
-          items={sortedItems}
+          items={sortedSelectableItems}
           onSubmit={handlePlaceOrder}
           isSubmitting={isSubmittingOrder}
         />
@@ -390,7 +433,7 @@ export function MarketPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All items</SelectItem>
-                  {sortedItems.map((item) => (
+                  {sortedSelectableItems.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
                       <ItemLabel itemCode={item.code} itemName={item.name} />
                     </SelectItem>
@@ -466,7 +509,7 @@ export function MarketPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All items</SelectItem>
-                {sortedItems.map((item) => (
+                {sortedSelectableItems.map((item) => (
                   <SelectItem value={item.id} key={item.id}>
                     <ItemLabel itemCode={item.code} itemName={item.name} />
                   </SelectItem>
