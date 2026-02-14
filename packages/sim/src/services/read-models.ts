@@ -246,7 +246,13 @@ export async function listCompanyInventory(
   const effectiveRegionId = regionId ?? company.regionId;
 
   return prisma.inventory.findMany({
-    where: { companyId, regionId: effectiveRegionId },
+    where: {
+      companyId,
+      regionId: effectiveRegionId,
+      quantity: {
+        gt: 0
+      }
+    },
     orderBy: { item: { code: "asc" } },
     select: {
       itemId: true,
