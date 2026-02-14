@@ -39,7 +39,9 @@ export function ShortcutsHelpShortcut() {
     () => ({
       id: "shortcuts-help-open",
       key: "/",
+      code: "Slash",
       modifier: "ctrlOrMeta" as const,
+      allowShiftMismatch: true,
       allowWhenTyping: true,
       preventDefault: true,
       title: "Shortcut help",

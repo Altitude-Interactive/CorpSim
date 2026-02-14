@@ -15,8 +15,10 @@ export type ControlShortcutModifier = "ctrlOrMeta" | "ctrl" | "meta" | "none";
 export interface ControlShortcut {
   id: string;
   key: string;
+  code?: string | string[];
   modifier?: ControlShortcutModifier;
   shift?: boolean;
+  allowShiftMismatch?: boolean;
   alt?: boolean;
   allowWhenTyping?: boolean;
   preventDefault?: boolean;
@@ -80,14 +82,21 @@ function matchesShortcut(event: KeyboardEvent, shortcut: ControlShortcut): boole
   const modifier = shortcut.modifier ?? "ctrlOrMeta";
   const expectedKey = normalizeKey(shortcut.key);
   const eventKey = normalizeKey(event.key);
+  const expectedCodes = Array.isArray(shortcut.code)
+    ? shortcut.code.map(normalizeKey)
+    : shortcut.code
+      ? [normalizeKey(shortcut.code)]
+      : [];
+  const eventCode = normalizeKey(event.code);
+  const codeMatches = expectedCodes.length > 0 && expectedCodes.includes(eventCode);
 
-  if (eventKey !== expectedKey) {
+  if (eventKey !== expectedKey && !codeMatches) {
     return false;
   }
   if (!hasModifierMatch(event, modifier)) {
     return false;
   }
-  if ((shortcut.shift ?? false) !== event.shiftKey) {
+  if (!shortcut.allowShiftMismatch && (shortcut.shift ?? false) !== event.shiftKey) {
     return false;
   }
   if ((shortcut.alt ?? false) !== event.altKey) {
