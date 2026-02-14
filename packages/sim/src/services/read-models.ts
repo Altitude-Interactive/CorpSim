@@ -577,47 +577,77 @@ export async function listItems(prisma: PrismaClient) {
 }
 
 export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters = {}) {
-  return prisma.recipe.findMany({
-    where: filters.companyId
-      ? {
-          companyRecipes: {
-            some: {
-              companyId: filters.companyId,
-              isUnlocked: true
-            }
-          }
-        }
-      : undefined,
-    orderBy: [{ code: "asc" }],
-    select: {
-      id: true,
-      code: true,
-      name: true,
-      durationTicks: true,
-      outputQuantity: true,
-      outputItem: {
-        select: {
-          id: true,
-          code: true,
-          name: true
-        }
-      },
-      inputs: {
-        orderBy: { item: { code: "asc" } },
-        select: {
-          itemId: true,
-          quantity: true,
-          item: {
-            select: {
-              id: true,
-              code: true,
-              name: true
-            }
+  const baseSelect = {
+    id: true,
+    code: true,
+    name: true,
+    durationTicks: true,
+    outputQuantity: true,
+    outputItem: {
+      select: {
+        id: true,
+        code: true,
+        name: true
+      }
+    },
+    inputs: {
+      orderBy: { item: { code: "asc" } },
+      select: {
+        itemId: true,
+        quantity: true,
+        item: {
+          select: {
+            id: true,
+            code: true,
+            name: true
           }
         }
       }
     }
+  } as const;
+
+  if (!filters.companyId) {
+    return prisma.recipe.findMany({
+      orderBy: [{ code: "asc" }],
+      select: baseSelect
+    });
+  }
+
+  const unlockedRecipes = await prisma.recipe.findMany({
+    where: {
+      companyRecipes: {
+        some: {
+          companyId: filters.companyId,
+          isUnlocked: true
+        }
+      }
+    },
+    orderBy: [{ code: "asc" }],
+    select: baseSelect
   });
+
+  if (unlockedRecipes.length > 0) {
+    return unlockedRecipes;
+  }
+
+  // Legacy data fallback: older/local worlds may miss companyRecipe rows entirely.
+  const [companyRecipeCount, totalRecipeCount] = await Promise.all([
+    prisma.companyRecipe.count({
+      where: {
+        companyId: filters.companyId
+      }
+    }),
+    prisma.recipe.count()
+  ]);
+
+  if (companyRecipeCount < totalRecipeCount) {
+    return prisma.recipe.findMany({
+      orderBy: [{ code: "asc" }],
+      select: baseSelect
+    });
+  }
+
+  return unlockedRecipes;
 }
 
 export async function listProductionJobs(

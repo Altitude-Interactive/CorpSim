@@ -187,6 +187,22 @@ async function resolveTick(tx: Prisma.TransactionClient, explicitTick?: number):
   return world?.currentTick ?? 0;
 }
 
+async function isLegacyCompanyRecipeState(
+  tx: Prisma.TransactionClient,
+  companyId: string
+): Promise<boolean> {
+  const [companyRecipeCount, totalRecipeCount] = await Promise.all([
+    tx.companyRecipe.count({
+      where: {
+        companyId
+      }
+    }),
+    tx.recipe.count()
+  ]);
+
+  return companyRecipeCount < totalRecipeCount;
+}
+
 function resolveFallbackItemPriceCents(itemCode: string): bigint {
   switch (itemCode) {
     case "IRON_ORE":
@@ -363,7 +379,7 @@ export async function createProductionJobWithTx(
   if (!recipe) {
     throw new NotFoundError(`recipe ${input.recipeId} not found`);
   }
-  if (!companyRecipe?.isUnlocked) {
+  if (!companyRecipe?.isUnlocked && !(await isLegacyCompanyRecipeState(tx, input.companyId))) {
     throw new DomainInvariantError(`recipe ${input.recipeId} is not unlocked for company ${input.companyId}`);
   }
   if (recipe.durationTicks < 0) {
