@@ -47,7 +47,7 @@ export function SidebarNav() {
         </div>
         <div>
           <p className="text-sm font-semibold leading-none">CorpSim ERP</p>
-          <p className="text-xs text-muted-foreground">Dark Operations Dashboard</p>
+          <p className="text-xs text-muted-foreground">Operations Dashboard</p>
         </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
