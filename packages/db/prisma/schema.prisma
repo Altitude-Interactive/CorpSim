@@ -80,7 +80,7 @@ model Company {
   name              String
   isPlayer          Boolean      @default(false)
   specialization    CompanySpecialization @default(UNASSIGNED)
-  specializationChangedTick Int?
+  specializationChangedAt DateTime?
   ownerPlayerId     String?
   regionId          String
   cashCents         BigInt

@@ -251,7 +251,7 @@ describe("companies and market API integration", () => {
       .expect(400);
 
     expect(typeof secondResponse.body.message).toBe("string");
-    expect(secondResponse.body.message).toContain("company focus can be changed every");
+    expect(secondResponse.body.message).toContain("real hours");
   });
 });
 

@@ -6,7 +6,7 @@ import {
   ProductionJobStatus
 } from "@prisma/client";
 import {
-  COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS,
+  COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS,
   CompanySpecialization,
   isItemCodeLockedBySpecialization,
   normalizeCompanySpecialization
@@ -264,22 +264,16 @@ export async function setCompanySpecialization(
   }
 
   const specialization = normalizeCompanySpecialization(input.specialization);
-  const [company, world] = await Promise.all([
-    prisma.company.findUnique({
-      where: {
-        id: input.companyId
-      },
-      select: {
-        isPlayer: true,
-        specialization: true,
-        specializationChangedTick: true
-      }
-    }),
-    prisma.worldTickState.findUnique({
-      where: { id: 1 },
-      select: { currentTick: true }
-    })
-  ]);
+  const company = await prisma.company.findUnique({
+    where: {
+      id: input.companyId
+    },
+    select: {
+      isPlayer: true,
+      specialization: true,
+      specializationChangedAt: true
+    }
+  });
 
   if (!company || !company.isPlayer) {
     throw new NotFoundError(`company ${input.companyId} not found`);
@@ -290,15 +284,18 @@ export async function setCompanySpecialization(
     return getCompanyById(prisma, input.companyId);
   }
 
-  const currentTick = world?.currentTick ?? 0;
-  const lastChangedTick = company.specializationChangedTick;
-  if (lastChangedTick !== null) {
-    const nextChangeTick = lastChangedTick + COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS;
-    if (currentTick < nextChangeTick) {
-      const remainingTicks = nextChangeTick - currentTick;
+  const now = new Date();
+  const cooldownMs = COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS * 60 * 60 * 1000;
+  const lastChangedAt = company.specializationChangedAt;
+  if (lastChangedAt !== null) {
+    const nextChangeAt = new Date(lastChangedAt.getTime() + cooldownMs);
+    if (now.getTime() < nextChangeAt.getTime()) {
+      const remainingMs = nextChangeAt.getTime() - now.getTime();
+      const remainingHours = Math.max(1, Math.ceil(remainingMs / (60 * 60 * 1000)));
+      const remainingHoursLabel = remainingHours === 1 ? "hour" : "hours";
       throw new DomainInvariantError(
-        `company focus can be changed every ${COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS} ticks; ` +
-          `${remainingTicks} ticks remaining (next change at tick ${nextChangeTick})`
+        `company focus can be changed every ${COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} real hours; ` +
+          `${remainingHours} ${remainingHoursLabel} remaining (next change at ${nextChangeAt.toISOString()})`
       );
     }
   }
@@ -309,7 +306,7 @@ export async function setCompanySpecialization(
     },
     data: {
       specialization,
-      specializationChangedTick: currentTick
+      specializationChangedAt: now
     }
   });
 

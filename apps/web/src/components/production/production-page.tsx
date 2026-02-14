@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS } from "@corpsim/shared";
+import { COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS } from "@corpsim/shared";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
@@ -471,8 +471,7 @@ export function ProductionPage() {
                 Pick one focus for this company. It decides which products this company can make and sell.
               </p>
               <p className="text-xs text-muted-foreground">
-                You can switch focus once every{" "}
-                {formatCadenceCount(COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS)}.
+                You can switch focus once every {COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} real hours.
               </p>
               <Popover open={isFocusPickerOpen} onOpenChange={setIsFocusPickerOpen}>
                 <PopoverTrigger asChild>
