@@ -27,7 +27,7 @@ import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { formatCodeLabel, UI_COPY } from "@/lib/ui-copy";
 
 const PRODUCTION_REFRESH_DEBOUNCE_MS = 500;
-const PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 function mapProductionStatusVariant(status: ProductionJob["status"]): "success" | "warning" | "info" {
   if (status === "COMPLETED") {
@@ -66,7 +66,7 @@ export function ProductionPage() {
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipePage, setRecipePage] = useState(1);
   const [recipePageSize, setRecipePageSize] =
-    useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(20);
+    useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(10);
   const [quantityInput, setQuantityInput] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
