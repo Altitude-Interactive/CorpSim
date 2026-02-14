@@ -37,6 +37,12 @@ import type {
 } from "@corpsim/shared";
 import { fetchJson, isRecord, readArray, readString } from "./api-client";
 import {
+  CachedRequestOptions,
+  getCachedRequest,
+  invalidateCachedRequest,
+  invalidateCachedRequestPrefix
+} from "./request-cache";
+import {
   parseCompanyDetails,
   parseCompanyWorkforce,
   parseCompanySummary,
@@ -65,6 +71,28 @@ import {
 
 export { ApiClientError, HEALTH_POLL_INTERVAL_MS } from "./api-client";
 export type * from "@corpsim/shared";
+
+const CATALOG_CACHE_TTL_MS = 5 * 60 * 1_000;
+const RESEARCH_CACHE_TTL_MS = 1_000;
+
+const ITEMS_CACHE_KEY = "catalog:items";
+const REGIONS_CACHE_KEY = "catalog:regions";
+const RECIPES_CACHE_KEY = "catalog:production-recipes";
+const RESEARCH_CACHE_KEY_PREFIX = "research:";
+
+function resolveResearchCacheKey(companyId?: string): string {
+  return `${RESEARCH_CACHE_KEY_PREFIX}${companyId ?? "default"}`;
+}
+
+function invalidateStaticCatalogCaches(): void {
+  invalidateCachedRequest(ITEMS_CACHE_KEY);
+  invalidateCachedRequest(REGIONS_CACHE_KEY);
+  invalidateCachedRequest(RECIPES_CACHE_KEY);
+}
+
+function invalidateResearchCaches(): void {
+  invalidateCachedRequestPrefix(RESEARCH_CACHE_KEY_PREFIX);
+}
 
 export async function getWorldHealth(): Promise<WorldHealth> {
   return fetchJson("/v1/world/health", parseWorldHealth);
@@ -133,8 +161,13 @@ export async function listCompanyInventory(
   );
 }
 
-export async function listRegions(): Promise<RegionSummary[]> {
-  return fetchJson("/v1/regions", (value) => readArray(value, "regions").map(parseRegionSummary));
+export async function listRegions(options?: CachedRequestOptions): Promise<RegionSummary[]> {
+  return getCachedRequest(
+    REGIONS_CACHE_KEY,
+    CATALOG_CACHE_TTL_MS,
+    () => fetchJson("/v1/regions", (value) => readArray(value, "regions").map(parseRegionSummary)),
+    options
+  );
 }
 
 export async function listShipments(filters: ListShipmentsFilters = {}): Promise<ShipmentRecord[]> {
@@ -257,13 +290,26 @@ export async function getMarketAnalyticsSummary(
   return fetchJson(`/v1/market/analytics/summary?${params.toString()}`, parseMarketAnalyticsSummary);
 }
 
-export async function listItems(): Promise<ItemCatalogItem[]> {
-  return fetchJson("/v1/items", (value) => readArray(value, "items").map(parseItemCatalogItem));
+export async function listItems(options?: CachedRequestOptions): Promise<ItemCatalogItem[]> {
+  return getCachedRequest(
+    ITEMS_CACHE_KEY,
+    CATALOG_CACHE_TTL_MS,
+    () => fetchJson("/v1/items", (value) => readArray(value, "items").map(parseItemCatalogItem)),
+    options
+  );
 }
 
-export async function listProductionRecipes(): Promise<ProductionRecipe[]> {
-  return fetchJson("/v1/production/recipes", (value) =>
-    readArray(value, "recipes").map(parseProductionRecipe)
+export async function listProductionRecipes(
+  options?: CachedRequestOptions
+): Promise<ProductionRecipe[]> {
+  return getCachedRequest(
+    RECIPES_CACHE_KEY,
+    CATALOG_CACHE_TTL_MS,
+    () =>
+      fetchJson("/v1/production/recipes", (value) =>
+        readArray(value, "recipes").map(parseProductionRecipe)
+      ),
+    options
   );
 }
 
@@ -298,33 +344,47 @@ export async function cancelProductionJob(jobId: string): Promise<ProductionJob>
   });
 }
 
-export async function listResearch(companyId?: string): Promise<ResearchNode[]> {
+export async function listResearch(
+  companyId?: string,
+  options?: CachedRequestOptions
+): Promise<ResearchNode[]> {
   const params = new URLSearchParams();
   if (companyId) {
     params.set("companyId", companyId);
   }
   const query = params.toString();
+  const path = `/v1/research${query ? `?${query}` : ""}`;
 
-  return fetchJson(`/v1/research${query ? `?${query}` : ""}`, (value) => {
-    if (!isRecord(value)) {
-      throw new Error("Invalid research list payload");
-    }
-    return readArray(value.nodes, "nodes").map(parseResearchNode);
-  });
+  return getCachedRequest(
+    resolveResearchCacheKey(companyId),
+    RESEARCH_CACHE_TTL_MS,
+    () =>
+      fetchJson(path, (value) => {
+        if (!isRecord(value)) {
+          throw new Error("Invalid research list payload");
+        }
+        return readArray(value.nodes, "nodes").map(parseResearchNode);
+      }),
+    options
+  );
 }
 
 export async function startResearchNode(nodeId: string, companyId?: string): Promise<ResearchJob> {
-  return fetchJson(`/v1/research/${nodeId}/start`, parseResearchJob, {
+  const result = await fetchJson(`/v1/research/${nodeId}/start`, parseResearchJob, {
     method: "POST",
     body: JSON.stringify(companyId ? { companyId } : {})
   });
+  invalidateResearchCaches();
+  return result;
 }
 
 export async function cancelResearchNode(nodeId: string, companyId?: string): Promise<ResearchJob> {
-  return fetchJson(`/v1/research/${nodeId}/cancel`, parseResearchJob, {
+  const result = await fetchJson(`/v1/research/${nodeId}/cancel`, parseResearchJob, {
     method: "POST",
     body: JSON.stringify(companyId ? { companyId } : {})
   });
+  invalidateResearchCaches();
+  return result;
 }
 
 export async function listContracts(
@@ -433,8 +493,16 @@ export async function advanceWorld(ticks: number): Promise<WorldTickState> {
 }
 
 export async function resetWorld(reseed = true): Promise<WorldTickState> {
-  return fetchJson(`/v1/world/reset?reseed=${reseed ? "true" : "false"}`, parseWorldTickState, {
-    method: "POST",
-    body: JSON.stringify({ reseed })
-  });
+  const result = await fetchJson(
+    `/v1/world/reset?reseed=${reseed ? "true" : "false"}`,
+    parseWorldTickState,
+    {
+      method: "POST",
+      body: JSON.stringify({ reseed })
+    }
+  );
+
+  invalidateStaticCatalogCaches();
+  invalidateResearchCaches();
+  return result;
 }

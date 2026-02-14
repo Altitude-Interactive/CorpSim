@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import {
   ApiClientError,
@@ -18,6 +20,7 @@ import { ResearchNodeDetails } from "./research-node-details";
 import { ResearchNodeList, ResearchTierGroup } from "./research-node-list";
 
 const RESEARCH_REFRESH_DEBOUNCE_MS = 500;
+const RESEARCH_NODE_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
 function mapApiError(error: unknown): string {
   if (error instanceof ApiClientError) {
@@ -95,8 +98,15 @@ export function ResearchPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nodeSearch, setNodeSearch] = useState("");
+  const [nodeStatusFilter, setNodeStatusFilter] =
+    useState<"ALL" | ResearchNode["status"]>("ALL");
+  const [nodePage, setNodePage] = useState(1);
+  const [nodePageSize, setNodePageSize] =
+    useState<(typeof RESEARCH_NODE_PAGE_SIZE_OPTIONS)[number]>(50);
+  const deferredNodeSearch = useDeferredValue(nodeSearch);
 
-  const loadResearch = useCallback(async () => {
+  const loadResearch = useCallback(async (options?: { force?: boolean }) => {
     if (!activeCompanyId) {
       setNodes([]);
       setSelectedNodeId(null);
@@ -106,7 +116,7 @@ export function ResearchPage() {
 
     setIsLoading(true);
     try {
-      const rows = await listResearch(activeCompanyId);
+      const rows = await listResearch(activeCompanyId, { force: options?.force });
       setNodes(rows);
       setError(null);
       setSelectedNodeId((current) => {
@@ -126,21 +136,88 @@ export function ResearchPage() {
     void loadResearch();
   }, [loadResearch]);
 
+  const nextResearchCompletionTick = useMemo(() => {
+    const researching = nodes.filter(
+      (node) => node.status === "RESEARCHING" && node.tickCompletes !== null
+    );
+
+    if (researching.length === 0) {
+      return null;
+    }
+
+    return researching.reduce<number>(
+      (minTick, node) => Math.min(minTick, node.tickCompletes ?? Number.MAX_SAFE_INTEGER),
+      Number.MAX_SAFE_INTEGER
+    );
+  }, [nodes]);
+
   useEffect(() => {
-    if (!activeCompanyId || health?.currentTick === undefined) {
+    if (
+      !activeCompanyId ||
+      health?.currentTick === undefined ||
+      nextResearchCompletionTick === null ||
+      health.currentTick < nextResearchCompletionTick
+    ) {
       return;
     }
 
     const timeout = setTimeout(() => {
-      void loadResearch();
+      void loadResearch({ force: true });
     }, RESEARCH_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
-  }, [activeCompanyId, health?.currentTick, loadResearch]);
+  }, [activeCompanyId, health?.currentTick, loadResearch, nextResearchCompletionTick]);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node] as const)), [nodes]);
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
-  const groups = useMemo(() => computeResearchTierGroups(nodes), [nodes]);
+
+  const filteredNodes = useMemo(() => {
+    const needle = deferredNodeSearch.trim().toLowerCase();
+
+    return nodes.filter((node) => {
+      if (nodeStatusFilter !== "ALL" && node.status !== nodeStatusFilter) {
+        return false;
+      }
+
+      if (!needle) {
+        return true;
+      }
+
+      return `${node.code} ${node.name} ${node.description}`.toLowerCase().includes(needle);
+    });
+  }, [deferredNodeSearch, nodeStatusFilter, nodes]);
+
+  useEffect(() => {
+    setNodePage(1);
+  }, [nodeSearch, nodeStatusFilter, nodePageSize]);
+
+  const totalNodePages = useMemo(
+    () => Math.max(1, Math.ceil(filteredNodes.length / nodePageSize)),
+    [filteredNodes.length, nodePageSize]
+  );
+
+  useEffect(() => {
+    if (nodePage > totalNodePages) {
+      setNodePage(totalNodePages);
+    }
+  }, [nodePage, totalNodePages]);
+
+  const pagedNodes = useMemo(() => {
+    const start = (nodePage - 1) * nodePageSize;
+    return filteredNodes.slice(start, start + nodePageSize);
+  }, [filteredNodes, nodePage, nodePageSize]);
+
+  const nodeRangeLabel = useMemo(() => {
+    if (filteredNodes.length === 0) {
+      return "0-0";
+    }
+
+    const start = (nodePage - 1) * nodePageSize + 1;
+    const end = Math.min(nodePage * nodePageSize, filteredNodes.length);
+    return `${start}-${end}`;
+  }, [filteredNodes.length, nodePage, nodePageSize]);
+
+  const groups = useMemo(() => computeResearchTierGroups(pagedNodes), [pagedNodes]);
   const statusCounts = useMemo(() => {
     return nodes.reduce(
       (acc, node) => {
@@ -182,7 +259,7 @@ export function ResearchPage() {
         description: `${node.name} is now in progress.`,
         variant: "success"
       });
-      await loadResearch();
+      await loadResearch({ force: true });
     } catch (caught) {
       const message = mapApiError(caught);
       setError(message);
@@ -214,7 +291,7 @@ export function ResearchPage() {
         description: `${node.name} was cancelled without refund.`,
         variant: "info"
       });
-      await loadResearch();
+      await loadResearch({ force: true });
     } catch (caught) {
       const message = mapApiError(caught);
       setError(message);
@@ -261,13 +338,92 @@ export function ResearchPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              void loadResearch();
+              void loadResearch({ force: true });
             }}
             disabled={isLoading || isMutating}
           >
             Refresh Research
           </Button>
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Research Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={nodeSearch}
+              onChange={(event) => setNodeSearch(event.target.value)}
+              placeholder="Search by code, name, or description"
+              className="w-full md:w-80"
+            />
+            <Select
+              value={nodeStatusFilter}
+              onValueChange={(value) => setNodeStatusFilter(value as "ALL" | ResearchNode["status"])}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                <SelectItem value="LOCKED">Locked</SelectItem>
+                <SelectItem value="AVAILABLE">Available</SelectItem>
+                <SelectItem value="RESEARCHING">Researching</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={String(nodePageSize)}
+              onValueChange={(value) =>
+                setNodePageSize(
+                  Number.parseInt(value, 10) as (typeof RESEARCH_NODE_PAGE_SIZE_OPTIONS)[number]
+                )
+              }
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                {RESEARCH_NODE_PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / page
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              Showing {nodeRangeLabel} of {filteredNodes.length} filtered initiatives ({nodes.length} total)
+            </p>
+            {deferredNodeSearch !== nodeSearch ? <p>Updating results...</p> : null}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setNodePage((page) => Math.max(1, page - 1))}
+                disabled={nodePage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="tabular-nums">
+                Page {nodePage} / {totalNodePages}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setNodePage((page) => Math.min(totalNodePages, page + 1))}
+                disabled={nodePage >= totalNodePages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -24,6 +24,7 @@ import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { formatCodeLabel, UI_COPY } from "@/lib/ui-copy";
 
 const PRODUCTION_REFRESH_DEBOUNCE_MS = 500;
+const PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
 function mapProductionStatusVariant(status: ProductionJob["status"]): "success" | "warning" | "info" {
   if (status === "COMPLETED") {
@@ -58,16 +59,94 @@ export function ProductionPage() {
   const [runningJobs, setRunningJobs] = useState<ProductionJob[]>([]);
   const [completedJobs, setCompletedJobs] = useState<ProductionJob[]>([]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>("");
+  const [recipeSearch, setRecipeSearch] = useState("");
+  const [recipePage, setRecipePage] = useState(1);
+  const [recipePageSize, setRecipePageSize] =
+    useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(50);
   const [quantityInput, setQuantityInput] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancellingJobId, setIsCancellingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const deferredRecipeSearch = useDeferredValue(recipeSearch);
 
   const selectedRecipe = useMemo(
     () => recipes.find((recipe) => recipe.id === selectedRecipeId) ?? null,
     [recipes, selectedRecipeId]
   );
+
+  const recipeRows = useMemo(() => {
+    return recipes.map((recipe) => {
+      const inputNames = recipe.inputs.map((input) => input.item.name).join(" ");
+      return {
+        recipe,
+        searchText:
+          `${recipe.code} ${recipe.name} ${recipe.outputItem.code} ${recipe.outputItem.name} ${inputNames}`.toLowerCase()
+      };
+    });
+  }, [recipes]);
+
+  const filteredRecipeRows = useMemo(() => {
+    const needle = deferredRecipeSearch.trim().toLowerCase();
+    if (!needle) {
+      return recipeRows;
+    }
+
+    return recipeRows.filter((row) => row.searchText.includes(needle));
+  }, [deferredRecipeSearch, recipeRows]);
+
+  useEffect(() => {
+    setRecipePage(1);
+  }, [recipeSearch, recipePageSize]);
+
+  const totalRecipePages = useMemo(
+    () => Math.max(1, Math.ceil(filteredRecipeRows.length / recipePageSize)),
+    [filteredRecipeRows.length, recipePageSize]
+  );
+
+  useEffect(() => {
+    if (recipePage > totalRecipePages) {
+      setRecipePage(totalRecipePages);
+    }
+  }, [recipePage, totalRecipePages]);
+
+  const pagedRecipeRows = useMemo(() => {
+    const start = (recipePage - 1) * recipePageSize;
+    return filteredRecipeRows.slice(start, start + recipePageSize);
+  }, [filteredRecipeRows, recipePage, recipePageSize]);
+
+  const recipeRangeLabel = useMemo(() => {
+    if (filteredRecipeRows.length === 0) {
+      return "0-0";
+    }
+
+    const start = (recipePage - 1) * recipePageSize + 1;
+    const end = Math.min(recipePage * recipePageSize, filteredRecipeRows.length);
+    return `${start}-${end}`;
+  }, [filteredRecipeRows.length, recipePage, recipePageSize]);
+
+  const selectRecipeRows = useMemo(() => {
+    const MAX_SELECT_OPTIONS = 200;
+    const selected = recipeRows.find((row) => row.recipe.id === selectedRecipeId);
+    const head = filteredRecipeRows.slice(0, MAX_SELECT_OPTIONS);
+
+    if (!selected || head.some((row) => row.recipe.id === selected.recipe.id)) {
+      return head;
+    }
+
+    return [selected, ...head.slice(0, MAX_SELECT_OPTIONS - 1)];
+  }, [filteredRecipeRows, recipeRows, selectedRecipeId]);
+
+  const nextRunningCompletionTick = useMemo(() => {
+    if (runningJobs.length === 0) {
+      return null;
+    }
+
+    return runningJobs.reduce<number>(
+      (minTick, job) => Math.min(minTick, job.tickCompletionExpected),
+      Number.MAX_SAFE_INTEGER
+    );
+  }, [runningJobs]);
 
   const loadRecipes = useCallback(async () => {
     const rows = await listProductionRecipes();
@@ -127,7 +206,11 @@ export function ProductionPage() {
 
   useEffect(() => {
     const tick = health?.currentTick;
-    if (tick === undefined) {
+    if (
+      tick === undefined ||
+      nextRunningCompletionTick === null ||
+      tick < nextRunningCompletionTick
+    ) {
       return;
     }
 
@@ -136,7 +219,7 @@ export function ProductionPage() {
     }, PRODUCTION_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
-  }, [health?.currentTick, loadJobs]);
+  }, [health?.currentTick, loadJobs, nextRunningCompletionTick]);
 
   const submitStartJob = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -232,18 +315,29 @@ export function ProductionPage() {
 
               <div>
                 <p className="mb-1 text-xs text-muted-foreground">Recipe</p>
+                <Input
+                  value={recipeSearch}
+                  onChange={(event) => setRecipeSearch(event.target.value)}
+                  placeholder="Search recipe by code, name, output, or input"
+                  className="mb-2"
+                />
                 <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select recipe" />
                   </SelectTrigger>
                   <SelectContent>
-                    {recipes.map((recipe) => (
-                      <SelectItem key={recipe.id} value={recipe.id}>
-                        {recipe.name}
+                    {selectRecipeRows.map((row) => (
+                      <SelectItem key={row.recipe.id} value={row.recipe.id}>
+                        {row.recipe.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {filteredRecipeRows.length > selectRecipeRows.length ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Showing first {selectRecipeRows.length} matching recipes in dropdown.
+                  </p>
+                ) : null}
               </div>
 
               <div>
@@ -294,7 +388,55 @@ export function ProductionPage() {
           <CardHeader>
             <CardTitle>Recipes</CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="space-y-3 pt-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <p>
+                Showing {recipeRangeLabel} of {filteredRecipeRows.length} filtered recipes ({recipes.length} total)
+              </p>
+              {deferredRecipeSearch !== recipeSearch ? <p>Updating results...</p> : null}
+              <div className="flex items-center gap-2">
+                <Select
+                  value={String(recipePageSize)}
+                  onValueChange={(value) =>
+                    setRecipePageSize(
+                      Number.parseInt(value, 10) as (typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]
+                    )
+                  }
+                >
+                  <SelectTrigger className="h-8 w-28">
+                    <SelectValue placeholder="Page size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size} / page
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRecipePage((page) => Math.max(1, page - 1))}
+                  disabled={recipePage <= 1}
+                >
+                  Previous
+                </Button>
+                <span className="tabular-nums">
+                  Page {recipePage} / {totalRecipePages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRecipePage((page) => Math.min(totalRecipePages, page + 1))}
+                  disabled={recipePage >= totalRecipePages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -305,24 +447,24 @@ export function ProductionPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recipes.map((recipe) => (
-                  <TableRow key={recipe.id}>
+                {pagedRecipeRows.map((row) => (
+                  <TableRow key={row.recipe.id}>
                     <TableCell>
-                      <p className="font-medium">{recipe.name}</p>
+                      <p className="font-medium">{row.recipe.name}</p>
                     </TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1">
-                        <span>{recipe.outputQuantity}</span>
+                        <span>{row.recipe.outputQuantity}</span>
                         <ItemLabel
-                          itemCode={recipe.outputItem.code}
-                          itemName={recipe.outputItem.name}
+                          itemCode={row.recipe.outputItem.code}
+                          itemName={row.recipe.outputItem.name}
                         />
                       </span>
                     </TableCell>
-                    <TableCell>{formatCadenceCount(recipe.durationTicks)}</TableCell>
+                    <TableCell>{formatCadenceCount(row.recipe.durationTicks)}</TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        {recipe.inputs.map((input) => (
+                        {row.recipe.inputs.map((input) => (
                           <span key={input.itemId} className="inline-flex items-center gap-1">
                             <span>{input.quantityPerRun}</span>
                             <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
@@ -332,10 +474,10 @@ export function ProductionPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {recipes.length === 0 ? (
+                {pagedRecipeRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      No recipes available.
+                      No recipes available for current filters.
                     </TableCell>
                   </TableRow>
                 ) : null}
