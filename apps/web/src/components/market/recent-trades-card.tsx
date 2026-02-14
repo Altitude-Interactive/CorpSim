@@ -21,7 +21,7 @@ interface RecentTradesCardProps {
   companyNameById: Record<string, string>;
 }
 
-const RECENT_TRADES_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const RECENT_TRADES_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 export function RecentTradesCard({
   trades,
@@ -31,7 +31,7 @@ export function RecentTradesCard({
   companyNameById
 }: RecentTradesCardProps) {
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState<(typeof RECENT_TRADES_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [pageSize, setPageSize] = useState<(typeof RECENT_TRADES_PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
 

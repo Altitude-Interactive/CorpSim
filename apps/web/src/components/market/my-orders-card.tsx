@@ -22,7 +22,7 @@ interface MyOrdersCardProps {
   itemMetaById: Record<string, { code: string; name: string }>;
 }
 
-const MY_ORDERS_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const MY_ORDERS_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 export function MyOrdersCard({
   orders,
@@ -32,7 +32,7 @@ export function MyOrdersCard({
   itemMetaById
 }: MyOrdersCardProps) {
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState<(typeof MY_ORDERS_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [pageSize, setPageSize] = useState<(typeof MY_ORDERS_PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
 

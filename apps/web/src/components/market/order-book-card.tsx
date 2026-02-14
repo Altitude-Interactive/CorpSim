@@ -22,7 +22,7 @@ interface OrderBookCardProps {
   companyNameById: Record<string, string>;
 }
 
-const ORDER_BOOK_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const ORDER_BOOK_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 export function OrderBookCard({
   orders,
@@ -32,7 +32,7 @@ export function OrderBookCard({
   companyNameById
 }: OrderBookCardProps) {
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState<(typeof ORDER_BOOK_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [pageSize, setPageSize] = useState<(typeof ORDER_BOOK_PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
 
