@@ -133,3 +133,12 @@ All notable changes to CorpSim are documented in this file.
 - [api] Reset maintenance state after worker integration tests to prevent cross-suite 503s
 - [ci] Harden Prisma generate against Windows file locks in dev workflows
 - [ci] Prevent Prisma no-engine fallback from breaking local DATABASE_URL runtime
+
+## 0.6.1 - 2026-02-14
+
+### Minor
+- [web] Add Ctrl+K page search with extensible keyboard control manager
+
+### Patch
+- [web] Add Ctrl+I inventory preview overlay for quick stock checks
+- [web] Fix production readiness proxy and reduce AudioContext unlock warnings
