@@ -1,9 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
+import { UiSoundId } from "@/lib/ui-sfx";
 import { cn } from "@/lib/utils";
 
-type ToastVariant = "success" | "error" | "info";
+type ToastVariant = "success" | "error" | "warning" | "info";
+
+type ToastSound = "auto" | "none" | UiSoundId;
 
 interface ToastEntry {
   id: number;
@@ -13,7 +17,12 @@ interface ToastEntry {
 }
 
 interface ToastContextValue {
-  showToast: (input: { title: string; description?: string; variant?: ToastVariant }) => void;
+  showToast: (input: {
+    title: string;
+    description?: string;
+    variant?: ToastVariant;
+    sound?: ToastSound;
+  }) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -21,21 +30,41 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const toastVariantStyles: Record<ToastVariant, string> = {
   success: "border-emerald-600/40 bg-emerald-900/30 text-emerald-100",
   error: "border-red-600/40 bg-red-900/30 text-red-100",
+  warning: "border-amber-600/40 bg-amber-900/30 text-amber-100",
   info: "border-blue-600/40 bg-blue-900/30 text-blue-100"
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { play } = useUiSfx();
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
 
   const showToast = useCallback(
-    (input: { title: string; description?: string; variant?: ToastVariant }) => {
+    (input: { title: string; description?: string; variant?: ToastVariant; sound?: ToastSound }) => {
+      const variant = input.variant ?? "info";
       const id = Date.now() + Math.floor(Math.random() * 1000);
       const next: ToastEntry = {
         id,
         title: input.title,
         description: input.description,
-        variant: input.variant ?? "info"
+        variant
       };
+
+      const sound = input.sound ?? "auto";
+      if (sound !== "none") {
+        if (sound === "auto") {
+          if (variant === "success") {
+            play("feedback_success");
+          } else if (variant === "warning") {
+            play("feedback_warning");
+          } else if (variant === "error") {
+            play("feedback_error");
+          } else {
+            play("feedback_neutral");
+          }
+        } else {
+          play(sound);
+        }
+      }
 
       setToasts((prev) => [...prev, next]);
 
@@ -43,7 +72,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts((prev) => prev.filter((toast) => toast.id !== id));
       }, 3_000);
     },
-    []
+    [play]
   );
 
   const value = useMemo<ToastContextValue>(

@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ function estimateShipmentFeeCents(quantity: number): number {
 
 export function LogisticsPage() {
   const { showToast } = useToast();
+  const { play } = useUiSfx();
   const { activeCompany, activeCompanyId } = useActiveCompany();
   const { health } = useWorldHealth();
   const [regions, setRegions] = useState<RegionSummary[]>([]);
@@ -76,6 +78,8 @@ export function LogisticsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analyticsByRegion, setAnalyticsByRegion] = useState<Record<string, MarketAnalyticsSummary | null>>({});
+  const deliveredIdsRef = useRef<Set<string>>(new Set());
+  const didPrimeDeliveredRef = useRef(false);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -205,6 +209,11 @@ export function LogisticsPage() {
     return () => clearTimeout(timeout);
   }, [health?.currentTick, loadArbitrage]);
 
+  useEffect(() => {
+    deliveredIdsRef.current = new Set();
+    didPrimeDeliveredRef.current = false;
+  }, [activeCompanyId]);
+
   const selectedToRegion = useMemo(
     () => regions.find((region) => region.id === toRegionId) ?? null,
     [regions, toRegionId]
@@ -242,6 +251,31 @@ export function LogisticsPage() {
 
   const inTransit = shipments.filter((shipment) => shipment.status === "IN_TRANSIT");
   const delivered = shipments.filter((shipment) => shipment.status !== "IN_TRANSIT");
+
+  useEffect(() => {
+    const deliveredIds = new Set(
+      delivered
+        .filter((shipment) => shipment.status === "DELIVERED")
+        .map((shipment) => shipment.id)
+    );
+    if (!didPrimeDeliveredRef.current) {
+      deliveredIdsRef.current = deliveredIds;
+      didPrimeDeliveredRef.current = true;
+      return;
+    }
+
+    let hasNewArrival = false;
+    for (const shipmentId of deliveredIds) {
+      if (!deliveredIdsRef.current.has(shipmentId)) {
+        hasNewArrival = true;
+        break;
+      }
+    }
+    if (hasNewArrival) {
+      play("event_shipment_arrived");
+    }
+    deliveredIdsRef.current = deliveredIds;
+  }, [delivered, play]);
   const sourcePriceCents = sourceRegion ? analyticsByRegion[sourceRegion.id]?.lastPriceCents ?? null : null;
   const destinationPriceCents = selectedToRegion
     ? analyticsByRegion[selectedToRegion.id]?.lastPriceCents ?? null
@@ -295,11 +329,13 @@ export function LogisticsPage() {
       return;
     }
 
+    play("ui_open");
     const confirmed = window.confirm(
       `Ship ${quantity} units to ${selectedToRegionLabel} for ${formatCents(
         String(feeCents)
       )}. ETA ${UI_CADENCE_TERMS.singular.toLowerCase()} ${arrivalTick}.`
     );
+    play("ui_close");
     if (!confirmed) {
       return;
     }

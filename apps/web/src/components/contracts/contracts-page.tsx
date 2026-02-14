@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -46,6 +47,7 @@ function mapApiError(error: unknown): string {
 
 export function ContractsPage() {
   const { showToast } = useToast();
+  const { play } = useUiSfx();
   const { activeCompany, activeCompanyId } = useActiveCompany();
   const { health } = useWorldHealth();
 
@@ -59,6 +61,9 @@ export function ContractsPage() {
   const [fulfillQuantityByContractId, setFulfillQuantityByContractId] = useState<
     Record<string, string>
   >({});
+  const statusByContractIdRef = useRef<Map<string, ContractRecord["status"]>>(new Map());
+  const didPrimeStatusesRef = useRef(false);
+  const suppressEventSoundUntilRef = useRef(0);
 
   const loadItems = useCallback(async () => {
     const itemRows = await listItems();
@@ -122,6 +127,41 @@ export function ContractsPage() {
     }
   }, [itemFilter, items]);
 
+  useEffect(() => {
+    statusByContractIdRef.current = new Map();
+    didPrimeStatusesRef.current = false;
+  }, [activeCompanyId]);
+
+  useEffect(() => {
+    const next = new Map(contracts.map((contract) => [contract.id, contract.status] as const));
+    if (!didPrimeStatusesRef.current) {
+      statusByContractIdRef.current = next;
+      didPrimeStatusesRef.current = true;
+      return;
+    }
+
+    let hasUpdate = false;
+    for (const [contractId, nextStatus] of next.entries()) {
+      const previousStatus = statusByContractIdRef.current.get(contractId);
+      if (
+        previousStatus &&
+        previousStatus !== nextStatus &&
+        (nextStatus === "ACCEPTED" ||
+          nextStatus === "PARTIALLY_FULFILLED" ||
+          nextStatus === "FULFILLED" ||
+          nextStatus === "EXPIRED" ||
+          nextStatus === "CANCELLED")
+      ) {
+        hasUpdate = true;
+        break;
+      }
+    }
+    if (hasUpdate && Date.now() >= suppressEventSoundUntilRef.current) {
+      play("event_contract_update");
+    }
+    statusByContractIdRef.current = next;
+  }, [contracts, play]);
+
   const availableContracts = useMemo(
     () => contracts.filter((contract) => contract.status === "OPEN"),
     [contracts]
@@ -162,11 +202,14 @@ export function ContractsPage() {
     setIsSubmittingContractId(contract.id);
     try {
       await acceptContract(contract.id, activeCompanyId);
+      play("action_contract_accept");
       showToast({
         title: "Contract accepted",
         description: "The contract is now active in your queue.",
-        variant: "success"
+        variant: "success",
+        sound: "none"
       });
+      suppressEventSoundUntilRef.current = Date.now() + 1_500;
       await loadContracts();
     } catch (caught) {
       showToast({
@@ -204,11 +247,14 @@ export function ContractsPage() {
     setIsSubmittingContractId(contract.id);
     try {
       await fulfillContract(contract.id, activeCompanyId, parsedQuantity);
+      play("action_contract_fulfill");
       showToast({
         title: "Contract fulfilled",
         description: `Delivered ${parsedQuantity} unit(s).`,
-        variant: "success"
+        variant: "success",
+        sound: "none"
       });
+      suppressEventSoundUntilRef.current = Date.now() + 1_500;
       await loadContracts();
     } catch (caught) {
       showToast({

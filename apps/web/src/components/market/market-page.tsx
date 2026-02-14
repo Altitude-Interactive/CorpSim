@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,7 @@ function mapApiErrorToMessage(error: unknown): string {
 
 export function MarketPage() {
   const { showToast } = useToast();
+  const { play } = useUiSfx();
   const { activeCompanyId, activeCompany } = useActiveCompany();
   const { health, refresh: refreshHealth } = useWorldHealth();
 
@@ -327,10 +329,12 @@ export function MarketPage() {
     setIsSubmittingOrder(true);
     try {
       await placeMarketOrder(input);
+      play("action_place_order");
       showToast({
         title: "Order placed",
         description: `${formatCodeLabel(input.side)} ${input.quantity} @ ${formatCents(String(input.priceCents))}`,
-        variant: "success"
+        variant: "success",
+        sound: "none"
       });
       await Promise.all([refreshMarketData({ showLoadingState: false }), refreshHealth()]);
     } catch (caught) {
@@ -357,10 +361,12 @@ export function MarketPage() {
           variant: "info"
         });
       } else {
+        play("action_cancel_order");
         showToast({
           title: "Order cancelled",
           description: "The order was cancelled successfully.",
-          variant: "success"
+          variant: "success",
+          sound: "none"
         });
       }
 

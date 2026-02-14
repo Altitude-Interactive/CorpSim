@@ -10,6 +10,7 @@ import { InlineHelp } from "@/components/ui/inline-help";
 import { formatCadencePoint } from "@/lib/ui-terms";
 import { getDocumentationUrl, getRegionDescription, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 import { StatusIndicator } from "./status-indicator";
+import { UiSfxSettings } from "./ui-sfx-settings";
 import { useWorldHealth } from "./world-health-provider";
 
 const TITLES: Record<string, string> = {
@@ -57,6 +58,7 @@ export function TopBar() {
             </div>
           ) : null}
           <StatusIndicator status={apiStatus} />
+          <UiSfxSettings />
           <Button asChild variant="outline" size="sm">
             <a href={getDocumentationUrl(pathname)} target="_blank" rel="noreferrer">
               <BookOpenText className="mr-2 h-3.5 w-3.5" />

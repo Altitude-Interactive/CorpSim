@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -90,6 +91,7 @@ function computeResearchTierGroups(nodes: ResearchNode[]): ResearchTierGroup[] {
 
 export function ResearchPage() {
   const { showToast } = useToast();
+  const { play } = useUiSfx();
   const { health } = useWorldHealth();
   const { activeCompany, activeCompanyId } = useActiveCompany();
 
@@ -105,6 +107,8 @@ export function ResearchPage() {
   const [nodePageSize, setNodePageSize] =
     useState<(typeof RESEARCH_NODE_PAGE_SIZE_OPTIONS)[number]>(20);
   const deferredNodeSearch = useDeferredValue(nodeSearch);
+  const statusByNodeIdRef = useRef<Map<string, ResearchNode["status"]>>(new Map());
+  const didPrimeStatusesRef = useRef(false);
 
   const loadResearch = useCallback(async (options?: { force?: boolean }) => {
     if (!activeCompanyId) {
@@ -167,6 +171,33 @@ export function ResearchPage() {
 
     return () => clearTimeout(timeout);
   }, [activeCompanyId, health?.currentTick, loadResearch, nextResearchCompletionTick]);
+
+  useEffect(() => {
+    statusByNodeIdRef.current = new Map();
+    didPrimeStatusesRef.current = false;
+  }, [activeCompanyId]);
+
+  useEffect(() => {
+    const nextStatusById = new Map(nodes.map((node) => [node.id, node.status] as const));
+    if (!didPrimeStatusesRef.current) {
+      statusByNodeIdRef.current = nextStatusById;
+      didPrimeStatusesRef.current = true;
+      return;
+    }
+
+    let hasNewCompletion = false;
+    for (const [nodeId, nextStatus] of nextStatusById.entries()) {
+      const previousStatus = statusByNodeIdRef.current.get(nodeId);
+      if (previousStatus !== "COMPLETED" && nextStatus === "COMPLETED") {
+        hasNewCompletion = true;
+        break;
+      }
+    }
+    if (hasNewCompletion) {
+      play("event_research_completed");
+    }
+    statusByNodeIdRef.current = nextStatusById;
+  }, [nodes, play]);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node] as const)), [nodes]);
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
@@ -254,10 +285,12 @@ export function ResearchPage() {
     setIsMutating(true);
     try {
       await startResearchNode(node.id, activeCompanyId);
+      play("action_start_research");
       showToast({
         title: "Research started",
         description: `${node.name} is now in progress.`,
-        variant: "success"
+        variant: "success",
+        sound: "none"
       });
       await loadResearch({ force: true });
     } catch (caught) {

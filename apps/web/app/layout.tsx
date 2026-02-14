@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import { DeviceSupportGate } from "@/components/layout/device-support-gate";
+import { UiSfxProvider } from "@/components/layout/ui-sfx-provider";
 import { MaintenanceProvider } from "@/components/maintenance/maintenance-provider";
 import { WorldHealthProvider } from "@/components/layout/world-health-provider";
 import { ActiveCompanyProvider } from "@/components/company/active-company-provider";
@@ -25,17 +26,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <ToastProvider>
-          <MaintenanceProvider>
-            <WorldHealthProvider>
-              <ActiveCompanyProvider>
-                <DeviceSupportGate>
-                  <AppShell>{children}</AppShell>
-                </DeviceSupportGate>
-              </ActiveCompanyProvider>
-            </WorldHealthProvider>
-          </MaintenanceProvider>
-        </ToastProvider>
+        <UiSfxProvider>
+          <ToastProvider>
+            <MaintenanceProvider>
+              <WorldHealthProvider>
+                <ActiveCompanyProvider>
+                  <DeviceSupportGate>
+                    <AppShell>{children}</AppShell>
+                  </DeviceSupportGate>
+                </ActiveCompanyProvider>
+              </WorldHealthProvider>
+            </MaintenanceProvider>
+          </ToastProvider>
+        </UiSfxProvider>
       </body>
     </html>
   );

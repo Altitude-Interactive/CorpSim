@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +54,7 @@ function mapProductionErrorMessage(error: unknown): string {
 
 export function ProductionPage() {
   const { showToast } = useToast();
+  const { play } = useUiSfx();
   const { activeCompany, activeCompanyId } = useActiveCompany();
   const { health } = useWorldHealth();
 
@@ -70,6 +72,8 @@ export function ProductionPage() {
   const [isCancellingJobId, setIsCancellingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deferredRecipeSearch = useDeferredValue(recipeSearch);
+  const completedJobIdsRef = useRef<Set<string>>(new Set());
+  const didPrimeCompletedRef = useRef(false);
 
   const selectedRecipe = useMemo(
     () => recipes.find((recipe) => recipe.id === selectedRecipeId) ?? null,
@@ -228,6 +232,32 @@ export function ProductionPage() {
     return () => clearTimeout(timeout);
   }, [health?.currentTick, loadJobs, nextRunningCompletionTick]);
 
+  useEffect(() => {
+    completedJobIdsRef.current = new Set();
+    didPrimeCompletedRef.current = false;
+  }, [activeCompanyId]);
+
+  useEffect(() => {
+    const nextIds = new Set(completedJobs.map((job) => job.id));
+    if (!didPrimeCompletedRef.current) {
+      completedJobIdsRef.current = nextIds;
+      didPrimeCompletedRef.current = true;
+      return;
+    }
+
+    let hasNewCompletion = false;
+    for (const jobId of nextIds) {
+      if (!completedJobIdsRef.current.has(jobId)) {
+        hasNewCompletion = true;
+        break;
+      }
+    }
+    if (hasNewCompletion) {
+      play("event_production_completed");
+    }
+    completedJobIdsRef.current = nextIds;
+  }, [completedJobs, play]);
+
   const submitStartJob = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -253,11 +283,13 @@ export function ProductionPage() {
         recipeId: selectedRecipeId,
         quantity
       });
+      play("action_start_production");
       setError(null);
       showToast({
         title: "Production started",
         description: `Started ${quantity} run(s).`,
-        variant: "success"
+        variant: "success",
+        sound: "none"
       });
       await loadJobs();
     } catch (caught) {
@@ -281,7 +313,8 @@ export function ProductionPage() {
         showToast({
           title: "Job cancelled",
           description: "The production run was cancelled.",
-          variant: "success"
+          variant: "success",
+          sound: "none"
         });
       } else {
         showToast({
