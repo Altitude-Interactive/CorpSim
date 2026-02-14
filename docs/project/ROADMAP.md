@@ -61,6 +61,7 @@
 ## Auth & Security Hardening (Next Targets)
 
 * Auth rate limiting and abuse protection tuning
+* More SSO options (Microsoft, Discord, Github)
 * Account recovery and email verification flows
 * Session/device management UX improvements
 * Audit trail expansion for sensitive account events
