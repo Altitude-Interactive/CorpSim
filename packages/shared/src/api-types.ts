@@ -34,6 +34,21 @@ export interface WorldTickState {
   lastAdvancedAt: string | null;
 }
 
+export type DatabaseSchemaReadinessStatus =
+  | "ready"
+  | "schema-out-of-date"
+  | "schema-check-failed";
+
+export interface DatabaseSchemaReadiness {
+  ready: boolean;
+  status: DatabaseSchemaReadinessStatus;
+  checkedAt: string;
+  issues: string[];
+  pendingMigrations: string[];
+  failedMigrations: string[];
+  extraDatabaseMigrations: string[];
+}
+
 export interface CompanySummary {
   id: string;
   code: string;

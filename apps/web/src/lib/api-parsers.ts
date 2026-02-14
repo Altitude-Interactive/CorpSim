@@ -1,6 +1,8 @@
 import type {
   CompanySpecialization,
   CompanySpecializationOption,
+  DatabaseSchemaReadiness,
+  DatabaseSchemaReadinessStatus,
   ItemCategory,
   CompanyDetails,
   CompanyWorkforce,
@@ -132,6 +134,37 @@ export function parseCompanySummary(value: unknown): CompanySummary {
     regionId: readString(value.regionId, "regionId"),
     regionCode: readString(value.regionCode, "regionCode"),
     regionName: readString(value.regionName, "regionName")
+  };
+}
+
+function parseDatabaseSchemaReadinessStatus(value: unknown): DatabaseSchemaReadinessStatus {
+  const status = readString(value, "status");
+  if (status !== "ready" && status !== "schema-out-of-date" && status !== "schema-check-failed") {
+    throw new Error("Invalid database schema readiness status");
+  }
+  return status;
+}
+
+export function parseDatabaseSchemaReadiness(value: unknown): DatabaseSchemaReadiness {
+  if (!isRecord(value)) {
+    throw new Error("Invalid database schema readiness payload");
+  }
+
+  return {
+    ready: readBoolean(value.ready, "ready"),
+    status: parseDatabaseSchemaReadinessStatus(value.status),
+    checkedAt: readString(value.checkedAt, "checkedAt"),
+    issues: readArray(value.issues, "issues").map((entry) => readString(entry, "issue")),
+    pendingMigrations: readArray(value.pendingMigrations, "pendingMigrations").map((entry) =>
+      readString(entry, "pendingMigration")
+    ),
+    failedMigrations: readArray(value.failedMigrations, "failedMigrations").map((entry) =>
+      readString(entry, "failedMigration")
+    ),
+    extraDatabaseMigrations: readArray(
+      value.extraDatabaseMigrations,
+      "extraDatabaseMigrations"
+    ).map((entry) => readString(entry, "extraDatabaseMigration"))
   };
 }
 

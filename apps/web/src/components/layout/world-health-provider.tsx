@@ -1,12 +1,21 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { HEALTH_POLL_INTERVAL_MS, WorldHealth, getWorldHealth } from "@/lib/api";
+import {
+  DatabaseSchemaReadiness,
+  HEALTH_POLL_INTERVAL_MS,
+  WorldHealth,
+  getDatabaseSchemaReadiness,
+  getWorldHealth
+} from "@/lib/api";
 
 export type ApiStatusLevel = "green" | "yellow" | "red";
 
 interface WorldHealthContextValue {
   health: WorldHealth | null;
+  schemaReadiness: DatabaseSchemaReadiness | null;
+  schemaReadinessError: string | null;
+  isSchemaReady: boolean;
   error: string | null;
   apiStatus: ApiStatusLevel;
   isRefreshing: boolean;
@@ -16,11 +25,17 @@ interface WorldHealthContextValue {
 const WorldHealthContext = createContext<WorldHealthContextValue | null>(null);
 
 function resolveApiStatus(
+  schemaReadiness: DatabaseSchemaReadiness | null,
+  schemaReadinessError: string | null,
   health: WorldHealth | null,
   error: string | null,
   lastSuccessAt: number | null
 ): ApiStatusLevel {
-  if (!health && error) {
+  if (schemaReadiness && !schemaReadiness.ready) {
+    return "red";
+  }
+
+  if (!health && (error || schemaReadinessError)) {
     return "red";
   }
 
@@ -31,11 +46,11 @@ function resolveApiStatus(
   const now = Date.now();
   const stale = !lastSuccessAt || now - lastSuccessAt > HEALTH_POLL_INTERVAL_MS * 2;
 
-  if (error && stale) {
+  if ((error || schemaReadinessError) && stale) {
     return "red";
   }
 
-  if (error || stale) {
+  if (error || schemaReadinessError || stale) {
     return "yellow";
   }
 
@@ -44,6 +59,8 @@ function resolveApiStatus(
 
 export function WorldHealthProvider({ children }: { children: React.ReactNode }) {
   const [health, setHealth] = useState<WorldHealth | null>(null);
+  const [schemaReadiness, setSchemaReadiness] = useState<DatabaseSchemaReadiness | null>(null);
+  const [schemaReadinessError, setSchemaReadinessError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null);
@@ -51,6 +68,32 @@ export function WorldHealthProvider({ children }: { children: React.ReactNode })
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
+    try {
+      const readiness = await getDatabaseSchemaReadiness();
+      if (!mounted.current) {
+        return;
+      }
+      setSchemaReadiness(readiness);
+      setSchemaReadinessError(null);
+
+      if (!readiness.ready) {
+        setHealth(null);
+        setError(null);
+        setLastSuccessAt(null);
+        return;
+      }
+    } catch (caught) {
+      if (!mounted.current) {
+        return;
+      }
+      setSchemaReadiness(null);
+      setSchemaReadinessError(
+        caught instanceof Error ? caught.message : "Failed to fetch database readiness"
+      );
+      setError(caught instanceof Error ? caught.message : "Failed to fetch world health");
+      return;
+    }
+
     try {
       const next = await getWorldHealth();
       if (!mounted.current) {
@@ -88,12 +131,15 @@ export function WorldHealthProvider({ children }: { children: React.ReactNode })
   const value = useMemo<WorldHealthContextValue>(
     () => ({
       health,
+      schemaReadiness,
+      schemaReadinessError,
+      isSchemaReady: schemaReadiness?.ready !== false,
       error,
-      apiStatus: resolveApiStatus(health, error, lastSuccessAt),
+      apiStatus: resolveApiStatus(schemaReadiness, schemaReadinessError, health, error, lastSuccessAt),
       isRefreshing,
       refresh
     }),
-    [error, health, isRefreshing, lastSuccessAt, refresh]
+    [error, health, isRefreshing, lastSuccessAt, refresh, schemaReadiness, schemaReadinessError]
   );
 
   return <WorldHealthContext.Provider value={value}>{children}</WorldHealthContext.Provider>;

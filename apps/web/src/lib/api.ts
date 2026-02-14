@@ -2,6 +2,7 @@ import type {
   CompanySpecialization,
   CompanySpecializationOption,
   CompanyWorkforce,
+  DatabaseSchemaReadiness,
   CompanyDetails,
   CompanySummary,
   ContractFulfillmentResult,
@@ -50,6 +51,7 @@ import {
   parseCompanySpecializationOption,
   parseCompanyWorkforce,
   parseCompanySummary,
+  parseDatabaseSchemaReadiness,
   parseContractFulfillmentResult,
   parseContractRecord,
   parseFinanceLedgerEntry,
@@ -110,6 +112,10 @@ function invalidateResearchCaches(): void {
 
 export async function getWorldHealth(): Promise<WorldHealth> {
   return fetchJson("/v1/world/health", parseWorldHealth);
+}
+
+export async function getDatabaseSchemaReadiness(): Promise<DatabaseSchemaReadiness> {
+  return fetchJson("/health/readiness", parseDatabaseSchemaReadiness);
 }
 
 export async function listCompanies(): Promise<CompanySummary[]> {

@@ -69,7 +69,16 @@ export const UI_COPY = {
     errors: {
       syncIssueTitle: "Status refresh delayed",
       syncIssueDescription:
-        "The latest snapshot could not be refreshed. You can keep working with the last successful data."
+        "The latest snapshot could not be refreshed. You can keep working with the last successful data.",
+      schemaBlockedTitle: "Game loading is paused",
+      schemaBlockedDescription:
+        "A database update is required before the game can load. Apply updates and try again.",
+      schemaCheckFailedDescription:
+        "The system could not confirm database readiness. Resolve database issues and try again.",
+      schemaRetry: "Check again",
+      schemaPendingUpdates: "Pending updates",
+      schemaFailedUpdates: "Failed updates",
+      schemaUnexpectedUpdates: "Unexpected updates"
     }
   },
   help: {

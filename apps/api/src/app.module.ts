@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { MaintenanceModeMiddleware } from "./common/middleware/maintenance-mode.middleware";
 import { PlayerIdentityMiddleware } from "./common/middleware/player-identity.middleware";
+import { SchemaReadinessMiddleware } from "./common/middleware/schema-readiness.middleware";
 import { CompaniesController } from "./companies/companies.controller";
 import { CompaniesService } from "./companies/companies.service";
 import { ContractsController } from "./contracts/contracts.controller";
@@ -25,6 +26,7 @@ import { RegionsService } from "./regions/regions.service";
 import { ResearchController } from "./research/research.controller";
 import { ResearchService } from "./research/research.service";
 import { RootController } from "./root.controller";
+import { SchemaReadinessService } from "./schema-readiness/schema-readiness.service";
 import { ShipmentsController } from "./shipments/shipments.controller";
 import { ShipmentsService } from "./shipments/shipments.service";
 import { WorldController } from "./world/world.controller";
@@ -54,7 +56,9 @@ import { WorkforceService } from "./workforce/workforce.service";
   ],
   providers: [
     PrismaService,
+    SchemaReadinessMiddleware,
     MaintenanceModeMiddleware,
+    SchemaReadinessService,
     WorldService,
     FinanceService,
     ContractsService,
@@ -72,6 +76,8 @@ import { WorkforceService } from "./workforce/workforce.service";
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(MaintenanceModeMiddleware, PlayerIdentityMiddleware).forRoutes("*");
+    consumer
+      .apply(SchemaReadinessMiddleware, MaintenanceModeMiddleware, PlayerIdentityMiddleware)
+      .forRoutes("*");
   }
 }
