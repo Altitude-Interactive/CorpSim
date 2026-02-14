@@ -10,6 +10,15 @@ import {
 } from "./control-manager";
 
 const SHORTCUTS_HELP_PANEL_ID = "shortcuts-help";
+const SHORTCUTS_HELP_SHORTCUT_ID = "shortcuts-help-open";
+const FALLBACK_SLASH_KEYS = new Set(["/", "?", ";", ":", "!", "÷"]);
+const FALLBACK_SLASH_CODES = new Set([
+  "slash",
+  "semicolon",
+  "intlro",
+  "intlbackslash",
+  "numpaddivide"
+]);
 
 function formatShortcut(binding: ControlShortcutBinding): string {
   const isMacLike = /mac|iphone|ipad|ipod/i.test(globalThis.navigator?.platform ?? "");
@@ -49,6 +58,23 @@ function normalizeCapturedKey(rawKey: string): string | null {
   return next;
 }
 
+function normalizeKeyboardValue(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function isCtrlSlashVariant(event: KeyboardEvent): boolean {
+  if (!event.ctrlKey && !event.metaKey) {
+    return false;
+  }
+  if (event.altKey && !event.getModifierState("AltGraph")) {
+    return false;
+  }
+
+  const key = normalizeKeyboardValue(event.key);
+  const code = normalizeKeyboardValue(event.code);
+  return FALLBACK_SLASH_KEYS.has(key) || FALLBACK_SLASH_CODES.has(code);
+}
+
 function captureBindingFromKeyboardEvent(event: KeyboardEvent): ControlShortcutBinding | null {
   const key = normalizeCapturedKey(event.key);
   if (!key || key === "escape") {
@@ -75,6 +101,11 @@ export function ShortcutsHelpShortcut() {
   } = useControlManager();
   const open = isPanelOpen(SHORTCUTS_HELP_PANEL_ID);
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
+  const shortcutsHelpBinding = useMemo(
+    () => registeredShortcuts.find((entry) => entry.id === SHORTCUTS_HELP_SHORTCUT_ID) ?? null,
+    [registeredShortcuts]
+  );
+  const isShortcutsHelpCustomBinding = shortcutsHelpBinding?.isCustom ?? false;
 
   const toggleShortcutsHelp = useCallback(() => {
     togglePanel(SHORTCUTS_HELP_PANEL_ID);
@@ -82,9 +113,9 @@ export function ShortcutsHelpShortcut() {
 
   const shortcut = useMemo(
     () => ({
-      id: "shortcuts-help-open",
+      id: SHORTCUTS_HELP_SHORTCUT_ID,
       key: "/",
-      code: ["Semicolon", "NumpadDivide"],
+      code: ["Slash", "Semicolon", "IntlRo", "IntlBackslash", "NumpadDivide"],
       modifier: "ctrlOrMeta" as const,
       allowShiftMismatch: true,
       allowWhenTyping: true,
@@ -97,6 +128,28 @@ export function ShortcutsHelpShortcut() {
   );
 
   useControlShortcut(shortcut);
+
+  useEffect(() => {
+    if (isShortcutsHelpCustomBinding) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (!isCtrlSlashVariant(event)) {
+        return;
+      }
+      event.preventDefault();
+      toggleShortcutsHelp();
+    };
+
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [isShortcutsHelpCustomBinding, toggleShortcutsHelp]);
 
   useEffect(() => {
     if (!open) {
