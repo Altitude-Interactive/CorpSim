@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableFillerRows } from "@/components/ui/table-filler-rows";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
@@ -698,6 +699,13 @@ export function LogisticsPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
+              {!isLoading ? (
+                <TableFillerRows
+                  columns={5}
+                  currentRows={Math.max(1, pagedInTransit.length)}
+                  targetRows={inTransitPageSize}
+                />
+              ) : null}
             </TableBody>
           </Table>
         </CardContent>
@@ -786,6 +794,13 @@ export function LogisticsPage() {
                     No shipment history yet.
                   </TableCell>
                 </TableRow>
+              ) : null}
+              {!isLoading ? (
+                <TableFillerRows
+                  columns={5}
+                  currentRows={Math.max(1, pagedDelivered.length)}
+                  targetRows={deliveredPageSize}
+                />
               ) : null}
             </TableBody>
           </Table>

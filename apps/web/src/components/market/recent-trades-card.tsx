@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItemLabel } from "@/components/items/item-label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableFillerRows } from "@/components/ui/table-filler-rows";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MarketTrade } from "@/lib/api";
@@ -198,6 +199,13 @@ export function RecentTradesCard({
                   No recent trades found.
                 </TableCell>
               </TableRow>
+            ) : null}
+            {!isLoading ? (
+              <TableFillerRows
+                columns={8}
+                currentRows={Math.max(1, pagedTrades.length)}
+                targetRows={pageSize}
+              />
             ) : null}
           </TableBody>
         </Table>
