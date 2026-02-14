@@ -5,6 +5,7 @@ import { resetSimulationData } from "@corpsim/sim";
 
 export interface SeedWorldOptions {
   reset?: boolean;
+  includePlayerCompany?: boolean;
 }
 
 export interface SeedWorldResult {
@@ -13,6 +14,33 @@ export interface SeedWorldResult {
 }
 
 const SEEDED_PLAYER_ID = "player_seed";
+
+function parseOptionalBooleanEnv(value: string | undefined): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return undefined;
+}
+
+function shouldIncludeSeededPlayerCompany(options: SeedWorldOptions): boolean {
+  if (options.includePlayerCompany !== undefined) {
+    return options.includePlayerCompany;
+  }
+
+  const envOverride = parseOptionalBooleanEnv(process.env.CORPSIM_SEED_PLAYER_COMPANY);
+  if (envOverride !== undefined) {
+    return envOverride;
+  }
+
+  return process.env.NODE_ENV !== "production";
+}
 
 interface ItemDefinition {
   key: string;
@@ -542,6 +570,7 @@ export async function seedWorld(
   prisma: PrismaClient,
   options: SeedWorldOptions = {}
 ): Promise<SeedWorldResult> {
+  const includePlayerCompany = shouldIncludeSeededPlayerCompany(options);
   if (options.reset) {
     await resetSimulationData(prisma);
   }
@@ -557,12 +586,14 @@ export async function seedWorld(
     itemsByKey[definition.key] = item;
   }
 
-  const player = await prisma.player.create({
-    data: {
-      id: SEEDED_PLAYER_ID,
-      handle: "PLAYER"
-    }
-  });
+  const player = includePlayerCompany
+    ? await prisma.player.create({
+        data: {
+          id: SEEDED_PLAYER_ID,
+          handle: "PLAYER"
+        }
+      })
+    : null;
 
   const coreRegion = await prisma.region.upsert({
     where: { code: "CORE" },
@@ -594,17 +625,19 @@ export async function seedWorld(
     }
   });
 
-  const playerCompany = await prisma.company.create({
-    data: {
-      code: "PLAYER_CO",
-      name: "Player Company",
-      isPlayer: true,
-      ownerPlayerId: player.id,
-      regionId: coreRegion.id,
-      cashCents: 1_200_000n,
-      reservedCashCents: 0n
-    }
-  });
+  const playerCompany = includePlayerCompany
+    ? await prisma.company.create({
+        data: {
+          code: "PLAYER_CO",
+          name: "Player Company",
+          isPlayer: true,
+          ownerPlayerId: player?.id,
+          regionId: coreRegion.id,
+          cashCents: 1_200_000n,
+          reservedCashCents: 0n
+        }
+      })
+    : null;
 
   const botMiner = await prisma.company.create({
     data: {
@@ -645,12 +678,6 @@ export async function seedWorld(
     quantity: number;
     reservedQuantity?: number;
   }> = [
-    { companyId: playerCompany.id, itemKey: "ironOre", quantity: 240 },
-    { companyId: playerCompany.id, itemKey: "coal", quantity: 140 },
-    { companyId: playerCompany.id, itemKey: "copperOre", quantity: 180 },
-    { companyId: playerCompany.id, itemKey: "ironIngot", quantity: 12 },
-    { companyId: playerCompany.id, itemKey: "copperIngot", quantity: 6 },
-
     { companyId: botMiner.id, itemKey: "ironOre", quantity: 700 },
     { companyId: botMiner.id, itemKey: "coal", quantity: 650 },
     { companyId: botMiner.id, itemKey: "copperOre", quantity: 520 },
@@ -677,6 +704,16 @@ export async function seedWorld(
     { companyId: botTrader.id, itemKey: "spinalLink", quantity: 22 },
     { companyId: botTrader.id, itemKey: "cyberneticSuite", quantity: 3 }
   ];
+
+  if (playerCompany) {
+    inventoryRows.unshift(
+      { companyId: playerCompany.id, itemKey: "ironOre", quantity: 240 },
+      { companyId: playerCompany.id, itemKey: "coal", quantity: 140 },
+      { companyId: playerCompany.id, itemKey: "copperOre", quantity: 180 },
+      { companyId: playerCompany.id, itemKey: "ironIngot", quantity: 12 },
+      { companyId: playerCompany.id, itemKey: "copperIngot", quantity: 6 }
+    );
+  }
 
   for (const itemKey of ICON_TIER_ONE_ITEM_KEYS) {
     inventoryRows.push({
@@ -732,7 +769,9 @@ export async function seedWorld(
     recipesByKey[definition.key] = recipe;
   }
 
-  const companies = [playerCompany, botMiner, botSmelter, botTrader];
+  const companies = playerCompany
+    ? [playerCompany, botMiner, botSmelter, botTrader]
+    : [botMiner, botSmelter, botTrader];
   const allRecipes = Object.values(recipesByKey);
 
   for (const company of companies) {
@@ -771,15 +810,17 @@ export async function seedWorld(
     }))
   });
 
-  await prisma.companyResearch.create({
-    data: {
-      companyId: playerCompany.id,
-      nodeId: researchNodesByKey.basics.id,
-      status: "COMPLETED",
-      tickStarted: 0,
-      tickCompletes: 0
-    }
-  });
+  if (playerCompany) {
+    await prisma.companyResearch.create({
+      data: {
+        companyId: playerCompany.id,
+        nodeId: researchNodesByKey.basics.id,
+        status: "COMPLETED",
+        tickStarted: 0,
+        tickCompletes: 0
+      }
+    });
+  }
 
   const marketSeedOrders: Array<{
     companyId: string;
@@ -1003,7 +1044,7 @@ export async function seedWorld(
 
   return {
     companyIds: {
-      player: playerCompany.id,
+      ...(playerCompany ? { player: playerCompany.id } : {}),
       botMiner: botMiner.id,
       botSmelter: botSmelter.id,
       botTrader: botTrader.id

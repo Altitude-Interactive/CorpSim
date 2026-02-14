@@ -13,13 +13,14 @@
 
 * Economy depth: storage limits/costs, scarcity, spoilage, demand tuning
 * Business systems: workforce depth, pricing automation, marketing, loans/credit
-* Security hardening: auth abuse protection tuning, recovery/verification flows
+* Multiplayer hardening: anti-cheat/exploit detection, stricter concurrency/load validation, and operator runbooks
+* Security hardening: auth abuse protection tuning, recovery/verification flows, and sensitive-action auditing
 * UX polish: stronger dashboard workflows, automation tools, accessibility passes
 * Infra reliability: observability, replay/snapshot tooling, safer reset/backup flows
 
 ## Later (Expansion)
 
-* Multiplayer economy features (player contracts, alliances, transfers, leaderboards)
+* Multiplayer economy features (player contracts, transfers/mergers, alliances, leaderboards)
 * Advanced world simulation (tariffs, disruptions, infrastructure effects)
 * Deeper market/finance analytics and forecasting tools
 * Smarter long-horizon bot behavior
