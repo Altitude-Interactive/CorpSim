@@ -10,6 +10,10 @@ import {
   OptimisticLockConflictError
 } from "../domain/errors";
 import {
+  isItemCodeLockedByIconTier,
+  resolvePlayerUnlockedIconTierFromResearchCodes
+} from "./item-tier-locker";
+import {
   applyDurationMultiplierTicks,
   resolveWorkforceRuntimeModifiers
 } from "./workforce";
@@ -203,6 +207,7 @@ export async function createShipmentWithTx(
       where: { id: input.companyId },
       select: {
         id: true,
+        isPlayer: true,
         regionId: true,
         cashCents: true,
         reservedCashCents: true,
@@ -223,7 +228,10 @@ export async function createShipmentWithTx(
     }),
     tx.item.findUnique({
       where: { id: input.itemId },
-      select: { id: true }
+      select: {
+        id: true,
+        code: true
+      }
     })
   ]);
 
@@ -235,6 +243,30 @@ export async function createShipmentWithTx(
   }
   if (!item) {
     throw new NotFoundError(`item ${input.itemId} not found`);
+  }
+
+  if (company.isPlayer) {
+    const completedResearchRows = await tx.companyResearch.findMany({
+      where: {
+        companyId: input.companyId,
+        status: "COMPLETED"
+      },
+      select: {
+        node: {
+          select: {
+            code: true
+          }
+        }
+      }
+    });
+    const unlockedIconTier = resolvePlayerUnlockedIconTierFromResearchCodes(
+      completedResearchRows.map((row) => row.node.code)
+    );
+    if (isItemCodeLockedByIconTier(item.code, unlockedIconTier)) {
+      throw new DomainInvariantError(
+        `item ${input.itemId} is not unlocked for company ${input.companyId}`
+      );
+    }
   }
 
   if (company.regionId === toRegion.id) {

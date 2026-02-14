@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
+import { getIconCatalogItemByCode } from "@corpsim/shared";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -15,6 +16,7 @@ describe("shipments API integration", () => {
   let playerRegionId: string;
   let industrialRegionId: string;
   let ironOreId: string;
+  let tierTwoIconItemId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -55,6 +57,46 @@ describe("shipments API integration", () => {
 
     playerRegionId = playerCompany.regionId;
     industrialRegionId = industrialRegion.id;
+
+    const iconItems = await prisma.item.findMany({
+      where: {
+        code: {
+          startsWith: "CP_"
+        }
+      },
+      orderBy: [{ code: "asc" }],
+      select: {
+        id: true,
+        code: true
+      }
+    });
+    const tierTwoIconItem = iconItems.find(
+      (item) => getIconCatalogItemByCode(item.code)?.tier === 2
+    );
+    if (!tierTwoIconItem) {
+      throw new Error("tier-2 icon item not found in seeded dataset");
+    }
+    tierTwoIconItemId = tierTwoIconItem.id;
+
+    await prisma.inventory.upsert({
+      where: {
+        companyId_itemId_regionId: {
+          companyId: playerCompanyId,
+          itemId: tierTwoIconItemId,
+          regionId: playerRegionId
+        }
+      },
+      update: {
+        quantity: 15
+      },
+      create: {
+        companyId: playerCompanyId,
+        itemId: tierTwoIconItemId,
+        regionId: playerRegionId,
+        quantity: 15,
+        reservedQuantity: 0
+      }
+    });
   });
 
   afterAll(async () => {
@@ -227,6 +269,20 @@ describe("shipments API integration", () => {
         quantity: 1
       })
       .expect(403);
+  });
+
+  it("rejects creating shipments for tier-locked items", async () => {
+    const response = await request(app.getHttpServer())
+      .post("/v1/shipments")
+      .send({
+        companyId: playerCompanyId,
+        toRegionId: industrialRegionId,
+        itemId: tierTwoIconItemId,
+        quantity: 2
+      })
+      .expect(400);
+
+    expect(String(response.body?.message ?? "")).toContain("not unlocked");
   });
 
   it("lists configured regions", async () => {

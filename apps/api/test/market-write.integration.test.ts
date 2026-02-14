@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
+import { getIconCatalogItemByCode } from "@corpsim/shared";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -15,6 +16,7 @@ describe("market write API integration", () => {
   let playerRegionId: string;
   let industrialRegionId: string;
   let ironOreId: string;
+  let tierTwoIconItemId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -52,6 +54,26 @@ describe("market write API integration", () => {
         select: { id: true }
       })
     ).id;
+
+    const iconItems = await prisma.item.findMany({
+      where: {
+        code: {
+          startsWith: "CP_"
+        }
+      },
+      orderBy: [{ code: "asc" }],
+      select: {
+        id: true,
+        code: true
+      }
+    });
+    const tierTwoIconItem = iconItems.find(
+      (item) => getIconCatalogItemByCode(item.code)?.tier === 2
+    );
+    if (!tierTwoIconItem) {
+      throw new Error("tier-2 icon item not found in seeded dataset");
+    }
+    tierTwoIconItemId = tierTwoIconItem.id;
   });
 
   afterAll(async () => {
@@ -139,6 +161,19 @@ describe("market write API integration", () => {
         quantity: 1
       })
       .expect(403);
+  });
+
+  it("rejects placing orders for tier-locked items", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/market/orders")
+      .send({
+        companyId: playerCompanyId,
+        itemId: tierTwoIconItemId,
+        side: "BUY",
+        priceCents: 100,
+        quantity: 1
+      })
+      .expect(400);
   });
 
   it("places SELL order and reserves inventory", async () => {

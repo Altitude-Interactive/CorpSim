@@ -10,6 +10,10 @@ import {
   reserveCashForBuyOrder,
   reserveInventoryForSellOrder
 } from "../domain/reservations";
+import {
+  isItemCodeLockedByIconTier,
+  resolvePlayerUnlockedIconTierFromResearchCodes
+} from "./item-tier-locker";
 
 export interface PlaceMarketOrderInput {
   companyId: string;
@@ -120,7 +124,13 @@ export async function placeMarketOrderWithTx(
 
   const company = await tx.company.findUnique({
     where: { id: input.companyId },
-    select: { id: true, cashCents: true, reservedCashCents: true, regionId: true }
+    select: {
+      id: true,
+      cashCents: true,
+      reservedCashCents: true,
+      regionId: true,
+      isPlayer: true
+    }
   });
 
   if (!company) {
@@ -129,11 +139,37 @@ export async function placeMarketOrderWithTx(
 
   const item = await tx.item.findUnique({
     where: { id: input.itemId },
-    select: { id: true }
+    select: {
+      id: true,
+      code: true
+    }
   });
 
   if (!item) {
     throw new NotFoundError(`item ${input.itemId} not found`);
+  }
+  if (company.isPlayer) {
+    const completedResearchRows = await tx.companyResearch.findMany({
+      where: {
+        companyId: input.companyId,
+        status: "COMPLETED"
+      },
+      select: {
+        node: {
+          select: {
+            code: true
+          }
+        }
+      }
+    });
+    const unlockedIconTier = resolvePlayerUnlockedIconTierFromResearchCodes(
+      completedResearchRows.map((row) => row.node.code)
+    );
+    if (isItemCodeLockedByIconTier(item.code, unlockedIconTier)) {
+      throw new DomainInvariantError(
+        `item ${input.itemId} is not unlocked for company ${input.companyId}`
+      );
+    }
   }
 
   const orderRegionId = input.regionId ?? company.regionId;
