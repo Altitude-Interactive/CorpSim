@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -85,6 +84,8 @@ export function ProductionPage() {
   const [isLoadingSpecializations, setIsLoadingSpecializations] = useState(true);
   const [isUpdatingSpecialization, setIsUpdatingSpecialization] = useState(false);
   const [isFocusPickerOpen, setIsFocusPickerOpen] = useState(false);
+  const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
+  const [isPageSizePickerOpen, setIsPageSizePickerOpen] = useState(false);
   const [isCancellingJobId, setIsCancellingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deferredRecipeSearch = useDeferredValue(recipeSearch);
@@ -548,18 +549,49 @@ export function ProductionPage() {
                     placeholder="Search recipe by code, name, output, or input"
                     className="mb-2"
                   />
-                  <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select recipe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectRecipeRows.map((row) => (
-                        <SelectItem key={row.recipe.id} value={row.recipe.id}>
-                          {row.recipe.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={isRecipePickerOpen} onOpenChange={setIsRecipePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isRecipePickerOpen}
+                        className="w-full justify-between"
+                      >
+                        <span className="truncate">
+                          {selectedRecipe ? selectedRecipe.name : "Select recipe"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+                      <Command>
+                        <CommandList>
+                          <CommandEmpty>No recipes found.</CommandEmpty>
+                          <CommandGroup>
+                            {selectRecipeRows.map((row) => (
+                              <CommandItem
+                                key={row.recipe.id}
+                                value={`${row.recipe.name} ${row.recipe.code}`}
+                                onSelect={() => {
+                                  setSelectedRecipeId(row.recipe.id);
+                                  setIsRecipePickerOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    row.recipe.id === selectedRecipeId ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <span className="truncate">{row.recipe.name}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   {filteredRecipeRows.length > selectRecipeRows.length ? (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Showing first {selectRecipeRows.length} matching recipes in dropdown.
@@ -623,25 +655,46 @@ export function ProductionPage() {
               </p>
               <DeferredSearchStatus isUpdating={deferredRecipeSearch !== recipeSearch} />
               <div className="flex items-center gap-2">
-                <Select
-                  value={String(recipePageSize)}
-                  onValueChange={(value) =>
-                    setRecipePageSize(
-                      Number.parseInt(value, 10) as (typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]
-                    )
-                  }
-                >
-                  <SelectTrigger className="h-8 w-28">
-                    <SelectValue placeholder="Page size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS.map((size) => (
-                      <SelectItem key={size} value={String(size)}>
-                        {size} / page
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={isPageSizePickerOpen} onOpenChange={setIsPageSizePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isPageSizePickerOpen}
+                      className="h-8 w-28 justify-between"
+                    >
+                      <span>{recipePageSize} / page</span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS.map((size) => (
+                            <CommandItem
+                              key={size}
+                              value={String(size)}
+                              onSelect={() => {
+                                setRecipePageSize(size);
+                                setIsPageSizePickerOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  recipePageSize === size ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span>{size} / page</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <Button
                   type="button"
                   variant="outline"
