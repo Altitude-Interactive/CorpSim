@@ -42,3 +42,7 @@ html {
 body {
   font-feature-settings: "tnum" 1, "lnum" 1;
 }
+
+body[data-scroll-locked] {
+  margin-right: 0 !important;
+}
