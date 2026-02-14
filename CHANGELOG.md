@@ -96,3 +96,8 @@ All notable changes to CorpSim are documented in this file.
 
 ### Patch
 - [api] Fix player registry endpoint payload shape for catalog
+
+## 0.5.2 - 2026-02-14
+
+### Patch
+- [web] Fix player registry badge variant for web typecheck
