@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Command,
@@ -12,21 +12,20 @@ import {
 } from "@/components/ui/command";
 import { ToastOverlay } from "@/components/ui/toast-manager";
 import { COMMAND_PAGE_NAVIGATION } from "@/lib/page-navigation";
-import { useControlShortcut } from "./control-manager";
+import { useControlManager, useControlShortcut } from "./control-manager";
+
+const PAGE_SEARCH_PANEL_ID = "page-search";
 
 export function PageSearchCommand() {
   const router = useRouter();
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const { isPanelOpen, togglePanel, closePanel } = useControlManager();
+  const open = isPanelOpen(PAGE_SEARCH_PANEL_ID);
 
   const commandPages = useMemo(
     () => COMMAND_PAGE_NAVIGATION.filter((page) => page.href !== pathname),
     [pathname]
   );
-
-  const toggleOpen = useCallback(() => {
-    setOpen((previous) => !previous);
-  }, []);
 
   const shortcut = useMemo(
     () => ({
@@ -35,16 +34,20 @@ export function PageSearchCommand() {
       modifier: "ctrlOrMeta" as const,
       allowWhenTyping: true,
       preventDefault: true,
-      onTrigger: toggleOpen
+      title: "Search pages",
+      description: "Open page search",
+      onTrigger: () => {
+        togglePanel(PAGE_SEARCH_PANEL_ID);
+      }
     }),
-    [toggleOpen]
+    [togglePanel]
   );
 
   useControlShortcut(shortcut);
 
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+    closePanel(PAGE_SEARCH_PANEL_ID);
+  }, [closePanel, pathname]);
 
   useEffect(() => {
     if (!open) {
@@ -56,14 +59,14 @@ export function PageSearchCommand() {
         return;
       }
       event.preventDefault();
-      setOpen(false);
+      closePanel(PAGE_SEARCH_PANEL_ID);
     };
 
     document.addEventListener("keydown", onKeyDown, true);
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
     };
-  }, [open]);
+  }, [closePanel, open]);
 
   if (!open) {
     return null;
@@ -75,7 +78,7 @@ export function PageSearchCommand() {
       variant="default"
       layerClassName="z-[9700] p-4 sm:p-8"
       panelClassName="max-w-2xl p-0"
-      onBackdropMouseDown={() => setOpen(false)}
+      onBackdropMouseDown={() => closePanel(PAGE_SEARCH_PANEL_ID)}
       labelledBy="page-search-title"
       describedBy="page-search-description"
     >
@@ -94,7 +97,7 @@ export function PageSearchCommand() {
                 value={`${page.label} ${page.href}`}
                 keywords={page.keywords}
                 onSelect={() => {
-                  setOpen(false);
+                  closePanel(PAGE_SEARCH_PANEL_ID);
                   router.push(page.href);
                 }}
               >

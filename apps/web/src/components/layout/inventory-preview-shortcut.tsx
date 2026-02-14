@@ -10,9 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ToastOverlay } from "@/components/ui/toast-manager";
 import { InventoryRow, listCompanyInventory } from "@/lib/api";
 import { getRegionLabel, UI_COPY } from "@/lib/ui-copy";
-import { useControlShortcut } from "./control-manager";
+import { useControlManager, useControlShortcut } from "./control-manager";
 
 const INVENTORY_PREVIEW_LIMIT = 12;
+const INVENTORY_PREVIEW_PANEL_ID = "inventory-preview";
 
 interface InventoryPreviewRow {
   row: InventoryRow;
@@ -23,7 +24,8 @@ export function InventoryPreviewShortcut() {
   const pathname = usePathname();
   const router = useRouter();
   const { activeCompany, activeCompanyId } = useActiveCompany();
-  const [open, setOpen] = useState(false);
+  const { isPanelOpen, togglePanel, closePanel } = useControlManager();
+  const open = isPanelOpen(INVENTORY_PREVIEW_PANEL_ID);
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -55,18 +57,20 @@ export function InventoryPreviewShortcut() {
       modifier: "ctrlOrMeta" as const,
       allowWhenTyping: true,
       preventDefault: true,
+      title: "Inventory preview",
+      description: "Show current inventory snapshot",
       onTrigger: () => {
-        setOpen((previous) => !previous);
+        togglePanel(INVENTORY_PREVIEW_PANEL_ID);
       }
     }),
-    []
+    [togglePanel]
   );
 
   useControlShortcut(shortcut);
 
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+    closePanel(INVENTORY_PREVIEW_PANEL_ID);
+  }, [closePanel, pathname]);
 
   useEffect(() => {
     if (!open) {
@@ -87,14 +91,14 @@ export function InventoryPreviewShortcut() {
         return;
       }
       event.preventDefault();
-      setOpen(false);
+      closePanel(INVENTORY_PREVIEW_PANEL_ID);
     };
 
     document.addEventListener("keydown", onKeyDown, true);
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
     };
-  }, [open]);
+  }, [closePanel, open]);
 
   const filteredRows = useMemo<InventoryPreviewRow[]>(() => {
     const needle = search.trim().toLowerCase();
@@ -134,7 +138,7 @@ export function InventoryPreviewShortcut() {
       variant="default"
       layerClassName="z-[9700] p-4 sm:p-8"
       panelClassName="max-w-3xl p-0"
-      onBackdropMouseDown={() => setOpen(false)}
+      onBackdropMouseDown={() => closePanel(INVENTORY_PREVIEW_PANEL_ID)}
       labelledBy="inventory-preview-title"
       describedBy="inventory-preview-description"
     >
@@ -145,7 +149,7 @@ export function InventoryPreviewShortcut() {
         </h2>
         <p id="inventory-preview-description" className="mt-1 text-sm text-slate-300">
           {activeCompany
-            ? `${activeCompany.name} · ${getRegionLabel({
+            ? `${activeCompany.name} - ${getRegionLabel({
                 code: activeCompany.regionCode,
                 name: activeCompany.regionName
               })}`
@@ -211,14 +215,19 @@ export function InventoryPreviewShortcut() {
             : `${filteredRows.length} item${filteredRows.length === 1 ? "" : "s"} shown`}
         </p>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => closePanel(INVENTORY_PREVIEW_PANEL_ID)}
+          >
             Close
           </Button>
           <Button
             type="button"
             size="sm"
             onClick={() => {
-              setOpen(false);
+              closePanel(INVENTORY_PREVIEW_PANEL_ID);
               router.push("/inventory");
             }}
           >
@@ -229,3 +238,4 @@ export function InventoryPreviewShortcut() {
     </ToastOverlay>
   );
 }
+

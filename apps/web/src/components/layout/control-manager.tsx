@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
   useRef
 } from "react";
 
@@ -19,11 +20,28 @@ export interface ControlShortcut {
   alt?: boolean;
   allowWhenTyping?: boolean;
   preventDefault?: boolean;
+  title?: string;
+  description?: string;
   onTrigger: () => void;
+}
+
+export interface RegisteredControlShortcut {
+  id: string;
+  key: string;
+  modifier: ControlShortcutModifier;
+  shift: boolean;
+  alt: boolean;
+  title: string;
+  description?: string;
 }
 
 interface ControlManagerContextValue {
   registerShortcut: (shortcut: ControlShortcut) => () => void;
+  registeredShortcuts: RegisteredControlShortcut[];
+  isPanelOpen: (panelId: string) => boolean;
+  openPanel: (panelId: string) => void;
+  closePanel: (panelId?: string) => void;
+  togglePanel: (panelId: string) => void;
 }
 
 const ControlManagerContext = createContext<ControlManagerContextValue | null>(null);
@@ -81,13 +99,57 @@ function matchesShortcut(event: KeyboardEvent, shortcut: ControlShortcut): boole
 
 export function ControlManagerProvider({ children }: { children: React.ReactNode }) {
   const shortcutsRef = useRef<Map<string, ControlShortcut>>(new Map());
+  const registeredShortcutsRef = useRef<Map<string, RegisteredControlShortcut>>(new Map());
+  const [registeredShortcuts, setRegisteredShortcuts] = useState<RegisteredControlShortcut[]>([]);
+  const [activePanelId, setActivePanelId] = useState<string | null>(null);
+
+  const syncRegisteredShortcuts = useCallback(() => {
+    setRegisteredShortcuts(Array.from(registeredShortcutsRef.current.values()));
+  }, []);
 
   const registerShortcut = useCallback((shortcut: ControlShortcut) => {
     shortcutsRef.current.set(shortcut.id, shortcut);
+    if (shortcut.title) {
+      registeredShortcutsRef.current.set(shortcut.id, {
+        id: shortcut.id,
+        key: shortcut.key,
+        modifier: shortcut.modifier ?? "ctrlOrMeta",
+        shift: shortcut.shift ?? false,
+        alt: shortcut.alt ?? false,
+        title: shortcut.title,
+        description: shortcut.description
+      });
+      syncRegisteredShortcuts();
+    }
 
     return () => {
       shortcutsRef.current.delete(shortcut.id);
+      if (registeredShortcutsRef.current.delete(shortcut.id)) {
+        syncRegisteredShortcuts();
+      }
     };
+  }, [syncRegisteredShortcuts]);
+
+  const isPanelOpen = useCallback(
+    (panelId: string) => activePanelId === panelId,
+    [activePanelId]
+  );
+
+  const openPanel = useCallback((panelId: string) => {
+    setActivePanelId(panelId);
+  }, []);
+
+  const closePanel = useCallback((panelId?: string) => {
+    setActivePanelId((current) => {
+      if (!panelId) {
+        return null;
+      }
+      return current === panelId ? null : current;
+    });
+  }, []);
+
+  const togglePanel = useCallback((panelId: string) => {
+    setActivePanelId((current) => (current === panelId ? null : panelId));
   }, []);
 
   useEffect(() => {
@@ -120,9 +182,14 @@ export function ControlManagerProvider({ children }: { children: React.ReactNode
 
   const value = useMemo<ControlManagerContextValue>(
     () => ({
-      registerShortcut
+      registerShortcut,
+      registeredShortcuts,
+      isPanelOpen,
+      openPanel,
+      closePanel,
+      togglePanel
     }),
-    [registerShortcut]
+    [closePanel, isPanelOpen, openPanel, registerShortcut, registeredShortcuts, togglePanel]
   );
 
   return (
