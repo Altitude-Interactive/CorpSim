@@ -117,6 +117,7 @@ model Company {
 model Player {
   id                String       @id @default(cuid())
   handle            String       @unique
+  tutorialCompletedAt DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   companies         Company[]

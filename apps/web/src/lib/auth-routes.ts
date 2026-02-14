@@ -13,6 +13,10 @@ export function isOnboardingPage(pathname: string): boolean {
   return pathname === "/onboarding";
 }
 
+export function isTutorialPage(pathname: string): boolean {
+  return pathname === "/tutorial";
+}
+
 export function isProfilePage(pathname: string): boolean {
   return pathname === "/profile";
 }
@@ -20,4 +24,3 @@ export function isProfilePage(pathname: string): boolean {
 export function isProtectedAppPage(pathname: string): boolean {
   return !isAuthPage(pathname) && !isAlwaysPublicPage(pathname);
 }
-

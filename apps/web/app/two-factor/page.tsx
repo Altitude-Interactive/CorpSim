@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { authClient } from "@/lib/auth-client";
-import { isAuthPage, isOnboardingPage } from "@/lib/auth-routes";
+import { isAuthPage, isOnboardingPage, isTutorialPage } from "@/lib/auth-routes";
 
 function resolveSafeNext(raw: string | null): string | null {
   if (!raw || !raw.startsWith("/")) {
     return null;
   }
-  if (isAuthPage(raw) || isOnboardingPage(raw)) {
+  if (isAuthPage(raw) || isOnboardingPage(raw) || isTutorialPage(raw)) {
     return null;
   }
   return raw;
@@ -100,4 +100,3 @@ export default function TwoFactorPage() {
     </AuthPageShell>
   );
 }
-

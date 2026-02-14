@@ -14,14 +14,18 @@ import { ShortcutsHelpShortcut } from "./shortcuts-help-shortcut";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 import { useWorldHealth } from "./world-health-provider";
-import { isAuthPage, isOnboardingPage, isProfilePage } from "@/lib/auth-routes";
+import { isAuthPage, isOnboardingPage, isProfilePage, isTutorialPage } from "@/lib/auth-routes";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { error, isRefreshing, refresh, schemaReadiness } = useWorldHealth();
   const isUnsupportedDevicePage = pathname === "/unsupported-device";
   const isStandalonePage =
-    isUnsupportedDevicePage || isAuthPage(pathname) || isOnboardingPage(pathname) || isProfilePage(pathname);
+    isUnsupportedDevicePage ||
+    isAuthPage(pathname) ||
+    isOnboardingPage(pathname) ||
+    isTutorialPage(pathname) ||
+    isProfilePage(pathname);
 
   if (isStandalonePage) {
     return <div className="min-h-screen bg-background text-foreground">{children}</div>;

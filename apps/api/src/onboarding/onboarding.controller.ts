@@ -29,4 +29,9 @@ export class OnboardingController {
       regionId: body.regionId
     });
   }
+
+  @Post("tutorial/complete")
+  async completeTutorial(@CurrentPlayerId() playerId: string) {
+    return this.onboardingService.completeTutorial(playerId);
+  }
 }

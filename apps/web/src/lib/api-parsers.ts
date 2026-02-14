@@ -210,6 +210,7 @@ export function parseOnboardingStatus(value: unknown): OnboardingStatus {
 
   return {
     completed: readBoolean(value.completed, "completed"),
+    tutorialCompleted: readBoolean(value.tutorialCompleted, "tutorialCompleted"),
     companyId: readNullableString(value.companyId, "companyId"),
     companyName: readNullableString(value.companyName, "companyName"),
     regionId: readNullableString(value.regionId, "regionId")

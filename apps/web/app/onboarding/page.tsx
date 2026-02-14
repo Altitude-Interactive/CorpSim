@@ -62,7 +62,7 @@ export default function OnboardingPage() {
         }
 
         if (status.completed) {
-          router.replace("/overview");
+          router.replace(status.tutorialCompleted ? "/overview" : "/tutorial");
           return;
         }
 
@@ -137,7 +137,7 @@ export default function OnboardingPage() {
         companyName: companyName.trim(),
         regionId: regionId || undefined
       });
-      router.replace("/overview");
+      router.replace("/tutorial");
       router.refresh();
     } catch (caught) {
       setError(readErrorMessage(caught));

@@ -204,6 +204,12 @@ export async function completeOnboarding(input: {
   });
 }
 
+export async function completeOnboardingTutorial(): Promise<OnboardingStatus> {
+  return fetchJson("/v1/onboarding/tutorial/complete", parseOnboardingStatus, {
+    method: "POST"
+  });
+}
+
 export async function listMyCompanies(): Promise<CompanySummary[]> {
   return fetchJson("/v1/players/me/companies", (value) => readArrayPayload(value, "companies").map(parseCompanySummary));
 }

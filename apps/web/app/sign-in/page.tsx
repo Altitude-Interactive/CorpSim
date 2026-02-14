@@ -11,13 +11,13 @@ import { GoogleLogo } from "@/components/auth/google-logo";
 import { authClient } from "@/lib/auth-client";
 import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
-import { isAuthPage, isOnboardingPage } from "@/lib/auth-routes";
+import { isAuthPage, isOnboardingPage, isTutorialPage } from "@/lib/auth-routes";
 
 function resolveSafeNext(raw: string | null): string | null {
   if (!raw || !raw.startsWith("/")) {
     return null;
   }
-  if (isAuthPage(raw) || isOnboardingPage(raw)) {
+  if (isAuthPage(raw) || isOnboardingPage(raw) || isTutorialPage(raw)) {
     return null;
   }
   return raw;

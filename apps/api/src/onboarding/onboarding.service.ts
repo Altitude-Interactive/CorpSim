@@ -198,6 +198,16 @@ export class OnboardingService {
     });
   }
 
+  private async hasCompletedTutorial(playerId: string): Promise<boolean> {
+    const rows = await this.prisma.$queryRaw<Array<{ tutorialCompletedAt: Date | null }>>`
+      SELECT "tutorialCompletedAt"
+      FROM "Player"
+      WHERE "id" = ${playerId}
+      LIMIT 1
+    `;
+    return Boolean(rows[0]?.tutorialCompletedAt);
+  }
+
   private async applyAccountProfile(
     prisma: PrismaService | Prisma.TransactionClient,
     input: CompleteOnboardingInput
@@ -232,11 +242,36 @@ export class OnboardingService {
     await this.ensurePlayerRecordForUser(playerId);
     await resolvePlayerById(this.prisma, playerId);
     const company = await this.getOwnedCompany(playerId);
+    const tutorialCompleted = await this.hasCompletedTutorial(playerId);
     return {
       completed: Boolean(company),
+      tutorialCompleted,
       companyId: company?.id ?? null,
       companyName: company?.name ?? null,
       regionId: company?.regionId ?? null
+    };
+  }
+
+  async completeTutorial(playerId: string): Promise<OnboardingStatus> {
+    await this.ensurePlayerRecordForUser(playerId);
+    await resolvePlayerById(this.prisma, playerId);
+    const company = await this.getOwnedCompany(playerId);
+    if (!company) {
+      throw new DomainInvariantError("complete company setup before finishing tutorial");
+    }
+
+    await this.prisma.$executeRaw`
+      UPDATE "Player"
+      SET "tutorialCompletedAt" = NOW(), "updatedAt" = NOW()
+      WHERE "id" = ${playerId}
+    `;
+
+    return {
+      completed: true,
+      tutorialCompleted: true,
+      companyId: company.id,
+      companyName: company.name,
+      regionId: company.regionId
     };
   }
 
@@ -250,9 +285,11 @@ export class OnboardingService {
     }
 
     const existingCompany = await this.getOwnedCompany(player.id);
+    const tutorialCompleted = await this.hasCompletedTutorial(player.id);
     if (existingCompany) {
       return {
         completed: true,
+        tutorialCompleted,
         companyId: existingCompany.id,
         companyName: existingCompany.name,
         regionId: existingCompany.regionId
@@ -400,6 +437,7 @@ export class OnboardingService {
 
       return {
         completed: true,
+        tutorialCompleted: false,
         companyId: company.id,
         companyName: company.name,
         regionId: company.regionId

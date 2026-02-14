@@ -10,7 +10,7 @@ import {
   getWorldHealth
 } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
-import { isAuthPage, isOnboardingPage, isProfilePage } from "@/lib/auth-routes";
+import { isAuthPage, isOnboardingPage, isProfilePage, isTutorialPage } from "@/lib/auth-routes";
 
 export type ApiStatusLevel = "green" | "yellow" | "red";
 
@@ -75,6 +75,7 @@ export function WorldHealthProvider({ children }: { children: React.ReactNode })
     !session?.user?.id ||
     isAuthPage(pathname) ||
     isOnboardingPage(pathname) ||
+    isTutorialPage(pathname) ||
     isProfilePage(pathname);
 
   const refresh = useCallback(async () => {

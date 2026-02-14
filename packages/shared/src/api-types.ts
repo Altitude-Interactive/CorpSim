@@ -84,6 +84,7 @@ export interface PlayerIdentity {
 
 export interface OnboardingStatus {
   completed: boolean;
+  tutorialCompleted: boolean;
   companyId: string | null;
   companyName: string | null;
   regionId: string | null;

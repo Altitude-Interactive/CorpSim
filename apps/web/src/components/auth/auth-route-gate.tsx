@@ -9,14 +9,15 @@ import {
   isAuthPage,
   isOnboardingPage,
   isProfilePage,
-  isProtectedAppPage
+  isProtectedAppPage,
+  isTutorialPage
 } from "@/lib/auth-routes";
 
 function resolveSafeNextPath(raw: string | null): string | null {
   if (!raw || !raw.startsWith("/")) {
     return null;
   }
-  if (isAuthPage(raw) || isOnboardingPage(raw)) {
+  if (isAuthPage(raw) || isOnboardingPage(raw) || isTutorialPage(raw)) {
     return null;
   }
   return raw;
@@ -103,7 +104,14 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
       return "/onboarding";
     }
 
-    if (isAuthPage(pathname) || isOnboardingPage(pathname)) {
+    if (!onboardingStatus.tutorialCompleted) {
+      if (isTutorialPage(pathname) || isProfilePage(pathname)) {
+        return null;
+      }
+      return "/tutorial";
+    }
+
+    if (isAuthPage(pathname) || isOnboardingPage(pathname) || isTutorialPage(pathname)) {
       return nextPathFromQuery ?? "/overview";
     }
 
@@ -134,7 +142,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
   }
 
   if (session?.user?.id && (isOnboardingStatusLoading || !onboardingStatus)) {
-    return <FullscreenMessage message="Loading your company setup..." />;
+    return <FullscreenMessage message="Loading your account setup..." />;
   }
 
   if (onboardingError && session?.user?.id && !isProfilePage(pathname)) {

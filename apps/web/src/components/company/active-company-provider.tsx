@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { usePathname } from "next/navigation";
 import { CompanySummary, listMyCompanies } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
-import { isAuthPage, isOnboardingPage, isProfilePage } from "@/lib/auth-routes";
+import { isAuthPage, isOnboardingPage, isProfilePage, isTutorialPage } from "@/lib/auth-routes";
 
 const ACTIVE_COMPANY_STORAGE_KEY = "corpsim.activeCompanyId";
 
@@ -50,6 +50,7 @@ export function ActiveCompanyProvider({ children }: { children: React.ReactNode 
   const isAuthContext =
     isAuthPage(pathname) ||
     isOnboardingPage(pathname) ||
+    isTutorialPage(pathname) ||
     isProfilePage(pathname) ||
     !session?.user?.id ||
     isSessionPending;
