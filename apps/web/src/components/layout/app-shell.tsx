@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ToastNotice } from "@/components/ui/toast-manager";
 import { UI_COPY } from "@/lib/ui-copy";
 import { AppVersionBadge } from "./app-version-badge";
 import { SidebarNav } from "./sidebar-nav";
@@ -25,12 +25,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <TopBar />
           <main className="flex-1 p-4 lg:p-6">
             {error ? (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTitle>{UI_COPY.world.errors.syncIssueTitle}</AlertTitle>
-                <AlertDescription>
-                  {UI_COPY.world.errors.syncIssueDescription}
-                </AlertDescription>
-              </Alert>
+              <ToastNotice
+                variant="danger"
+                className="mb-4"
+                title={UI_COPY.world.errors.syncIssueTitle}
+                description={UI_COPY.world.errors.syncIssueDescription}
+              />
             ) : null}
             <div className="mx-auto w-full max-w-[1320px]">{children}</div>
           </main>

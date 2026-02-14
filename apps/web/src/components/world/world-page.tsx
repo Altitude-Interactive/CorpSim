@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ToastNotice } from "@/components/ui/toast-manager";
 import { getWorldHealth, WorldHealth } from "@/lib/api";
 import { UiStatusLevel, UI_COPY } from "@/lib/ui-copy";
 import { WorldInvariantsTable } from "./world-invariants-table";
@@ -66,10 +66,11 @@ export function WorldPage() {
       />
 
       {healthError ? (
-        <Alert variant="destructive">
-          <AlertTitle>{UI_COPY.world.errors.syncIssueTitle}</AlertTitle>
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-            <span>{healthError}</span>
+        <ToastNotice
+          variant="danger"
+          title={UI_COPY.world.errors.syncIssueTitle}
+          description={healthError}
+          action={
             <Button
               type="button"
               variant="outline"
@@ -81,8 +82,8 @@ export function WorldPage() {
             >
               Retry
             </Button>
-          </AlertDescription>
-        </Alert>
+          }
+        />
       ) : null}
 
       <WorldKpiCards health={health} isLoading={isLoadingHealth} showDiagnostics={false} />

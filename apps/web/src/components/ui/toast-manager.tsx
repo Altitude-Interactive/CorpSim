@@ -8,9 +8,10 @@ import { Button } from "./button";
 
 type ToastVariant = "success" | "error" | "warning" | "info";
 type ToastSound = "auto" | "none" | UiSoundId;
-type PopupBackdrop = "blur" | "solid";
-type PopupVariant = "default" | "danger";
+export type PopupBackdrop = "blur" | "solid";
+export type PopupVariant = "default" | "danger";
 type PopupResult = "confirm" | "cancel";
+type NoticeVariant = "info" | "warning" | "danger" | "success";
 
 interface ToastEntry {
   id: number;
@@ -72,6 +73,89 @@ const popupBackdropStyles: Record<PopupBackdrop, string> = {
   blur: "bg-slate-950/80 backdrop-blur-sm",
   solid: "bg-slate-950/80"
 };
+
+const noticeVariantStyles: Record<NoticeVariant, string> = {
+  info: "border-blue-600/35 bg-blue-950/25 text-blue-100",
+  warning: "border-amber-600/35 bg-amber-950/25 text-amber-100",
+  danger: "border-red-700/35 bg-red-950/25 text-red-100",
+  success: "border-emerald-700/35 bg-emerald-950/25 text-emerald-100"
+};
+
+interface ToastNoticeProps {
+  title: string;
+  description?: React.ReactNode;
+  variant?: NoticeVariant;
+  action?: React.ReactNode;
+  className?: string;
+}
+
+export function ToastNotice({
+  title,
+  description,
+  variant = "info",
+  action,
+  className
+}: ToastNoticeProps) {
+  return (
+    <div className={cn("rounded-md border px-4 py-3", noticeVariantStyles[variant], className)}>
+      <p className="text-sm font-semibold">{title}</p>
+      {description ? <div className="mt-1 text-sm opacity-90">{description}</div> : null}
+      {action ? <div className="mt-3">{action}</div> : null}
+    </div>
+  );
+}
+
+interface ToastOverlayProps {
+  backdrop?: PopupBackdrop;
+  variant?: PopupVariant;
+  layerClassName?: string;
+  panelClassName?: string;
+  labelledBy?: string;
+  describedBy?: string;
+  onBackdropMouseDown?: () => void;
+  children: React.ReactNode;
+}
+
+export function ToastOverlay({
+  backdrop = "solid",
+  variant = "default",
+  layerClassName,
+  panelClassName,
+  labelledBy,
+  describedBy,
+  onBackdropMouseDown,
+  children
+}: ToastOverlayProps) {
+  return (
+    <div
+      className={cn(
+        "fixed inset-0 z-[9600] flex items-center justify-center p-6",
+        popupBackdropStyles[backdrop],
+        layerClassName
+      )}
+      onMouseDown={(event) => {
+        if (event.target !== event.currentTarget) {
+          return;
+        }
+        onBackdropMouseDown?.();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
+        className={cn(
+          "w-full max-w-xl rounded-2xl border p-6 shadow-2xl shadow-black/60",
+          popupVariantStyles[variant],
+          panelClassName
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function playAutoToastSound(play: (soundId: UiSoundId) => void, variant: ToastVariant): void {
   if (variant === "success") {
@@ -262,56 +346,42 @@ export function ToastManagerProvider({ children }: { children: React.ReactNode }
       </div>
 
       {activePopup ? (
-        <div
-          className={cn(
-            "fixed inset-0 z-[9600] flex items-center justify-center p-6",
-            popupBackdropStyles[activePopup.backdrop]
-          )}
-          onMouseDown={(event) => {
-            if (event.target !== event.currentTarget) {
-              return;
-            }
+        <ToastOverlay
+          backdrop={activePopup.backdrop}
+          variant={activePopup.variant}
+          onBackdropMouseDown={() => {
             if (!activePopup.dismissible || activePopup.cancelLabel === null) {
               return;
             }
             closeActivePopup("cancel");
           }}
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className={cn(
-              "w-full max-w-xl rounded-2xl border p-6 shadow-2xl shadow-black/60",
-              popupVariantStyles[activePopup.variant]
-            )}
-          >
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-300">
-              {activePopup.backdrop === "blur" ? "Important notice" : "Confirm action"}
-            </p>
-            <h2 className="mt-2 text-xl font-semibold">{activePopup.title}</h2>
-            {activePopup.description ? (
-              <p className="mt-3 text-sm leading-6 text-slate-200">{activePopup.description}</p>
-            ) : null}
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              {activePopup.cancelLabel ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => closeActivePopup("cancel")}
-                >
-                  {activePopup.cancelLabel}
-                </Button>
-              ) : null}
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-300">
+            {activePopup.backdrop === "blur" ? "Important notice" : "Confirm action"}
+          </p>
+          <h2 className="mt-2 text-xl font-semibold">{activePopup.title}</h2>
+          {activePopup.description ? (
+            <p className="mt-3 text-sm leading-6 text-slate-200">{activePopup.description}</p>
+          ) : null}
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            {activePopup.cancelLabel ? (
               <Button
                 type="button"
-                variant={activePopup.variant === "danger" ? "destructive" : "default"}
-                onClick={() => closeActivePopup("confirm")}
+                variant="outline"
+                onClick={() => closeActivePopup("cancel")}
               >
-                {activePopup.confirmLabel}
+                {activePopup.cancelLabel}
               </Button>
-            </div>
+            ) : null}
+            <Button
+              type="button"
+              variant={activePopup.variant === "danger" ? "destructive" : "default"}
+              onClick={() => closeActivePopup("confirm")}
+            >
+              {activePopup.confirmLabel}
+            </Button>
           </div>
-        </div>
+        </ToastOverlay>
       ) : null}
     </ToastManagerContext.Provider>
   );

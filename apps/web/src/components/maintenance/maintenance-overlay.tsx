@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ToastOverlay } from "@/components/ui/toast-manager";
 import { DEFAULT_MAINTENANCE_REASON, MaintenanceState } from "@/lib/maintenance";
 
 export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
@@ -46,16 +47,15 @@ export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
     state.reason.trim().length > 0 ? state.reason : DEFAULT_MAINTENANCE_REASON;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-6 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="maintenance-title"
-        aria-describedby="maintenance-description"
-        tabIndex={0}
-        className="w-full max-w-xl rounded-2xl border border-slate-600/80 bg-slate-900/95 p-8 text-slate-100 shadow-2xl shadow-black/60 outline-none"
-      >
+    <ToastOverlay
+      backdrop="blur"
+      variant="default"
+      layerClassName="z-[9999]"
+      panelClassName="p-8 text-slate-100 outline-none"
+      labelledBy="maintenance-title"
+      describedBy="maintenance-description"
+    >
+      <div ref={dialogRef} tabIndex={0}>
         <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Operations notice</p>
         <h1 id="maintenance-title" className="mt-3 text-2xl font-semibold">
           CorpSim is under maintenance
@@ -65,6 +65,6 @@ export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
           {message}
         </p>
       </div>
-    </div>
+    </ToastOverlay>
   );
 }

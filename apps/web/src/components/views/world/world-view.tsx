@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ToastNotice } from "@/components/ui/toast-manager";
 import { advanceWorld, resetWorld } from "@/lib/api";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -66,12 +66,11 @@ export function WorldView() {
 
   return (
     <div className="space-y-4">
-      <Alert variant="warning">
-        <AlertTitle>Internal Diagnostics</AlertTitle>
-        <AlertDescription>
-          These controls are for diagnostics and should remain restricted.
-        </AlertDescription>
-      </Alert>
+      <ToastNotice
+        variant="warning"
+        title="Internal Diagnostics"
+        description="These controls are for diagnostics and should remain restricted."
+      />
 
       <Card>
         <CardHeader>

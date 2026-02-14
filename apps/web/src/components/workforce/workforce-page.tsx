@@ -3,13 +3,12 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/components/ui/toast-manager";
+import { ToastNotice, useToast } from "@/components/ui/toast-manager";
 import {
   CompanyWorkforce,
   getCompanyWorkforce,
@@ -232,10 +231,10 @@ export function WorkforcePage() {
 
   if (!activeCompanyId) {
     return (
-      <Alert>
-        <AlertTitle>{UI_COPY.common.noCompanySelected}</AlertTitle>
-        <AlertDescription>{UI_COPY.common.selectCompanyFirst}</AlertDescription>
-      </Alert>
+      <ToastNotice
+        title={UI_COPY.common.noCompanySelected}
+        description={UI_COPY.common.selectCompanyFirst}
+      />
     );
   }
 
