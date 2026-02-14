@@ -148,23 +148,29 @@ export async function startQueueRuntime(
       ttlMs: schedulerLeaseTtlMs
     }, { allowReentry: true });
     if (!schedulerLeaseHeld) {
-      throw new Error("scheduler authority lease is held by another worker instance");
+      if (!config.bullmq.workerEnabled) {
+        throw new Error("scheduler authority lease is held by another worker instance");
+      }
+
+      console.log(
+        "[worker] scheduler lease is held by another instance; continuing in processor-only mode"
+      );
+    } else {
+      schedulerHeartbeat = setInterval(() => {
+        void acquireSimulationLease(prisma, {
+          name: SCHEDULER_LEASE_NAME,
+          ownerId: workerInstanceId,
+          ttlMs: schedulerLeaseTtlMs
+        }, { allowReentry: true }).catch((error: unknown) => {
+          console.error("[worker] scheduler lease heartbeat failed", error);
+        });
+      }, Math.max(1_000, Math.floor(schedulerLeaseTtlMs / 2)));
+
+      await ensureTickScheduler(queue, config);
+      console.log(
+        `[worker] scheduler enabled queue=${config.bullmq.queueName} every=${config.tickIntervalMs}ms`
+      );
     }
-
-    schedulerHeartbeat = setInterval(() => {
-      void acquireSimulationLease(prisma, {
-        name: SCHEDULER_LEASE_NAME,
-        ownerId: workerInstanceId,
-        ttlMs: schedulerLeaseTtlMs
-      }, { allowReentry: true }).catch((error: unknown) => {
-        console.error("[worker] scheduler lease heartbeat failed", error);
-      });
-    }, Math.max(1_000, Math.floor(schedulerLeaseTtlMs / 2)));
-
-    await ensureTickScheduler(queue, config);
-    console.log(
-      `[worker] scheduler enabled queue=${config.bullmq.queueName} every=${config.tickIntervalMs}ms`
-    );
   }
 
   let worker: Worker<TickJobData> | null = null;
