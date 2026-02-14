@@ -142,3 +142,39 @@ All notable changes to CorpSim are documented in this file.
 ### Patch
 - [web] Add Ctrl+I inventory preview overlay for quick stock checks
 - [web] Fix production readiness proxy and reduce AudioContext unlock warnings
+
+## 0.7.0 - 2026-02-14
+
+### Minor
+- [web] Add Ctrl+/ shortcuts help panel and enforce one active shortcut overlay
+- [web] Add editable keyboard shortcuts with saved local bindings
+- [api, web, auth] Introduce Better Auth authentication with email/password, username support, 2FA, and remove header-based identity
+- [web] Add gameplay-focused keyboard shortcuts for faster page navigation and profile access
+- [api, web, auth] Add Google OAuth authentication with Better Auth and env-gated sign-in UI
+- [api, web, auth] Require onboarding account details after Google sign-up with sensible prefill
+- [api, web, db] Add a required first-time tutorial after onboarding company setup
+- [api, db] Harden production multiplayer baseline by locking world mutation routes and production seeding behavior
+
+### Patch
+- [ci] Add repository security policy and vulnerability reporting guidance
+- [web] Fix Ctrl+/ shortcut detection on non-US keyboard layouts
+- [web] Remap shortcut help trigger to character slash across layouts
+- [web] Add keyboard-layout fallbacks for Ctrl+/ shortcuts help trigger
+- [web] Harden Ctrl+/ shortcut defaults for compact and non-US keyboard layouts
+- [web] Prevent control manager from overriding browser-reserved Ctrl shortcuts
+- [ci] Overhaul README with badges, current setup instructions, and clearer structure
+- [ci] Update README to Linux-only commands and private-repo-safe badges
+- [web] Fix onboarding-to-overview redirect loop after completing company setup
+- [web] Add a profile shortcut button in the top bar
+- [web] Convert profile into in-app popup and route /profile to open it
+- [docs] Refresh roadmap with delivered auth, onboarding, controls, and infrastructure milestones
+- [api, auth] Add configurable auth rate limiting with stricter anti-abuse rules for sign-in, sign-up, 2FA, and password reset
+- [web, auth] Show Google auth actions by default on sign-in and sign-up unless explicitly disabled
+- [web, auth] Fix Google OAuth callback to return to web app host instead of API host
+- [api, web, auth] Fix onboarding 403 for Google-auth users missing player rows and reduce AudioContext unlock warnings
+- [web] Add Google logo icon to social sign-in and sign-up buttons
+- [web] Replace custom Google auth icon with a standard recognizable Google mark
+- [web] Use provided Google SVG asset for social auth buttons
+- [ci] Simplify roadmap into a concise Now/Next/Later format
+- [ci] Expand and harden .env.preview with required and recommended production values
+- [web] Fix Next.js production build failure from useSearchParams in always-mounted layout components

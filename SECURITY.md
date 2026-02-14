@@ -6,7 +6,7 @@ CorpSim is pre-1.0. Only the latest released version line is supported for secur
 
 | Version | Supported |
 | --- | --- |
-| `0.6.x` and newer release lines | Yes |
+| `0.7.x` and newer release lines | Yes |
 | Older versions | No |
 
 ## Reporting a Vulnerability
