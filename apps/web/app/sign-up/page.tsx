@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
+import { GoogleLogo } from "@/components/auth/google-logo";
 import { authClient } from "@/lib/auth-client";
 import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
@@ -124,7 +125,10 @@ export default function SignUpPage() {
               onClick={() => void handleGoogleSignUp()}
               disabled={isSubmitting || isGoogleSubmitting}
             >
-              {isGoogleSubmitting ? "Redirecting to Google..." : "Continue with Google"}
+              <span className="inline-flex items-center gap-2">
+                <GoogleLogo className="size-4 shrink-0" />
+                {isGoogleSubmitting ? "Redirecting to Google..." : "Continue with Google"}
+              </span>
             </Button>
             <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or create with email</p>
           </>
