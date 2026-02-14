@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ToastOverlay } from "@/components/ui/toast-manager";
 import { useControlManager, useControlShortcut, type RegisteredControlShortcut } from "./control-manager";
@@ -34,25 +34,41 @@ function formatShortcut(shortcut: RegisteredControlShortcut): string {
 export function ShortcutsHelpShortcut() {
   const { registeredShortcuts, isPanelOpen, togglePanel, closePanel } = useControlManager();
   const open = isPanelOpen(SHORTCUTS_HELP_PANEL_ID);
+  const toggleShortcutsHelp = useCallback(() => {
+    togglePanel(SHORTCUTS_HELP_PANEL_ID);
+  }, [togglePanel]);
 
   const shortcut = useMemo(
     () => ({
       id: "shortcuts-help-open",
       key: "/",
+      code: ["Semicolon", "NumpadDivide"],
       modifier: "ctrlOrMeta" as const,
       allowShiftMismatch: true,
       allowWhenTyping: true,
       preventDefault: true,
       title: "Shortcut help",
       description: "Show available keyboard shortcuts",
-      onTrigger: () => {
-        togglePanel(SHORTCUTS_HELP_PANEL_ID);
-      }
+      onTrigger: toggleShortcutsHelp
     }),
-    [togglePanel]
+    [toggleShortcutsHelp]
+  );
+
+  const shortcutAlias = useMemo(
+    () => ({
+      id: "shortcuts-help-open-alias",
+      key: ":",
+      modifier: "ctrlOrMeta" as const,
+      allowShiftMismatch: true,
+      allowWhenTyping: true,
+      preventDefault: true,
+      onTrigger: toggleShortcutsHelp
+    }),
+    [toggleShortcutsHelp]
   );
 
   useControlShortcut(shortcut);
+  useControlShortcut(shortcutAlias);
 
   useEffect(() => {
     if (!open) {
