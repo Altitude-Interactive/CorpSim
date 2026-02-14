@@ -207,19 +207,15 @@ export function ToastManagerProvider({ children }: { children: React.ReactNode }
 
   const closeActivePopup = useCallback(
     (result: PopupResult) => {
-      let resolver: ((value: PopupResult) => void) | null = null;
       setPopupQueue((prev) => {
         const current = prev[0];
         if (!current) {
           return prev;
         }
-        resolver = current.resolve;
+        current.resolve(result);
+        play("ui_close");
         return prev.slice(1);
       });
-      if (resolver) {
-        resolver(result);
-        play("ui_close");
-      }
     },
     [play]
   );

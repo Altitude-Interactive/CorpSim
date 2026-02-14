@@ -2,6 +2,7 @@
 
 import { FormEvent, useDeferredValue, useMemo, useState } from "react";
 import { ItemLabel } from "@/components/items/item-label";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { CompanySummary, ItemCatalogItem, PlaceMarketOrderInput } from "@/lib/api";
 import { parseCurrencyToCents } from "@/lib/format";
 import { formatCodeLabel, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
@@ -25,6 +26,7 @@ export function OrderPlacementCard({
   onSubmit,
   isSubmitting
 }: OrderPlacementCardProps) {
+  const { play } = useUiSfx();
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [itemSearch, setItemSearch] = useState("");
@@ -61,26 +63,31 @@ export function OrderPlacementCard({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    play("ui_open", { volumeMultiplier: 0.65 });
 
     if (!activeCompany) {
+      play("feedback_warning", { volumeMultiplier: 0.7 });
       setError(UI_COPY.common.selectCompanyFirst);
       return;
     }
 
     const itemId = selectedItem?.id ?? "";
     if (!itemId) {
+      play("feedback_warning", { volumeMultiplier: 0.7 });
       setError("Select an item.");
       return;
     }
 
     const priceCents = parseCurrencyToCents(priceInput);
     if (!priceCents) {
+      play("feedback_warning", { volumeMultiplier: 0.7 });
       setError("Price must be greater than zero.");
       return;
     }
 
     const quantity = Number.parseInt(quantityInput, 10);
     if (!Number.isInteger(quantity) || quantity <= 0) {
+      play("feedback_warning", { volumeMultiplier: 0.7 });
       setError("Quantity must be a positive integer.");
       return;
     }
