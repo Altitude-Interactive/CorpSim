@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
 import { createPrismaClient } from "@corpsim/db";
 import { WorkerConfig } from "../../worker/src/config";
@@ -47,6 +47,25 @@ describe("worker iteration integration", () => {
 
   beforeEach(async () => {
     await seedWorld(prisma, { reset: true });
+    await prisma.maintenanceState.upsert({
+      where: { id: 1 },
+      update: {
+        enabled: false,
+        scope: "all",
+        reason: "Systems are currently being updated.",
+        enabledBy: null
+      },
+      create: {
+        id: 1,
+        enabled: false,
+        scope: "all",
+        reason: "Systems are currently being updated.",
+        enabledBy: null
+      }
+    });
+  });
+
+  afterEach(async () => {
     await prisma.maintenanceState.upsert({
       where: { id: 1 },
       update: {
