@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { authClient } from "@/lib/auth-client";
+import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
 import { isAuthPage, isOnboardingPage } from "@/lib/auth-routes";
 
@@ -91,7 +92,7 @@ export default function SignInPage() {
     try {
       const result = await authClient.signIn.social({
         provider: "google",
-        callbackURL: nextPath ?? "/overview"
+        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview")
       });
 
       if (result.error) {
