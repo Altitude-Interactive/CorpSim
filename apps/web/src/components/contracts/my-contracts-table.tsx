@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItemLabel } from "@/components/items/item-label";
 import { Input } from "@/components/ui/input";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractRecord } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -53,6 +54,7 @@ export function MyContractsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isLoading && contracts.length === 0 ? <TableSkeletonRows columns={6} /> : null}
             {contracts.map((contract) => {
               const percentage = progressPercent(contract);
               return (
@@ -102,7 +104,6 @@ export function MyContractsTable({
             ) : null}
           </TableBody>
         </Table>
-        {isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading contracts...</p> : null}
       </CardContent>
     </Card>
   );

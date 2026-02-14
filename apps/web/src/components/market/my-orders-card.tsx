@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItemLabel } from "@/components/items/item-label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MarketOrder } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -152,6 +153,9 @@ export function MyOrdersCard({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isLoading && pagedOrders.length === 0 ? (
+              <TableSkeletonRows columns={8} />
+            ) : null}
             {pagedOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="tabular-nums">{order.tickPlaced.toLocaleString()}</TableCell>

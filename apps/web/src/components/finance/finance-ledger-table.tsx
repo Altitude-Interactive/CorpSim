@@ -3,6 +3,7 @@
 import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FinanceLedgerEntry } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -65,6 +66,7 @@ export function FinanceLedgerTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isLoading && entries.length === 0 ? <TableSkeletonRows columns={7} /> : null}
             {entries.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell className="tabular-nums">{entry.tick.toLocaleString()}</TableCell>
@@ -121,7 +123,6 @@ export function FinanceLedgerTable({
             ) : null}
           </TableBody>
         </Table>
-        {isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading ledger...</p> : null}
       </CardContent>
     </Card>
   );

@@ -7,6 +7,7 @@ import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InventoryRow, RegionSummary, listCompanyInventory, listRegions } from "@/lib/api";
 import { getRegionLabel, UI_COPY } from "@/lib/ui-copy";
@@ -162,6 +163,9 @@ export function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && filteredRows.length === 0 ? (
+                <TableSkeletonRows columns={showReserved ? 4 : 3} />
+              ) : null}
               {filteredRows.map((row) => {
                 const available = row.quantity - row.reservedQuantity;
                 return (
@@ -189,7 +193,6 @@ export function InventoryPage() {
               ) : null}
             </TableBody>
           </Table>
-          {isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading inventory...</p> : null}
         </CardContent>
       </Card>
     </div>

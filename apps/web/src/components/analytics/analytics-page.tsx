@@ -6,6 +6,7 @@ import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ApiClientError,
@@ -234,6 +235,7 @@ export function AnalyticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && candles.length === 0 ? <TableSkeletonRows columns={8} /> : null}
               {candles
                 .slice()
                 .reverse()

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -461,6 +462,7 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoadingArbitrage && arbitrageRows.length === 0 ? <TableSkeletonRows columns={3} /> : null}
               {arbitrageRows.map((row) => {
                 return (
                   <TableRow key={row.region.id}>
@@ -504,6 +506,7 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && inTransit.length === 0 ? <TableSkeletonRows columns={5} /> : null}
               {inTransit.map((shipment) => (
                 <TableRow key={shipment.id}>
                   <TableCell>
@@ -554,6 +557,7 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && delivered.length === 0 ? <TableSkeletonRows columns={5} /> : null}
               {delivered.map((shipment) => (
                 <TableRow key={shipment.id}>
                   <TableCell>

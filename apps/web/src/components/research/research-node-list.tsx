@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCents } from "@/lib/format";
 import { ResearchNode } from "@/lib/api";
@@ -51,6 +52,32 @@ export function ResearchNodeList({
   isLoading,
   onSelect
 }: ResearchNodeListProps) {
+  if (isLoading && groups.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Research Initiatives</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Initiative</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Cost</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Completes In</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableSkeletonRows columns={5} />
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {groups.map((group) => (
@@ -70,6 +97,7 @@ export function ResearchNodeList({
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {isLoading && group.nodes.length === 0 ? <TableSkeletonRows columns={5} /> : null}
                 {group.nodes.map((node) => {
                   const isSelected = selectedNodeId === node.id;
                   return (

@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -355,6 +356,9 @@ export function WorkforcePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && (workforce?.pendingHiringArrivals.length ?? 0) === 0 ? (
+                <TableSkeletonRows columns={4} />
+              ) : null}
               {workforce?.pendingHiringArrivals.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="font-mono text-xs">{row.id}</TableCell>

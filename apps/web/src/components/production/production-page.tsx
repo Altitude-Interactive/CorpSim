@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -453,6 +454,7 @@ export function ProductionPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {isLoading && pagedRecipeRows.length === 0 ? <TableSkeletonRows columns={4} /> : null}
                 {pagedRecipeRows.map((row) => (
                   <TableRow key={row.recipe.id}>
                     <TableCell>
@@ -510,6 +512,7 @@ export function ProductionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && runningJobs.length === 0 ? <TableSkeletonRows columns={6} /> : null}
               {runningJobs.map((job) => (
                 <TableRow key={job.id}>
                   <TableCell>
@@ -565,6 +568,7 @@ export function ProductionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && completedJobs.length === 0 ? <TableSkeletonRows columns={5} /> : null}
               {completedJobs.map((job) => (
                 <TableRow key={job.id}>
                   <TableCell>

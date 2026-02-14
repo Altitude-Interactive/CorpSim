@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FinanceSummary } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -28,6 +29,9 @@ export function FinanceBreakdownTable({ summary, isLoading }: FinanceBreakdownTa
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isLoading && (summary?.breakdownByEntryType.length ?? 0) === 0 ? (
+              <TableSkeletonRows columns={4} />
+            ) : null}
             {summary?.breakdownByEntryType.map((row) => (
               <TableRow key={row.entryType}>
                 <TableCell className="text-xs">{formatCodeLabel(row.entryType)}</TableCell>

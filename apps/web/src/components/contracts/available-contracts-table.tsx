@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItemLabel } from "@/components/items/item-label";
+import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractRecord } from "@/lib/api";
 import { formatCents } from "@/lib/format";
@@ -50,6 +51,7 @@ export function AvailableContractsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isLoading && contracts.length === 0 ? <TableSkeletonRows columns={7} /> : null}
             {contracts.map((contract) => (
               <TableRow key={contract.id}>
                 <TableCell>
@@ -82,7 +84,6 @@ export function AvailableContractsTable({
             ) : null}
           </TableBody>
         </Table>
-        {isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading contracts...</p> : null}
       </CardContent>
     </Card>
   );
