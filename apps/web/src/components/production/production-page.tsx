@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -8,7 +9,9 @@ import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
@@ -29,6 +32,7 @@ import {
 } from "@/lib/api";
 import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { formatCodeLabel, UI_COPY } from "@/lib/ui-copy";
+import { cn } from "@/lib/utils";
 
 const PRODUCTION_REFRESH_DEBOUNCE_MS = 500;
 const PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
@@ -80,6 +84,7 @@ export function ProductionPage() {
   const [specializationOptions, setSpecializationOptions] = useState<CompanySpecializationOption[]>([]);
   const [isLoadingSpecializations, setIsLoadingSpecializations] = useState(true);
   const [isUpdatingSpecialization, setIsUpdatingSpecialization] = useState(false);
+  const [isFocusPickerOpen, setIsFocusPickerOpen] = useState(false);
   const [isCancellingJobId, setIsCancellingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deferredRecipeSearch = useDeferredValue(recipeSearch);
@@ -463,24 +468,52 @@ export function ProductionPage() {
               <p className="text-sm text-muted-foreground">
                 Pick one focus for this company. It decides which products this company can make and sell.
               </p>
-              <Select
-                value={activeCompany?.specialization ?? "UNASSIGNED"}
-                onValueChange={(value) => {
-                  void handleSpecializationChange(value);
-                }}
-                disabled={!activeCompanyId || isUpdatingSpecialization || isLoadingSpecializations}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select company focus" />
-                </SelectTrigger>
-                <SelectContent>
-                  {specializationOptions.map((option) => (
-                    <SelectItem key={option.code} value={option.code}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={isFocusPickerOpen} onOpenChange={setIsFocusPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isFocusPickerOpen}
+                    className="w-full justify-between"
+                    disabled={!activeCompanyId || isUpdatingSpecialization || isLoadingSpecializations}
+                  >
+                    <span className="truncate">
+                      {activeSpecializationOption ? activeSpecializationOption.label : "Select company focus"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandList>
+                      <CommandEmpty>No focus options found.</CommandEmpty>
+                      <CommandGroup>
+                        {specializationOptions.map((option) => (
+                          <CommandItem
+                            key={option.code}
+                            value={`${option.label} ${option.code}`}
+                            onSelect={() => {
+                              setIsFocusPickerOpen(false);
+                              if (option.code !== activeCompany?.specialization) {
+                                void handleSpecializationChange(option.code);
+                              }
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                option.code === activeCompany?.specialization ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="truncate">{option.label}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {activeSpecializationOption ? (
                 <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground">{activeSpecializationOption.label}</p>
