@@ -37,12 +37,14 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
   const nextPathFromQuery = resolveSafeNextPath(searchParams.get("next"));
   const { data: session, isPending } = authClient.useSession();
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
+  const [onboardingStatusPathname, setOnboardingStatusPathname] = useState<string | null>(null);
   const [isOnboardingStatusLoading, setOnboardingStatusLoading] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session?.user?.id) {
       setOnboardingStatus(null);
+      setOnboardingStatusPathname(null);
       setOnboardingStatusLoading(false);
       setOnboardingError(null);
       return;
@@ -50,6 +52,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
 
     let active = true;
     setOnboardingStatusLoading(true);
+    setOnboardingStatusPathname(null);
     setOnboardingError(null);
     void getOnboardingStatus()
       .then((status) => {
@@ -57,6 +60,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
           return;
         }
         setOnboardingStatus(status);
+        setOnboardingStatusPathname(pathname);
       })
       .catch((error) => {
         if (!active) {
@@ -73,7 +77,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [session?.user?.id]);
+  }, [pathname, session?.user?.id]);
 
   const redirectTarget = useMemo(() => {
     if (isPending) {
@@ -88,7 +92,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
       return null;
     }
 
-    if (isOnboardingStatusLoading || !onboardingStatus) {
+    if (isOnboardingStatusLoading || onboardingStatusPathname !== pathname || !onboardingStatus) {
       return null;
     }
 
@@ -109,6 +113,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
     isPending,
     nextPathFromQuery,
     onboardingStatus,
+    onboardingStatusPathname,
     pathname,
     session?.user?.id
   ]);
