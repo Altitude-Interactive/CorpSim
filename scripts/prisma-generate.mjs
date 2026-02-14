@@ -2,7 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -130,10 +130,48 @@ function canonicalizePrismaSchema(value) {
     .trim();
 }
 
+function hasGeneratedQueryEngineBinary(repoRoot) {
+  const generatedClientDir = resolvePrismaGeneratedClientDir(repoRoot);
+  if (!generatedClientDir || !existsSync(generatedClientDir)) {
+    return false;
+  }
+
+  try {
+    return readdirSync(generatedClientDir).some((entry) => /^query_engine-.*\.node$/i.test(entry));
+  } catch {
+    return false;
+  }
+}
+
+function hasGeneratedLibraryEngine(repoRoot) {
+  const generatedClientDir = resolvePrismaGeneratedClientDir(repoRoot);
+  if (!generatedClientDir) {
+    return false;
+  }
+
+  const defaultClientPath = resolve(generatedClientDir, "default.js");
+  if (!existsSync(defaultClientPath)) {
+    return false;
+  }
+
+  try {
+    const defaultClientSource = readFileSync(defaultClientPath, "utf8");
+    return /engineType\s*:\s*['"]library['"]/i.test(defaultClientSource);
+  } catch {
+    return false;
+  }
+}
+
+function hasUsableGeneratedClient(repoRoot) {
+  return hasGeneratedQueryEngineBinary(repoRoot) && hasGeneratedLibraryEngine(repoRoot);
+}
+
 async function canUseExistingGeneratedClient(repoRoot, schemaContent) {
+  const generatedClientDir = resolvePrismaGeneratedClientDir(repoRoot);
   const sentinelPath = getGeneratedClientSentinelPath(repoRoot);
   const generatedSchemaPath = getGeneratedSchemaPath(repoRoot);
   if (
+    !generatedClientDir ||
     !sentinelPath ||
     !generatedSchemaPath ||
     !existsSync(sentinelPath) ||
@@ -146,47 +184,22 @@ async function canUseExistingGeneratedClient(repoRoot, schemaContent) {
     const generatedSchemaContent = await readFile(generatedSchemaPath, "utf8");
     return (
       canonicalizePrismaSchema(generatedSchemaContent) ===
-      canonicalizePrismaSchema(schemaContent)
+      canonicalizePrismaSchema(schemaContent) &&
+      hasUsableGeneratedClient(repoRoot)
     );
   } catch {
     return false;
   }
 }
 
-function runGenerateOnce(repoRoot, options = {}) {
-  const noEngine = options.noEngine === true;
+function runGenerateOnce(repoRoot) {
   const args = ["--dir", toPosixPath(resolve(repoRoot, "packages/db")), "run", "generate:raw"];
-  const baseOptions = {
+  return spawnSync("pnpm", args, {
     cwd: repoRoot,
     stdio: "pipe",
     encoding: "utf8",
-    env: {
-      ...process.env,
-      ...(noEngine ? { PRISMA_GENERATE_NO_ENGINE: "1" } : {})
-    }
-  };
-
-  let result = spawnSync(
-    "pnpm",
-    args,
-    {
-      shell: false,
-      ...baseOptions
-    }
-  );
-
-  if (result.error?.code === "ENOENT" && process.platform === "win32") {
-    result = spawnSync(
-      "pnpm",
-      args,
-      {
-        shell: true,
-        ...baseOptions
-      }
-    );
-  }
-
-  return result;
+    shell: process.platform === "win32"
+  });
 }
 
 function flushProcessOutput(result) {
@@ -199,17 +212,10 @@ function flushProcessOutput(result) {
 }
 
 async function runGenerateWithRetry(repoRoot, schemaContent) {
-  let useNoEngineMode = false;
-
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
-    const result = runGenerateOnce(repoRoot, { noEngine: useNoEngineMode });
+    const result = runGenerateOnce(repoRoot);
     if (result.status === 0) {
       flushProcessOutput(result);
-      if (useNoEngineMode) {
-        console.warn(
-          "[prisma:generate] generated Prisma client without replacing engine binaries (Windows lock-safe mode)"
-        );
-      }
       return;
     }
 
@@ -219,14 +225,6 @@ async function runGenerateWithRetry(repoRoot, schemaContent) {
     const stdoutText = String(result.stdout ?? "");
     const combined = `${stdoutText}\n${stderrText}\n${statusText}\n${signalText}`;
     const isWindowsLock = isLikelyWindowsEngineRenameLock(combined);
-
-    if (isWindowsLock && !useNoEngineMode) {
-      useNoEngineMode = true;
-      console.warn(
-        "[prisma:generate] Windows engine file lock detected; retrying with lock-safe generate mode"
-      );
-      continue;
-    }
 
     if (!isWindowsLock || attempt === MAX_RETRIES) {
       if (isWindowsLock) {
@@ -264,7 +262,7 @@ async function main() {
     try {
       const stateRaw = await readFile(statePath, "utf8");
       const state = JSON.parse(stateRaw);
-      if (state?.fingerprint === fingerprint) {
+      if (state?.fingerprint === fingerprint && hasUsableGeneratedClient(repoRoot)) {
         console.log("[prisma:generate] schema unchanged; skipping generate");
         return;
       }
@@ -278,7 +276,8 @@ async function main() {
       const generatedSchemaContent = await readFile(generatedSchemaPath, "utf8");
       if (
         canonicalizePrismaSchema(generatedSchemaContent) ===
-        canonicalizePrismaSchema(schemaContent)
+        canonicalizePrismaSchema(schemaContent) &&
+        hasUsableGeneratedClient(repoRoot)
       ) {
         console.log("[prisma:generate] generated client already matches schema; skipping generate");
         await mkdir(dirname(statePath), { recursive: true });
