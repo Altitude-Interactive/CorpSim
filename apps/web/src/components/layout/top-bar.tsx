@@ -7,26 +7,12 @@ import { useActiveCompany } from "@/components/company/active-company-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InlineHelp } from "@/components/ui/inline-help";
+import { TOP_BAR_TITLES } from "@/lib/page-navigation";
 import { formatCadencePoint } from "@/lib/ui-terms";
 import { getDocumentationUrl, getRegionDescription, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
 import { StatusIndicator } from "./status-indicator";
 import { UiSfxSettings } from "./ui-sfx-settings";
 import { useWorldHealth } from "./world-health-provider";
-
-const TITLES: Record<string, string> = {
-  "/overview": UI_COPY.modules.overview,
-  "/market": UI_COPY.modules.market,
-  "/production": UI_COPY.modules.production,
-  "/research": UI_COPY.modules.research,
-  "/workforce": UI_COPY.modules.workforce,
-  "/inventory": UI_COPY.modules.inventory,
-  "/logistics": UI_COPY.modules.logistics,
-  "/contracts": UI_COPY.modules.contracts,
-  "/finance": UI_COPY.modules.finance,
-  "/analytics": UI_COPY.modules.analytics,
-  "/world": UI_COPY.modules.world,
-  "/players/catalog": "Player Registry"
-};
 
 export function TopBar() {
   const pathname = usePathname();
@@ -47,7 +33,7 @@ export function TopBar() {
     <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
       <div className="flex h-14 items-center justify-between gap-3 px-4">
         <div className="min-w-0">
-          <h1 className="text-base font-semibold">{TITLES[pathname] ?? "CorpSim"}</h1>
+          <h1 className="text-base font-semibold">{TOP_BAR_TITLES[pathname] ?? "CorpSim"}</h1>
           <p className="text-xs text-muted-foreground">{formatCadencePoint(health?.currentTick)}</p>
         </div>
         <div className="flex items-center gap-3">

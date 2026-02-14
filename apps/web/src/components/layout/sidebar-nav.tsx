@@ -18,23 +18,25 @@ import {
   TrendingUp,
   Users
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { SIDEBAR_PAGE_NAVIGATION } from "@/lib/page-navigation";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
 import { AppVersionBadge } from "./app-version-badge";
 
-const NAV_ITEMS = [
-  { href: "/overview", label: UI_COPY.modules.overview, icon: LayoutDashboard },
-  { href: "/market", label: UI_COPY.modules.market, icon: TrendingUp },
-  { href: "/production", label: UI_COPY.modules.production, icon: Factory },
-  { href: "/research", label: UI_COPY.modules.research, icon: FlaskConical },
-  { href: "/workforce", label: UI_COPY.modules.workforce, icon: Users },
-  { href: "/inventory", label: UI_COPY.modules.inventory, icon: PackageSearch },
-  { href: "/logistics", label: UI_COPY.modules.logistics, icon: Truck },
-  { href: "/contracts", label: UI_COPY.modules.contracts, icon: ClipboardList },
-  { href: "/finance", label: UI_COPY.modules.finance, icon: CircleDollarSign },
-  { href: "/analytics", label: UI_COPY.modules.analytics, icon: LineChart },
-  { href: "/world", label: UI_COPY.modules.world, icon: Globe }
-];
+const NAV_ICON_BY_ROUTE: Record<string, LucideIcon> = {
+  "/overview": LayoutDashboard,
+  "/market": TrendingUp,
+  "/production": Factory,
+  "/research": FlaskConical,
+  "/workforce": Users,
+  "/inventory": PackageSearch,
+  "/logistics": Truck,
+  "/contracts": ClipboardList,
+  "/finance": CircleDollarSign,
+  "/analytics": LineChart,
+  "/world": Globe
+};
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -51,9 +53,12 @@ export function SidebarNav() {
         </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
-        {NAV_ITEMS.map((item) => {
+        {SIDEBAR_PAGE_NAVIGATION.map((item) => {
           const isActive = pathname === item.href;
-          const Icon = item.icon;
+          const Icon = NAV_ICON_BY_ROUTE[item.href];
+          if (!Icon) {
+            return null;
+          }
           return (
             <Link
               href={item.href}
