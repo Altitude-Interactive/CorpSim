@@ -23,6 +23,8 @@ const DEFAULT_PASSWORD_RESET_RATE_LIMIT_MAX_REQUESTS = 5;
 
 type RateLimitStorage = "memory" | "database" | "secondary-storage";
 type Ipv6SubnetPrefix = 128 | 64 | 48 | 32;
+type GoogleAccessType = "offline" | "online";
+type GooglePrompt = "none" | "consent" | "select_account" | "select_account consent" | "login";
 
 function parseBooleanEnv(name: string, fallback: boolean): boolean {
   const raw = process.env[name];
@@ -75,6 +77,36 @@ function parseCsvEnv(name: string): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+}
+
+function parseTrimmedEnv(name: string): string | null {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    return null;
+  }
+  return value;
+}
+
+function parseGoogleAccessType(name: string): GoogleAccessType | null {
+  const value = parseTrimmedEnv(name)?.toLowerCase();
+  if (value === "offline" || value === "online") {
+    return value;
+  }
+  return null;
+}
+
+function parseGooglePrompt(name: string): GooglePrompt | null {
+  const value = parseTrimmedEnv(name)?.toLowerCase();
+  if (
+    value === "none" ||
+    value === "consent" ||
+    value === "select_account" ||
+    value === "select_account consent" ||
+    value === "login"
+  ) {
+    return value;
+  }
+  return null;
 }
 
 function resolveRateLimitStorage(): RateLimitStorage {
@@ -340,6 +372,26 @@ function resolveAuthSecret(): string {
   return "corpsim-dev-only-better-auth-secret";
 }
 
+function resolveGoogleProviderOptions() {
+  const clientId = parseTrimmedEnv("GOOGLE_CLIENT_ID");
+  const clientSecret = parseTrimmedEnv("GOOGLE_CLIENT_SECRET");
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  const prompt = parseGooglePrompt("GOOGLE_AUTH_PROMPT");
+  const accessType = parseGoogleAccessType("GOOGLE_AUTH_ACCESS_TYPE");
+
+  return {
+    clientId,
+    clientSecret,
+    ...(prompt ? { prompt } : {}),
+    ...(accessType ? { accessType } : {})
+  } as const;
+}
+
+const googleProviderOptions = resolveGoogleProviderOptions();
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql"
@@ -349,6 +401,11 @@ export const auth = betterAuth({
   trustedOrigins: resolveTrustedOrigins(),
   rateLimit: resolveAuthRateLimit(),
   advanced: resolveAuthAdvancedOptions(),
+  socialProviders: googleProviderOptions
+    ? {
+        google: googleProviderOptions
+      }
+    : undefined,
   emailAndPassword: {
     enabled: true
   },

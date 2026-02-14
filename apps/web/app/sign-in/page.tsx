@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { authClient } from "@/lib/auth-client";
+import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
 import { isAuthPage, isOnboardingPage } from "@/lib/auth-routes";
 
 function resolveSafeNext(raw: string | null): string | null {
@@ -35,6 +36,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setSubmitting] = useState(false);
+  const [isGoogleSubmitting, setGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -78,6 +80,44 @@ export default function SignInPage() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    if (isSubmitting || isGoogleSubmitting) {
+      return;
+    }
+
+    setGoogleSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: nextPath ?? "/overview"
+      });
+
+      if (result.error) {
+        setError(result.error.message || "Google sign-in failed.");
+        return;
+      }
+
+      const redirectUrl =
+        result.data && typeof result.data === "object" && "url" in result.data && typeof result.data.url === "string"
+          ? result.data.url
+          : null;
+
+      if (redirectUrl && redirectUrl.length > 0) {
+        window.location.assign(redirectUrl);
+        return;
+      }
+
+      router.replace(nextPath ?? "/overview");
+      router.refresh();
+    } catch (caught) {
+      setError(readErrorMessage(caught));
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  }
+
   return (
     <AuthPageShell
       title="Sign In"
@@ -91,6 +131,21 @@ export default function SignInPage() {
         </p>
       }
     >
+      <div className="space-y-3">
+        {GOOGLE_AUTH_ENABLED ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => void handleGoogleSignIn()}
+              disabled={isSubmitting || isGoogleSubmitting}
+            >
+              {isGoogleSubmitting ? "Redirecting to Google..." : "Continue with Google"}
+            </Button>
+            <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or continue with email</p>
+          </>
+        ) : null}
       <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm text-muted-foreground">
@@ -128,10 +183,11 @@ export default function SignInPage() {
           Keep me signed in
         </label>
         {error ? <Alert variant="destructive">{error}</Alert> : null}
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting}>
           {isSubmitting ? "Signing in..." : "Sign In"}
         </Button>
       </form>
+      </div>
     </AuthPageShell>
   );
 }
