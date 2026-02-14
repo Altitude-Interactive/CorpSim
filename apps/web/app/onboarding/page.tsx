@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { completeOnboarding, getOnboardingStatus, listRegions, type RegionSummary } from "@/lib/api";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
+import { authClient } from "@/lib/auth-client";
 
 function readErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
@@ -15,8 +16,33 @@ function readErrorMessage(error: unknown): string {
   return "Unable to complete setup right now. Please try again.";
 }
 
+function readSessionStringField(user: unknown, field: string): string | null {
+  if (!user || typeof user !== "object") {
+    return null;
+  }
+  const value = (user as Record<string, unknown>)[field];
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeUsernameSuggestion(seed: string): string {
+  const normalized = seed
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return normalized.slice(0, 32);
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const { data: session } = authClient.useSession();
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [regionId, setRegionId] = useState("");
   const [regions, setRegions] = useState<RegionSummary[]>([]);
@@ -46,6 +72,7 @@ export default function OnboardingPage() {
         if (defaultRegion) {
           setRegionId(defaultRegion.id);
         }
+
       })
       .catch((caught) => {
         if (!active) {
@@ -64,6 +91,36 @@ export default function OnboardingPage() {
     };
   }, [router]);
 
+  useEffect(() => {
+    const sessionUser = session?.user;
+    if (!sessionUser) {
+      return;
+    }
+
+    const prefDisplayName =
+      readSessionStringField(sessionUser, "name") ??
+      readSessionStringField(sessionUser, "email")?.split("@")[0] ??
+      "";
+    if (prefDisplayName) {
+      setDisplayName((current) => (current.length > 0 ? current : prefDisplayName));
+    }
+
+    const prefUsername =
+      readSessionStringField(sessionUser, "username") ??
+      (() => {
+        const email = readSessionStringField(sessionUser, "email");
+        if (!email) {
+          return null;
+        }
+        const localPart = email.split("@")[0] ?? "";
+        const normalized = normalizeUsernameSuggestion(localPart);
+        return normalized.length >= 3 ? normalized : null;
+      })();
+    if (prefUsername) {
+      setUsername((current) => (current.length > 0 ? current : prefUsername));
+    }
+  }, [session?.user]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting) {
@@ -75,6 +132,8 @@ export default function OnboardingPage() {
 
     try {
       await completeOnboarding({
+        displayName: displayName.trim() || undefined,
+        username: username.trim() || undefined,
         companyName: companyName.trim(),
         regionId: regionId || undefined
       });
@@ -98,9 +157,36 @@ export default function OnboardingPage() {
   return (
     <AuthPageShell
       title="Set Up Your Company"
-      description="Choose your company name and starting region before entering the dashboard."
+      description="Confirm your account details and choose your company setup before entering the dashboard."
     >
       <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
+        <div className="space-y-1.5">
+          <label htmlFor="onboarding-display-name" className="text-sm text-muted-foreground">
+            Display name
+          </label>
+          <Input
+            id="onboarding-display-name"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder="How your profile appears"
+            required
+            minLength={2}
+            maxLength={80}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="onboarding-username" className="text-sm text-muted-foreground">
+            Username
+          </label>
+          <Input
+            id="onboarding-username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="letters, numbers, _, -"
+            minLength={3}
+            maxLength={32}
+          />
+        </div>
         <div className="space-y-1.5">
           <label htmlFor="onboarding-company-name" className="text-sm text-muted-foreground">
             Company name
@@ -140,4 +226,3 @@ export default function OnboardingPage() {
     </AuthPageShell>
   );
 }
-

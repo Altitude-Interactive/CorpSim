@@ -193,6 +193,8 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 }
 
 export async function completeOnboarding(input: {
+  displayName?: string;
+  username?: string;
   companyName: string;
   regionId?: string;
 }): Promise<OnboardingStatus> {

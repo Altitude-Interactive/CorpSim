@@ -6,6 +6,8 @@ import { PrismaService } from "../prisma/prisma.service";
 
 interface CompleteOnboardingInput {
   playerId: string;
+  displayName?: string;
+  username?: string;
   companyName: string;
   regionId?: string;
 }
@@ -76,6 +78,47 @@ function resolveHandleSeed(user: {
 
 function isPrismaUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+function isPrismaRecordNotFound(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
+}
+
+function normalizeDisplayName(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.length < 2) {
+    throw new DomainInvariantError("display name must be at least 2 characters");
+  }
+  if (trimmed.length > 80) {
+    throw new DomainInvariantError("display name must be at most 80 characters");
+  }
+  return trimmed;
+}
+
+function normalizeUsername(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.length < 3) {
+    throw new DomainInvariantError("username must be at least 3 characters");
+  }
+  if (trimmed.length > 32) {
+    throw new DomainInvariantError("username must be at most 32 characters");
+  }
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(trimmed)) {
+    throw new DomainInvariantError("username may only include letters, numbers, dashes, and underscores");
+  }
+  return trimmed;
 }
 
 function isDefaultUnlockedRecipe(code: string): boolean {
@@ -155,6 +198,36 @@ export class OnboardingService {
     });
   }
 
+  private async applyAccountProfile(
+    prisma: PrismaService | Prisma.TransactionClient,
+    input: CompleteOnboardingInput
+  ): Promise<void> {
+    const displayName = normalizeDisplayName(input.displayName);
+    const username = normalizeUsername(input.username);
+
+    if (!displayName && !username) {
+      return;
+    }
+
+    try {
+      await prisma.user.update({
+        where: { id: input.playerId },
+        data: {
+          ...(displayName ? { name: displayName } : {}),
+          ...(username ? { username, displayUsername: username } : {})
+        }
+      });
+    } catch (error) {
+      if (isPrismaUniqueViolation(error)) {
+        throw new DomainInvariantError("username is already in use");
+      }
+      if (isPrismaRecordNotFound(error)) {
+        return;
+      }
+      throw error;
+    }
+  }
+
   async getStatus(playerId: string): Promise<OnboardingStatus> {
     await this.ensurePlayerRecordForUser(playerId);
     await resolvePlayerById(this.prisma, playerId);
@@ -170,6 +243,7 @@ export class OnboardingService {
   async complete(input: CompleteOnboardingInput): Promise<OnboardingStatus> {
     await this.ensurePlayerRecordForUser(input.playerId);
     const player = await resolvePlayerById(this.prisma, input.playerId);
+    await this.applyAccountProfile(this.prisma, input);
     const companyName = input.companyName.trim();
     if (companyName.length < 2) {
       throw new DomainInvariantError("company name must be at least 2 characters");

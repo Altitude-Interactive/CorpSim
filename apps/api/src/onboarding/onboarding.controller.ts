@@ -23,9 +23,10 @@ export class OnboardingController {
   ) {
     return this.onboardingService.complete({
       playerId,
+      displayName: body.displayName,
+      username: body.username,
       companyName: body.companyName,
       regionId: body.regionId
     });
   }
 }
-
