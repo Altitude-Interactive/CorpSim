@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
+import { getIconCatalogItemByCode } from "@corpsim/shared";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -16,6 +17,7 @@ describe("production API integration", () => {
   let ironOreId: string;
   let ironIngotId: string;
   let smeltRecipeId: string;
+  let tierTwoIconRecipeId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -54,6 +56,30 @@ describe("production API integration", () => {
       select: { id: true }
     });
     smeltRecipeId = smeltRecipe.id;
+
+    const iconRecipes = await prisma.recipe.findMany({
+      where: {
+        code: {
+          startsWith: "FABRICATE_CP_"
+        }
+      },
+      orderBy: [{ code: "asc" }],
+      select: {
+        id: true,
+        outputItem: {
+          select: {
+            code: true
+          }
+        }
+      }
+    });
+    const tierTwoRecipe = iconRecipes.find(
+      (recipe) => getIconCatalogItemByCode(recipe.outputItem.code)?.tier === 2
+    );
+    if (!tierTwoRecipe) {
+      throw new Error("tier-2 icon recipe not found in seeded dataset");
+    }
+    tierTwoIconRecipeId = tierTwoRecipe.id;
   });
 
   afterAll(async () => {
@@ -295,6 +321,37 @@ describe("production API integration", () => {
     expect(
       runningResponse.body.every((job: { status: string }) => job.status === "RUNNING")
     ).toBe(true);
+  });
+
+  it("hides tier-locked icon recipes from player production list", async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/v1/production/recipes?companyId=${playerCompanyId}`)
+      .expect(200);
+
+    const hasTierTwoOrAboveOutput = response.body.some((recipe: { outputItem?: { code?: unknown } }) => {
+      const code = recipe.outputItem?.code;
+      if (typeof code !== "string") {
+        return false;
+      }
+      const icon = getIconCatalogItemByCode(code);
+      return (icon?.tier ?? 0) >= 2;
+    });
+
+    expect(hasTierTwoOrAboveOutput).toBe(false);
+    expect(
+      response.body.some((recipe: { id: string }) => recipe.id === tierTwoIconRecipeId)
+    ).toBe(false);
+  });
+
+  it("rejects starting production for tier-locked items", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/production/jobs")
+      .send({
+        companyId: playerCompanyId,
+        recipeId: tierTwoIconRecipeId,
+        quantity: 1
+      })
+      .expect(400);
   });
 });
 

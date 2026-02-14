@@ -11,6 +11,10 @@ import {
 } from "../domain/errors";
 import { availableCash } from "../domain/reservations";
 import {
+  isRecipeLockedByIconTier,
+  resolvePlayerUnlockedIconTierFromResearchCodes
+} from "./item-tier-locker";
+import {
   applyDurationMultiplierTicks,
   resolveWorkforceRuntimeModifiers
 } from "./workforce";
@@ -327,6 +331,7 @@ export async function createProductionJobWithTx(
       where: { id: input.companyId },
       select: {
         id: true,
+        isPlayer: true,
         regionId: true,
         workforceCapacity: true,
         workforceAllocationOpsPct: true,
@@ -378,6 +383,29 @@ export async function createProductionJobWithTx(
   }
   if (!recipe) {
     throw new NotFoundError(`recipe ${input.recipeId} not found`);
+  }
+  if (company.isPlayer) {
+    const completedResearchRows = await tx.companyResearch.findMany({
+      where: {
+        companyId: input.companyId,
+        status: "COMPLETED"
+      },
+      select: {
+        node: {
+          select: {
+            code: true
+          }
+        }
+      }
+    });
+    const unlockedIconTier = resolvePlayerUnlockedIconTierFromResearchCodes(
+      completedResearchRows.map((row) => row.node.code)
+    );
+    if (isRecipeLockedByIconTier(recipe, unlockedIconTier)) {
+      throw new DomainInvariantError(
+        `recipe ${input.recipeId} is not unlocked for company ${input.companyId}`
+      );
+    }
   }
   if (!companyRecipe?.isUnlocked && !(await isLegacyCompanyRecipeState(tx, input.companyId))) {
     throw new DomainInvariantError(`recipe ${input.recipeId} is not unlocked for company ${input.companyId}`);

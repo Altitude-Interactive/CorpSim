@@ -7,6 +7,10 @@ import {
 } from "@prisma/client";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
 import { scanSimulationInvariants } from "./invariants";
+import {
+  isRecipeLockedByIconTier,
+  resolvePlayerUnlockedIconTierFromResearchCodes
+} from "./item-tier-locker";
 
 export interface MarketOrderFilters {
   itemId?: string;
@@ -613,6 +617,67 @@ export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters =
     });
   }
 
+  const company = await prisma.company.findUnique({
+    where: {
+      id: filters.companyId
+    },
+    select: {
+      isPlayer: true
+    }
+  });
+
+  let playerUnlockedIconTier: number | null = null;
+  const applyItemTierLock = async (
+    recipes: Array<{
+      id: string;
+      code: string;
+      name: string;
+      durationTicks: number;
+      outputQuantity: number;
+      outputItem: {
+        id: string;
+        code: string;
+        name: string;
+      };
+      inputs: Array<{
+        itemId: string;
+        quantity: number;
+        item: {
+          id: string;
+          code: string;
+          name: string;
+        };
+      }>;
+    }>
+  ) => {
+    if (!company?.isPlayer) {
+      return recipes;
+    }
+
+    if (playerUnlockedIconTier === null) {
+      const completedResearchRows = await prisma.companyResearch.findMany({
+        where: {
+          companyId: filters.companyId,
+          status: "COMPLETED"
+        },
+        select: {
+          node: {
+            select: {
+              code: true
+            }
+          }
+        }
+      });
+      playerUnlockedIconTier = resolvePlayerUnlockedIconTierFromResearchCodes(
+        completedResearchRows.map((row) => row.node.code)
+      );
+    }
+
+    return recipes.filter(
+      (recipe) => !isRecipeLockedByIconTier(recipe, playerUnlockedIconTier ?? 1)
+    );
+  };
+
   const unlockedRecipes = await prisma.recipe.findMany({
     where: {
       companyRecipes: {
@@ -627,7 +692,7 @@ export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters =
   });
 
   if (unlockedRecipes.length > 0) {
-    return unlockedRecipes;
+    return applyItemTierLock(unlockedRecipes);
   }
 
   // Legacy data fallback: older/local worlds may miss companyRecipe rows entirely.
@@ -641,13 +706,14 @@ export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters =
   ]);
 
   if (companyRecipeCount < totalRecipeCount) {
-    return prisma.recipe.findMany({
+    const fallbackRecipes = await prisma.recipe.findMany({
       orderBy: [{ code: "asc" }],
       select: baseSelect
     });
+    return applyItemTierLock(fallbackRecipes);
   }
 
-  return unlockedRecipes;
+  return applyItemTierLock(unlockedRecipes);
 }
 
 export async function listProductionJobs(
