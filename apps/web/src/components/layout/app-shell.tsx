@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { UI_COPY } from "@/lib/ui-copy";
 import { AppVersionBadge } from "./app-version-badge";
 import { ControlManagerProvider } from "./control-manager";
+import { InventoryPreviewShortcut } from "./inventory-preview-shortcut";
 import { PageSearchCommand } from "./page-search-command";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
@@ -80,6 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ControlManagerProvider>
       <PageSearchCommand />
+      <InventoryPreviewShortcut />
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto flex min-h-screen max-w-[1600px]">
           <SidebarNav />
