@@ -16,15 +16,18 @@ import {
   RegionSummary,
   ResearchNode,
   WorldHealth,
+  advanceWorld,
   getWorldHealth,
   listCompanies,
   listItems,
   listProductionRecipes,
   listRegions,
-  listResearch
+  listResearch,
+  resetWorld
 } from "@/lib/api";
 import { formatCents } from "@/lib/format";
 import { formatCodeLabel } from "@/lib/ui-copy";
+import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
 
 interface ItemUsageSummary {
   inputRecipeCount: number;
@@ -137,6 +140,10 @@ export function DevCatalogPage() {
     useState<(typeof RESEARCH_PAGE_SIZE_OPTIONS)[number]>(20);
   const [researchPage, setResearchPage] = useState(1);
   const [isConsistencyCheckEnabled, setIsConsistencyCheckEnabled] = useState(false);
+  const [ticksInput, setTicksInput] = useState("1");
+  const [controlsError, setControlsError] = useState<string | null>(null);
+  const [controlsMessage, setControlsMessage] = useState<string | null>(null);
+  const [isControlSubmitting, setIsControlSubmitting] = useState(false);
   const deferredItemSearch = useDeferredValue(itemSearch);
   const deferredRecipeSearch = useDeferredValue(recipeSearch);
   const deferredResearchSearch = useDeferredValue(researchSearch);
@@ -174,6 +181,59 @@ export function DevCatalogPage() {
 
   useEffect(() => {
     void loadSnapshot();
+  }, [loadSnapshot]);
+
+  const runAdvance = useCallback(async () => {
+    const parsed = Number.parseInt(ticksInput, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      setControlsError(`${UI_CADENCE_TERMS.pluralTitle} must be a positive integer.`);
+      setControlsMessage(null);
+      return;
+    }
+
+    if (parsed > 10) {
+      const confirmed = window.confirm(
+        `Advance by ${formatCadenceCount(parsed)}? This may process many events.`
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsControlSubmitting(true);
+    try {
+      await advanceWorld(parsed);
+      setControlsError(null);
+      setControlsMessage(`Advanced ${formatCadenceCount(parsed)}.`);
+      await loadSnapshot();
+    } catch (caught) {
+      setControlsMessage(null);
+      setControlsError(caught instanceof Error ? caught.message : "Failed to advance world");
+    } finally {
+      setIsControlSubmitting(false);
+    }
+  }, [loadSnapshot, ticksInput]);
+
+  const runReset = useCallback(async () => {
+    const confirmed = window.confirm(
+      "Reset world and reseed? This will wipe current simulation state."
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsControlSubmitting(true);
+    try {
+      await resetWorld(true);
+      setControlsError(null);
+      setControlsMessage("Simulation reset and reseeded.");
+      await loadSnapshot();
+    } catch (caught) {
+      setControlsMessage(null);
+      setControlsError(caught instanceof Error ? caught.message : "Failed to reset world");
+    } finally {
+      setIsControlSubmitting(false);
+    }
   }, [loadSnapshot]);
 
   const itemUsageById = useMemo(() => {
@@ -618,6 +678,55 @@ export function DevCatalogPage() {
             Research Context Company:{" "}
             <span className="text-foreground">{snapshot.researchCompanyId ?? "none"}</span>
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Simulation Controls (Development Only)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/20 p-3">
+            <Input
+              className="w-40"
+              value={ticksInput}
+              onChange={(event) => setTicksInput(event.target.value)}
+              placeholder={UI_CADENCE_TERMS.pluralTitle}
+            />
+            <Button
+              type="button"
+              onClick={() => {
+                void runAdvance();
+              }}
+              disabled={isControlSubmitting}
+            >
+              Advance {UI_CADENCE_TERMS.pluralTitle}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                void runReset();
+              }}
+              disabled={isControlSubmitting}
+            >
+              Reset + Reseed
+            </Button>
+          </div>
+          {controlsMessage ? <p className="text-sm text-emerald-300">{controlsMessage}</p> : null}
+          {controlsError ? <p className="text-sm text-red-300">{controlsError}</p> : null}
+          {snapshot.health ? (
+            <details className="rounded-md border border-border bg-muted/20 p-3 text-xs">
+              <summary className="cursor-pointer font-medium text-muted-foreground">
+                Diagnostic details
+              </summary>
+              <div className="mt-2 space-y-1 font-mono text-xs text-muted-foreground">
+                <p>Concurrency version: {snapshot.health.lockVersion.toLocaleString()}</p>
+                <p>Technical tick: {snapshot.health.currentTick.toLocaleString()}</p>
+                <p>Total order records: {snapshot.health.ordersTotalCount.toLocaleString()}</p>
+              </div>
+            </details>
+          ) : null}
         </CardContent>
       </Card>
 
