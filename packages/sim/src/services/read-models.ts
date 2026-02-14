@@ -6,10 +6,10 @@ import {
   ProductionJobStatus
 } from "@prisma/client";
 import {
-  COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS,
   CompanySpecialization,
   isItemCodeLockedBySpecialization,
-  normalizeCompanySpecialization
+  normalizeCompanySpecialization,
+  resolveCompanySpecializationCooldownHours
 } from "@corpsim/shared";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
 import { scanSimulationInvariants } from "./invariants";
@@ -19,6 +19,10 @@ import {
   isRecipeLockedByIconTier,
   resolvePlayerUnlockedIconTierFromResearchCodes
 } from "./item-tier-locker";
+
+const companySpecializationCooldownHours = resolveCompanySpecializationCooldownHours(
+  process.env.COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS
+);
 
 export interface MarketOrderFilters {
   itemId?: string;
@@ -285,7 +289,7 @@ export async function setCompanySpecialization(
   }
 
   const now = new Date();
-  const cooldownMs = COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS * 60 * 60 * 1000;
+  const cooldownMs = companySpecializationCooldownHours * 60 * 60 * 1000;
   const lastChangedAt = company.specializationChangedAt;
   if (lastChangedAt !== null) {
     const nextChangeAt = new Date(lastChangedAt.getTime() + cooldownMs);
@@ -294,7 +298,7 @@ export async function setCompanySpecialization(
       const remainingHours = Math.max(1, Math.ceil(remainingMs / (60 * 60 * 1000)));
       const remainingHoursLabel = remainingHours === 1 ? "hour" : "hours";
       throw new DomainInvariantError(
-        `company focus can be changed every ${COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} hours; ` +
+        `company focus can be changed every ${companySpecializationCooldownHours} hours; ` +
           `${remainingHours} ${remainingHoursLabel} remaining (next change at ${nextChangeAt.toISOString()})`
       );
     }

@@ -9,7 +9,22 @@ export const COMPANY_SPECIALIZATION_CODES = [
 ] as const;
 
 export type CompanySpecialization = (typeof COMPANY_SPECIALIZATION_CODES)[number];
-export const COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS = 4;
+export const DEFAULT_COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS = 4;
+export const COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS =
+  DEFAULT_COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS;
+
+export function resolveCompanySpecializationCooldownHours(raw: string | null | undefined): number {
+  if (!raw) {
+    return DEFAULT_COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS;
+  }
+
+  const parsed = Number.parseInt(raw.trim(), 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return DEFAULT_COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS;
+  }
+
+  return parsed;
+}
 
 export const ITEM_CATEGORY_CODES = [
   "FOUNDATIONAL",

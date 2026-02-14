@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS } from "@corpsim/shared";
+import { resolveCompanySpecializationCooldownHours } from "@corpsim/shared";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
@@ -36,6 +36,9 @@ import { cn } from "@/lib/utils";
 
 const PRODUCTION_REFRESH_DEBOUNCE_MS = 500;
 const PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+const COMPANY_FOCUS_COOLDOWN_HOURS = resolveCompanySpecializationCooldownHours(
+  process.env.NEXT_PUBLIC_COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS
+);
 
 function mapProductionStatusVariant(status: ProductionJob["status"]): "success" | "warning" | "info" {
   if (status === "COMPLETED") {
@@ -473,7 +476,7 @@ export function ProductionPage() {
                 Pick one focus for this company. It decides which products this company can make and sell.
               </p>
               <p className="text-xs text-muted-foreground">
-                You can switch focus once every {COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} hours.
+                You can switch focus once every {COMPANY_FOCUS_COOLDOWN_HOURS} hours.
               </p>
               <Popover open={isFocusPickerOpen} onOpenChange={setIsFocusPickerOpen}>
                 <PopoverTrigger asChild>
