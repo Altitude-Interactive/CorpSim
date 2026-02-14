@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -29,16 +29,28 @@ export function InventoryPage() {
   const [pageSize, setPageSize] = useState<(typeof INVENTORY_PAGE_SIZE_OPTIONS)[number]>(50);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedInventory, setHasLoadedInventory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
+  const hasLoadedInventoryRef = useRef(false);
 
-  const loadInventory = useCallback(async () => {
+  const loadInventory = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedInventoryRef.current;
     if (!activeCompanyId) {
       setRows([]);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedInventoryRef.current) {
+        hasLoadedInventoryRef.current = true;
+        setHasLoadedInventory(true);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (showLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const regionId = selectedRegionId || activeCompany?.regionId;
       const nextRows = await listCompanyInventory(activeCompanyId, regionId);
@@ -47,7 +59,13 @@ export function InventoryPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load inventory");
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedInventoryRef.current) {
+        hasLoadedInventoryRef.current = true;
+        setHasLoadedInventory(true);
+      }
     }
   }, [activeCompanyId, activeCompany?.regionId, selectedRegionId]);
 
@@ -81,7 +99,7 @@ export function InventoryPage() {
   }, [activeCompany?.regionId, activeCompanyId]);
 
   useEffect(() => {
-    void loadInventory();
+    void loadInventory({ showLoadingState: !hasLoadedInventoryRef.current });
   }, [loadInventory]);
 
   useEffect(() => {
@@ -91,7 +109,7 @@ export function InventoryPage() {
     }
 
     const timeout = setTimeout(() => {
-      void loadInventory();
+      void loadInventory({ showLoadingState: false });
     }, INVENTORY_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
@@ -146,6 +164,7 @@ export function InventoryPage() {
     const end = Math.min(page * pageSize, filteredRows.length);
     return `${start}-${end}`;
   }, [filteredRows.length, page, pageSize]);
+  const showInitialSkeleton = isLoading && !hasLoadedInventory;
 
   return (
     <div className="space-y-4">
@@ -258,7 +277,7 @@ export function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && pagedRows.length === 0 ? (
+              {showInitialSkeleton && pagedRows.length === 0 ? (
                 <TableSkeletonRows columns={showReserved ? 4 : 3} />
               ) : null}
               {pagedRows.map((row) => {
@@ -276,7 +295,7 @@ export function InventoryPage() {
                   </TableRow>
                 );
               })}
-              {!isLoading && pagedRows.length === 0 ? (
+              {!showInitialSkeleton && pagedRows.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={showReserved ? 4 : 3}
@@ -286,7 +305,7 @@ export function InventoryPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
-              {!isLoading ? (
+              {!showInitialSkeleton ? (
                 <TableFillerRows
                   columns={showReserved ? 4 : 3}
                   currentRows={Math.max(1, pagedRows.length)}

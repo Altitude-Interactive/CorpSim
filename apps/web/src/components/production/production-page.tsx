@@ -69,12 +69,17 @@ export function ProductionPage() {
     useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(10);
   const [quantityInput, setQuantityInput] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(true);
+  const [hasLoadedRecipes, setHasLoadedRecipes] = useState(false);
+  const [hasLoadedJobs, setHasLoadedJobs] = useState(false);
   const [isCancellingJobId, setIsCancellingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deferredRecipeSearch = useDeferredValue(recipeSearch);
   const completedJobIdsRef = useRef<Set<string>>(new Set());
   const didPrimeCompletedRef = useRef(false);
+  const hasLoadedRecipesRef = useRef(false);
+  const hasLoadedJobsRef = useRef(false);
 
   const selectedRecipe = useMemo(
     () => recipes.find((recipe) => recipe.id === selectedRecipeId) ?? null,
@@ -154,32 +159,64 @@ export function ProductionPage() {
     );
   }, [runningJobs]);
 
-  const loadRecipes = useCallback(async () => {
+  const loadRecipes = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedRecipesRef.current;
     if (!activeCompanyId) {
       setRecipes([]);
       setSelectedRecipeId("");
+      if (showLoadingState) {
+        setIsLoadingRecipes(false);
+      }
+      if (!hasLoadedRecipesRef.current) {
+        hasLoadedRecipesRef.current = true;
+        setHasLoadedRecipes(true);
+      }
       return;
     }
 
-    const rows = await listProductionRecipes(activeCompanyId);
-    setRecipes(rows);
-    setSelectedRecipeId((current) => {
-      if (current && rows.some((recipe) => recipe.id === current)) {
-        return current;
+    if (showLoadingState) {
+      setIsLoadingRecipes(true);
+    }
+    try {
+      const rows = await listProductionRecipes(activeCompanyId);
+      setRecipes(rows);
+      setSelectedRecipeId((current) => {
+        if (current && rows.some((recipe) => recipe.id === current)) {
+          return current;
+        }
+        return rows[0]?.id ?? "";
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to load production recipes");
+    } finally {
+      if (showLoadingState) {
+        setIsLoadingRecipes(false);
       }
-      return rows[0]?.id ?? "";
-    });
+      if (!hasLoadedRecipesRef.current) {
+        hasLoadedRecipesRef.current = true;
+        setHasLoadedRecipes(true);
+      }
+    }
   }, [activeCompanyId]);
 
-  const loadJobs = useCallback(async () => {
+  const loadJobs = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedJobsRef.current;
     if (!activeCompanyId) {
       setRunningJobs([]);
       setCompletedJobs([]);
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoadingJobs(false);
+      }
+      if (!hasLoadedJobsRef.current) {
+        hasLoadedJobsRef.current = true;
+        setHasLoadedJobs(true);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (showLoadingState) {
+      setIsLoadingJobs(true);
+    }
     try {
       const [running, completed] = await Promise.all([
         listProductionJobs({
@@ -200,13 +237,22 @@ export function ProductionPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load production jobs");
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoadingJobs(false);
+      }
+      if (!hasLoadedJobsRef.current) {
+        hasLoadedJobsRef.current = true;
+        setHasLoadedJobs(true);
+      }
     }
   }, [activeCompanyId]);
 
   const loadProductionState = useCallback(async () => {
     try {
-      await Promise.all([loadRecipes(), loadJobs()]);
+      await Promise.all([
+        loadRecipes({ showLoadingState: true }),
+        loadJobs({ showLoadingState: true })
+      ]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load production state");
     }
@@ -227,7 +273,7 @@ export function ProductionPage() {
     }
 
     const timeout = setTimeout(() => {
-      void loadJobs();
+      void loadJobs({ showLoadingState: false });
     }, PRODUCTION_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
@@ -258,6 +304,8 @@ export function ProductionPage() {
     }
     completedJobIdsRef.current = nextIds;
   }, [completedJobs, play]);
+  const showInitialRecipesSkeleton = isLoadingRecipes && !hasLoadedRecipes;
+  const showInitialJobsSkeleton = isLoadingJobs && !hasLoadedJobs;
 
   const submitStartJob = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -292,7 +340,7 @@ export function ProductionPage() {
         variant: "success",
         sound: "none"
       });
-      await loadJobs();
+      await loadJobs({ showLoadingState: false });
     } catch (caught) {
       const message = mapProductionErrorMessage(caught);
       setError(message);
@@ -324,7 +372,7 @@ export function ProductionPage() {
           variant: "info"
         });
       }
-      await loadJobs();
+      await loadJobs({ showLoadingState: false });
     } catch (caught) {
       const message = mapProductionErrorMessage(caught);
       setError(message);
@@ -488,7 +536,7 @@ export function ProductionPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading && pagedRecipeRows.length === 0 ? <TableSkeletonRows columns={4} /> : null}
+                {showInitialRecipesSkeleton && pagedRecipeRows.length === 0 ? <TableSkeletonRows columns={4} /> : null}
                 {pagedRecipeRows.map((row) => (
                   <TableRow key={row.recipe.id}>
                     <TableCell>
@@ -516,7 +564,7 @@ export function ProductionPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {pagedRecipeRows.length === 0 ? (
+                {!showInitialRecipesSkeleton && pagedRecipeRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
                       No recipes available for current filters.
@@ -546,7 +594,7 @@ export function ProductionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && runningJobs.length === 0 ? <TableSkeletonRows columns={6} /> : null}
+              {showInitialJobsSkeleton && runningJobs.length === 0 ? <TableSkeletonRows columns={6} /> : null}
               {runningJobs.map((job) => (
                 <TableRow key={job.id}>
                   <TableCell>
@@ -574,7 +622,7 @@ export function ProductionPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && runningJobs.length === 0 ? (
+              {!showInitialJobsSkeleton && runningJobs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No running production jobs.
@@ -602,7 +650,7 @@ export function ProductionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && completedJobs.length === 0 ? <TableSkeletonRows columns={5} /> : null}
+              {showInitialJobsSkeleton && completedJobs.length === 0 ? <TableSkeletonRows columns={5} /> : null}
               {completedJobs.map((job) => (
                 <TableRow key={job.id}>
                   <TableCell>
@@ -618,7 +666,7 @@ export function ProductionPage() {
                   <TableCell>{new Date(job.updatedAt).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
-              {!isLoading && completedJobs.length === 0 ? (
+              {!showInitialJobsSkeleton && completedJobs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No completed jobs yet.

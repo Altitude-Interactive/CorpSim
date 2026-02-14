@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,19 +129,31 @@ export function FinancePage() {
   const [company, setCompany] = useState<CompanyDetails | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedFinance, setHasLoadedFinance] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedFinanceRef = useRef(false);
 
-  const loadFinance = useCallback(async () => {
+  const loadFinance = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedFinanceRef.current;
     if (!activeCompanyId) {
       setSummary(null);
       setLedgerEntries([]);
       setLatestLedgerEntry(null);
       setCompany(null);
       setNextCursor(null);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedFinanceRef.current) {
+        hasLoadedFinanceRef.current = true;
+        setHasLoadedFinance(true);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (showLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const [summaryPayload, ledgerPayload, companyPayload, latestLedgerPayload] = await Promise.all([
         getFinanceSummary(activeCompanyId, appliedFilters.windowTicks),
@@ -171,12 +183,18 @@ export function FinancePage() {
     } catch (caught) {
       setError(mapFinanceApiError(caught));
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedFinanceRef.current) {
+        hasLoadedFinanceRef.current = true;
+        setHasLoadedFinance(true);
+      }
     }
   }, [activeCompanyId, appliedFilters, currentCursor]);
 
   useEffect(() => {
-    void loadFinance();
+    void loadFinance({ showLoadingState: !hasLoadedFinanceRef.current });
   }, [loadFinance]);
 
   useEffect(() => {
@@ -186,7 +204,7 @@ export function FinancePage() {
     }
 
     const timeout = setTimeout(() => {
-      void loadFinance();
+      void loadFinance({ showLoadingState: false });
     }, FINANCE_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
@@ -279,6 +297,7 @@ export function FinancePage() {
     }),
     [summary]
   );
+  const showInitialSkeleton = isLoading && !hasLoadedFinance;
 
   return (
     <div className="space-y-4">
@@ -357,7 +376,7 @@ export function FinancePage() {
         </CardContent>
       </Card>
 
-      <FinanceSummaryCards summary={summary} isLoading={isLoading} />
+      <FinanceSummaryCards summary={summary} isLoading={showInitialSkeleton} />
 
       <Card>
         <CardHeader>
@@ -383,13 +402,13 @@ export function FinancePage() {
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <FinanceBreakdownTable summary={summary} isLoading={isLoading} />
+        <FinanceBreakdownTable summary={summary} isLoading={showInitialSkeleton} />
         <FinanceReconciliationPanel company={company} latestLedgerEntry={latestLedgerEntry} />
       </div>
 
       <FinanceLedgerTable
         entries={ledgerEntries}
-        isLoading={isLoading}
+        isLoading={showInitialSkeleton}
         hasPreviousPage={cursorHistory.length > 0}
         hasNextPage={Boolean(nextCursor)}
         onPreviousPage={onPreviousPage}

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -60,17 +60,29 @@ export function WorkforcePage() {
   });
   const [capacityDeltaInput, setCapacityDeltaInput] = useState("0");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedWorkforce, setHasLoadedWorkforce] = useState(false);
   const [isSavingAllocation, setIsSavingAllocation] = useState(false);
   const [isRequestingCapacity, setIsRequestingCapacity] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedWorkforceRef = useRef(false);
 
-  const loadWorkforce = useCallback(async () => {
+  const loadWorkforce = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedWorkforceRef.current;
     if (!activeCompanyId) {
       setWorkforce(null);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedWorkforceRef.current) {
+        hasLoadedWorkforceRef.current = true;
+        setHasLoadedWorkforce(true);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (showLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const snapshot = await getCompanyWorkforce(activeCompanyId);
       setWorkforce(snapshot);
@@ -79,12 +91,18 @@ export function WorkforcePage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load workforce data");
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedWorkforceRef.current) {
+        hasLoadedWorkforceRef.current = true;
+        setHasLoadedWorkforce(true);
+      }
     }
   }, [activeCompanyId]);
 
   useEffect(() => {
-    void loadWorkforce();
+    void loadWorkforce({ showLoadingState: true });
   }, [loadWorkforce]);
 
   useEffect(() => {
@@ -92,7 +110,7 @@ export function WorkforcePage() {
       return;
     }
     const timeout = setTimeout(() => {
-      void loadWorkforce();
+      void loadWorkforce({ showLoadingState: false });
     }, WORKFORCE_REFRESH_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
   }, [activeCompanyId, health?.currentTick, loadWorkforce]);
@@ -222,6 +240,7 @@ export function WorkforcePage() {
   }
 
   const projected = workforce?.projectedModifiers;
+  const showInitialSkeleton = isLoading && !hasLoadedWorkforce;
 
   return (
     <div className="space-y-4">
@@ -356,7 +375,7 @@ export function WorkforcePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && (workforce?.pendingHiringArrivals.length ?? 0) === 0 ? (
+              {showInitialSkeleton && (workforce?.pendingHiringArrivals.length ?? 0) === 0 ? (
                 <TableSkeletonRows columns={4} />
               ) : null}
               {workforce?.pendingHiringArrivals.map((row) => (
@@ -369,7 +388,7 @@ export function WorkforcePage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && (workforce?.pendingHiringArrivals.length ?? 0) === 0 ? (
+              {!showInitialSkeleton && (workforce?.pendingHiringArrivals.length ?? 0) === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No pending hiring arrivals.

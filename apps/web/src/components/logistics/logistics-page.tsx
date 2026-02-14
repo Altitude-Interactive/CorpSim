@@ -84,12 +84,16 @@ export function LogisticsPage() {
     useState<(typeof SHIPMENT_TABLE_PAGE_SIZE_OPTIONS)[number]>(20);
   const [deliveredPage, setDeliveredPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedShipments, setHasLoadedShipments] = useState(false);
   const [isLoadingArbitrage, setIsLoadingArbitrage] = useState(false);
+  const [hasLoadedArbitrage, setHasLoadedArbitrage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analyticsByRegion, setAnalyticsByRegion] = useState<Record<string, MarketAnalyticsSummary | null>>({});
   const deliveredIdsRef = useRef<Set<string>>(new Set());
   const didPrimeDeliveredRef = useRef(false);
+  const hasLoadedShipmentsRef = useRef(false);
+  const hasLoadedArbitrageRef = useRef(false);
   const deferredItemSearch = useDeferredValue(itemSearch);
 
   const loadCatalog = useCallback(async () => {
@@ -139,13 +143,23 @@ export function LogisticsPage() {
     }
   }, [activeCompany?.regionId, activeCompanyId]);
 
-  const loadShipments = useCallback(async () => {
+  const loadShipments = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedShipmentsRef.current;
     if (!activeCompanyId) {
       setShipments([]);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedShipmentsRef.current) {
+        hasLoadedShipmentsRef.current = true;
+        setHasLoadedShipments(true);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (showLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const rows = await listShipments({
         companyId: activeCompanyId,
@@ -156,17 +170,33 @@ export function LogisticsPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load shipments");
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedShipmentsRef.current) {
+        hasLoadedShipmentsRef.current = true;
+        setHasLoadedShipments(true);
+      }
     }
   }, [activeCompanyId]);
 
-  const loadArbitrage = useCallback(async () => {
+  const loadArbitrage = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedArbitrageRef.current;
     if (!itemId || regions.length === 0) {
       setAnalyticsByRegion({});
+      if (showLoadingState) {
+        setIsLoadingArbitrage(false);
+      }
+      if (!hasLoadedArbitrageRef.current) {
+        hasLoadedArbitrageRef.current = true;
+        setHasLoadedArbitrage(true);
+      }
       return;
     }
 
-    setIsLoadingArbitrage(true);
+    if (showLoadingState) {
+      setIsLoadingArbitrage(true);
+    }
     try {
       const entries = await Promise.all(
         regions.map(async (region) => {
@@ -180,7 +210,13 @@ export function LogisticsPage() {
       );
       setAnalyticsByRegion(Object.fromEntries(entries));
     } finally {
-      setIsLoadingArbitrage(false);
+      if (showLoadingState) {
+        setIsLoadingArbitrage(false);
+      }
+      if (!hasLoadedArbitrageRef.current) {
+        hasLoadedArbitrageRef.current = true;
+        setHasLoadedArbitrage(true);
+      }
     }
   }, [itemId, regions]);
 
@@ -189,11 +225,11 @@ export function LogisticsPage() {
   }, [loadCatalog]);
 
   useEffect(() => {
-    void loadShipments();
+    void loadShipments({ showLoadingState: !hasLoadedShipmentsRef.current });
   }, [loadShipments]);
 
   useEffect(() => {
-    void loadArbitrage();
+    void loadArbitrage({ showLoadingState: !hasLoadedArbitrageRef.current });
   }, [loadArbitrage]);
 
   useEffect(() => {
@@ -203,7 +239,7 @@ export function LogisticsPage() {
     }
 
     const timeout = setTimeout(() => {
-      void loadShipments();
+      void loadShipments({ showLoadingState: false });
     }, SHIPMENT_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
@@ -215,7 +251,7 @@ export function LogisticsPage() {
       return;
     }
     const timeout = setTimeout(() => {
-      void loadArbitrage();
+      void loadArbitrage({ showLoadingState: false });
     }, SHIPMENT_REFRESH_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
   }, [health?.currentTick, loadArbitrage]);
@@ -361,6 +397,8 @@ export function LogisticsPage() {
     routeGrossSpreadCents !== null && feeCents !== null
       ? routeGrossSpreadCents - BigInt(feeCents)
       : null;
+  const showInitialShipmentsSkeleton = isLoading && !hasLoadedShipments;
+  const showInitialArbitrageSkeleton = isLoadingArbitrage && !hasLoadedArbitrage;
 
   const arbitrageRows = regions
     .slice()
@@ -578,7 +616,7 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingArbitrage && arbitrageRows.length === 0 ? <TableSkeletonRows columns={3} /> : null}
+              {showInitialArbitrageSkeleton && arbitrageRows.length === 0 ? <TableSkeletonRows columns={3} /> : null}
               {arbitrageRows.map((row) => {
                 return (
                   <TableRow key={row.region.id}>
@@ -594,7 +632,7 @@ export function LogisticsPage() {
                   </TableRow>
                 );
               })}
-              {!isLoadingArbitrage && arbitrageRows.length === 0 ? (
+              {!showInitialArbitrageSkeleton && arbitrageRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-muted-foreground">
                     No regions available.
@@ -669,7 +707,7 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && pagedInTransit.length === 0 ? <TableSkeletonRows columns={5} /> : null}
+              {showInitialShipmentsSkeleton && pagedInTransit.length === 0 ? <TableSkeletonRows columns={5} /> : null}
               {pagedInTransit.map((shipment) => (
                 <TableRow key={shipment.id}>
                   <TableCell>
@@ -692,14 +730,14 @@ export function LogisticsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && pagedInTransit.length === 0 ? (
+              {!showInitialShipmentsSkeleton && pagedInTransit.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No shipments in transit.
                   </TableCell>
                 </TableRow>
               ) : null}
-              {!isLoading ? (
+              {!showInitialShipmentsSkeleton ? (
                 <TableFillerRows
                   columns={5}
                   currentRows={Math.max(1, pagedInTransit.length)}
@@ -774,7 +812,7 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && pagedDelivered.length === 0 ? <TableSkeletonRows columns={5} /> : null}
+              {showInitialShipmentsSkeleton && pagedDelivered.length === 0 ? <TableSkeletonRows columns={5} /> : null}
               {pagedDelivered.map((shipment) => (
                 <TableRow key={shipment.id}>
                   <TableCell>
@@ -788,14 +826,14 @@ export function LogisticsPage() {
                   <TableCell className="tabular-nums">{shipment.tickClosed ?? "--"}</TableCell>
                 </TableRow>
               ))}
-              {!isLoading && pagedDelivered.length === 0 ? (
+              {!showInitialShipmentsSkeleton && pagedDelivered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No shipment history yet.
                   </TableCell>
                 </TableRow>
               ) : null}
-              {!isLoading ? (
+              {!showInitialShipmentsSkeleton ? (
                 <TableFillerRows
                   columns={5}
                   currentRows={Math.max(1, pagedDelivered.length)}

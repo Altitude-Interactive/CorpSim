@@ -99,6 +99,7 @@ export function ResearchPage() {
   const [nodes, setNodes] = useState<ResearchNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedResearch, setHasLoadedResearch] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nodeSearch, setNodeSearch] = useState("");
@@ -110,16 +111,26 @@ export function ResearchPage() {
   const deferredNodeSearch = useDeferredValue(nodeSearch);
   const statusByNodeIdRef = useRef<Map<string, ResearchNode["status"]>>(new Map());
   const didPrimeStatusesRef = useRef(false);
+  const hasLoadedResearchRef = useRef(false);
 
-  const loadResearch = useCallback(async (options?: { force?: boolean }) => {
+  const loadResearch = useCallback(async (options?: { force?: boolean; showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedResearchRef.current;
     if (!activeCompanyId) {
       setNodes([]);
       setSelectedNodeId(null);
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedResearchRef.current) {
+        hasLoadedResearchRef.current = true;
+        setHasLoadedResearch(true);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (showLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const rows = await listResearch(activeCompanyId, { force: options?.force });
       setNodes(rows);
@@ -133,12 +144,18 @@ export function ResearchPage() {
     } catch (caught) {
       setError(mapApiError(caught));
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedResearchRef.current) {
+        hasLoadedResearchRef.current = true;
+        setHasLoadedResearch(true);
+      }
     }
   }, [activeCompanyId]);
 
   useEffect(() => {
-    void loadResearch();
+    void loadResearch({ showLoadingState: true });
   }, [loadResearch]);
 
   const nextResearchCompletionTick = useMemo(() => {
@@ -167,7 +184,7 @@ export function ResearchPage() {
     }
 
     const timeout = setTimeout(() => {
-      void loadResearch({ force: true });
+      void loadResearch({ force: true, showLoadingState: false });
     }, RESEARCH_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
@@ -250,6 +267,7 @@ export function ResearchPage() {
   }, [filteredNodes.length, nodePage, nodePageSize]);
 
   const groups = useMemo(() => computeResearchTierGroups(pagedNodes), [pagedNodes]);
+  const showInitialSkeleton = isLoading && !hasLoadedResearch;
   const statusCounts = useMemo(() => {
     return nodes.reduce(
       (acc, node) => {
@@ -466,7 +484,7 @@ export function ResearchPage() {
           groups={groups}
           selectedNodeId={selectedNodeId}
           currentTick={health?.currentTick}
-          isLoading={isLoading}
+          isLoading={showInitialSkeleton}
           onSelect={setSelectedNodeId}
         />
         <ResearchNodeDetails

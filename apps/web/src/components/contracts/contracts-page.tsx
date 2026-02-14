@@ -59,6 +59,7 @@ export function ContractsPage() {
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
   const [contracts, setContracts] = useState<ContractRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedContracts, setHasLoadedContracts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingContractId, setIsSubmittingContractId] = useState<string | null>(null);
   const [fulfillQuantityByContractId, setFulfillQuantityByContractId] = useState<
@@ -67,6 +68,7 @@ export function ContractsPage() {
   const statusByContractIdRef = useRef<Map<string, ContractRecord["status"]>>(new Map());
   const didPrimeStatusesRef = useRef(false);
   const suppressEventSoundUntilRef = useRef(0);
+  const hasLoadedContractsRef = useRef(false);
   const deferredItemSearch = useDeferredValue(itemSearch);
 
   const loadItems = useCallback(async () => {
@@ -88,8 +90,11 @@ export function ContractsPage() {
     setItems(itemRows.filter((item) => unlockedSet.has(item.id)));
   }, [activeCompanyId]);
 
-  const loadContracts = useCallback(async () => {
-    setIsLoading(true);
+  const loadContracts = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedContractsRef.current;
+    if (showLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const rows = await listContracts({
         status: tab === "available" ? "OPEN" : undefined,
@@ -101,16 +106,22 @@ export function ContractsPage() {
     } catch (caught) {
       setError(mapApiError(caught));
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedContractsRef.current) {
+        hasLoadedContractsRef.current = true;
+        setHasLoadedContracts(true);
+      }
     }
   }, [itemFilter, tab]);
 
-  const refreshAll = useCallback(async () => {
-    await Promise.all([loadItems(), loadContracts()]);
+  const refreshAll = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    await Promise.all([loadItems(), loadContracts(options)]);
   }, [loadContracts, loadItems]);
 
   useEffect(() => {
-    void refreshAll();
+    void refreshAll({ showLoadingState: !hasLoadedContractsRef.current });
   }, [refreshAll]);
 
   useEffect(() => {
@@ -120,7 +131,7 @@ export function ContractsPage() {
     }
 
     const timeout = setTimeout(() => {
-      void loadContracts();
+      void loadContracts({ showLoadingState: false });
     }, CONTRACTS_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
@@ -220,6 +231,7 @@ export function ContractsPage() {
       ),
     [contracts, activeCompanyId]
   );
+  const showInitialSkeleton = isLoading && !hasLoadedContracts;
 
   const handleAccept = async (contract: ContractRecord) => {
     if (!activeCompanyId) {
@@ -362,7 +374,7 @@ export function ContractsPage() {
         <AvailableContractsTable
           contracts={availableContracts}
           currentTick={health?.currentTick}
-          isLoading={isLoading}
+          isLoading={showInitialSkeleton}
           isSubmittingContractId={isSubmittingContractId}
           onAccept={(contract) => {
             void handleAccept(contract);
@@ -373,7 +385,7 @@ export function ContractsPage() {
       {tab === "my" ? (
         <MyContractsTable
           contracts={myContracts}
-          isLoading={isLoading}
+          isLoading={showInitialSkeleton}
           isSubmittingContractId={isSubmittingContractId}
           fulfillQuantityByContractId={fulfillQuantityByContractId}
           onFulfillQuantityChange={(contractId, value) =>
@@ -386,7 +398,7 @@ export function ContractsPage() {
       ) : null}
 
       {tab === "history" ? (
-        <ContractsHistoryTable contracts={historyContracts} isLoading={isLoading} />
+        <ContractsHistoryTable contracts={historyContracts} isLoading={showInitialSkeleton} />
       ) : null}
     </div>
   );

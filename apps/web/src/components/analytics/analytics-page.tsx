@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -62,8 +62,10 @@ export function AnalyticsPage() {
   const [candles, setCandles] = useState<MarketCandle[]>([]);
   const [summary, setSummary] = useState<MarketAnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedAnalytics, setHasLoadedAnalytics] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const deferredItemSearch = useDeferredValue(itemSearch);
+  const hasLoadedAnalyticsRef = useRef(false);
 
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedItemId) ?? null,
@@ -129,15 +131,24 @@ export function AnalyticsPage() {
     });
   }, [activeCompany?.id, activeCompany?.regionId]);
 
-  const loadAnalytics = useCallback(async () => {
+  const loadAnalytics = useCallback(async (options?: { showLoadingState?: boolean }) => {
+    const showLoadingState = options?.showLoadingState ?? !hasLoadedAnalyticsRef.current;
     if (!selectedItemId || !selectedRegionId) {
       setCandles([]);
       setSummary(null);
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedAnalyticsRef.current) {
+        hasLoadedAnalyticsRef.current = true;
+        setHasLoadedAnalytics(true);
+      }
       return;
     }
 
-    setIsLoading(true);
+    if (showLoadingState) {
+      setIsLoading(true);
+    }
     try {
       const [candleRows, summaryRow] = await Promise.all([
         listMarketCandles({
@@ -154,7 +165,13 @@ export function AnalyticsPage() {
     } catch (caught) {
       setError(mapApiError(caught));
     } finally {
-      setIsLoading(false);
+      if (showLoadingState) {
+        setIsLoading(false);
+      }
+      if (!hasLoadedAnalyticsRef.current) {
+        hasLoadedAnalyticsRef.current = true;
+        setHasLoadedAnalytics(true);
+      }
     }
   }, [pointLimit, selectedItemId, selectedRegionId]);
 
@@ -169,7 +186,7 @@ export function AnalyticsPage() {
   }, [activeCompany?.regionId]);
 
   useEffect(() => {
-    void loadAnalytics();
+    void loadAnalytics({ showLoadingState: !hasLoadedAnalyticsRef.current });
   }, [loadAnalytics]);
 
   useEffect(() => {
@@ -178,11 +195,12 @@ export function AnalyticsPage() {
     }
 
     const timeout = setTimeout(() => {
-      void loadAnalytics();
+      void loadAnalytics({ showLoadingState: false });
     }, ANALYTICS_REFRESH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
   }, [health?.currentTick, loadAnalytics, selectedItemId, selectedRegionId]);
+  const showInitialSkeleton = isLoading && !hasLoadedAnalytics;
 
   return (
     <div className="space-y-4">
@@ -251,7 +269,7 @@ export function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      <AnalyticsKpiCards summary={summary} isLoading={isLoading} />
+      <AnalyticsKpiCards summary={summary} isLoading={showInitialSkeleton} />
       <CandleVolumeChart candles={candles} />
 
       <Card>
@@ -273,7 +291,7 @@ export function AnalyticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && candles.length === 0 ? <TableSkeletonRows columns={8} /> : null}
+              {showInitialSkeleton && candles.length === 0 ? <TableSkeletonRows columns={8} /> : null}
               {candles
                 .slice()
                 .reverse()
@@ -292,7 +310,7 @@ export function AnalyticsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              {!isLoading && candles.length === 0 ? (
+              {!showInitialSkeleton && candles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No candle history yet for this item.
