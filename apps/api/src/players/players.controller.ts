@@ -22,8 +22,6 @@ export class PlayersController {
 
   @Get("registry")
   async registry() {
-    return {
-      players: await this.playersService.listPlayerRegistry()
-    };
+    return this.playersService.listPlayerRegistry();
   }
 }
