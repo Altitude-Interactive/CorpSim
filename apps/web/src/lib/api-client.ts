@@ -79,7 +79,14 @@ function sanitizeApiErrorMessage(status: number, rawMessage: string): string {
     return "This contract item is outside your current company focus.";
   }
   if (normalized.includes("company focus can be changed every")) {
-    return message;
+    const remainingHoursMatch = message.match(/;\s*(\d+)\s+hours?\s+remaining/i);
+    if (remainingHoursMatch) {
+      const remainingHours = Number.parseInt(remainingHoursMatch[1] ?? "", 10);
+      if (Number.isInteger(remainingHours) && remainingHours > 0) {
+        return `You recently changed company focus. Try again in about ${remainingHours} hour${remainingHours === 1 ? "" : "s"}.`;
+      }
+    }
+    return "You recently changed company focus. Please wait before changing it again.";
   }
   if (normalized.includes("not found")) {
     if (normalized.includes("company")) {

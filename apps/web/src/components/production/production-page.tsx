@@ -88,7 +88,8 @@ export function ProductionPage() {
   const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
   const [isPageSizePickerOpen, setIsPageSizePickerOpen] = useState(false);
   const [isCancellingJobId, setIsCancellingJobId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [focusError, setFocusError] = useState<string | null>(null);
+  const [productionError, setProductionError] = useState<string | null>(null);
   const deferredRecipeSearch = useDeferredValue(recipeSearch);
   const completedJobIdsRef = useRef<Set<string>>(new Set());
   const didPrimeCompletedRef = useRef(false);
@@ -206,8 +207,9 @@ export function ProductionPage() {
         }
         return rows[0]?.id ?? "";
       });
+      setProductionError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Failed to load production recipes");
+      setProductionError(caught instanceof Error ? caught.message : "Failed to load production recipes");
     } finally {
       if (showLoadingState) {
         setIsLoadingRecipes(false);
@@ -253,9 +255,9 @@ export function ProductionPage() {
 
       setRunningJobs(running);
       setCompletedJobs(completed);
-      setError(null);
+      setProductionError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Failed to load production jobs");
+      setProductionError(caught instanceof Error ? caught.message : "Failed to load production jobs");
     } finally {
       if (showLoadingState) {
         setIsLoadingJobs(false);
@@ -272,9 +274,9 @@ export function ProductionPage() {
     try {
       const rows = await listCompanySpecializations();
       setSpecializationOptions(rows);
-      setError(null);
+      setFocusError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Failed to load company focus options");
+      setFocusError(caught instanceof Error ? caught.message : "Failed to load company focus options");
     } finally {
       setIsLoadingSpecializations(false);
     }
@@ -288,7 +290,7 @@ export function ProductionPage() {
         loadSpecializations()
       ]);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Failed to load production state");
+      setProductionError(caught instanceof Error ? caught.message : "Failed to load production state");
     }
   }, [loadJobs, loadRecipes, loadSpecializations]);
 
@@ -343,7 +345,7 @@ export function ProductionPage() {
 
   const handleSpecializationChange = async (nextSpecialization: string) => {
     if (!activeCompanyId) {
-      setError(UI_COPY.common.selectCompanyFirst);
+      setFocusError(UI_COPY.common.selectCompanyFirst);
       return;
     }
 
@@ -365,10 +367,10 @@ export function ProductionPage() {
         variant: "success"
       });
       play("feedback_success");
-      setError(null);
+      setFocusError(null);
     } catch (caught) {
       const message = mapProductionErrorMessage(caught);
-      setError(message);
+      setFocusError(message);
       showToast({
         title: "Focus update failed",
         description: message,
@@ -383,17 +385,17 @@ export function ProductionPage() {
     event.preventDefault();
 
     if (!activeCompanyId) {
-      setError(UI_COPY.common.selectCompanyFirst);
+      setProductionError(UI_COPY.common.selectCompanyFirst);
       return;
     }
     if (!selectedRecipeId) {
-      setError("Select a recipe first.");
+      setProductionError("Select a recipe first.");
       return;
     }
 
     const quantity = Number.parseInt(quantityInput, 10);
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      setError("Quantity must be a positive integer.");
+      setProductionError("Quantity must be a positive integer.");
       return;
     }
 
@@ -405,7 +407,7 @@ export function ProductionPage() {
         quantity
       });
       play("action_start_production");
-      setError(null);
+      setProductionError(null);
       showToast({
         title: "Production started",
         description: `Started ${quantity} run(s).`,
@@ -415,7 +417,7 @@ export function ProductionPage() {
       await loadJobs({ showLoadingState: false });
     } catch (caught) {
       const message = mapProductionErrorMessage(caught);
-      setError(message);
+      setProductionError(message);
       showToast({
         title: "Production start failed",
         description: message,
@@ -447,7 +449,7 @@ export function ProductionPage() {
       await loadJobs({ showLoadingState: false });
     } catch (caught) {
       const message = mapProductionErrorMessage(caught);
-      setError(message);
+      setProductionError(message);
       showToast({
         title: "Cancel failed",
         description: message,
@@ -519,6 +521,7 @@ export function ProductionPage() {
                   </Command>
                 </PopoverContent>
               </Popover>
+              {focusError ? <p className="text-xs text-red-300">{focusError}</p> : null}
               {activeSpecializationOption ? (
                 <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground">{activeSpecializationOption.label}</p>
@@ -642,7 +645,7 @@ export function ProductionPage() {
                 <Button type="submit" disabled={isSubmitting || !activeCompanyId || !selectedRecipeId}>
                   Start Job
                 </Button>
-                {error ? <p className="text-xs text-red-300">{error}</p> : null}
+                {productionError ? <p className="text-xs text-red-300">{productionError}</p> : null}
               </form>
             </CardContent>
           </Card>
