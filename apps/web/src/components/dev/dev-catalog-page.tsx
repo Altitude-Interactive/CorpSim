@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { ICON_PACK_DEFINITIONS } from "@corpsim/shared";
+import { getIconCatalogItemByCode } from "@corpsim/shared";
 import { ItemLabel } from "@/components/items/item-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -207,14 +207,6 @@ export function DevCatalogPage() {
     return usage;
   }, [snapshot]);
 
-  const iconPackCountBySeries = useMemo(
-    () =>
-      new Map<number, number>(
-        ICON_PACK_DEFINITIONS.map((definition) => [definition.series, definition.count] as const)
-      ),
-    []
-  );
-
   const itemMetaById = useMemo(() => {
     const rows = new Map<string, ItemIconMeta>();
     if (!snapshot) {
@@ -222,27 +214,21 @@ export function DevCatalogPage() {
     }
 
     for (const item of snapshot.items) {
-      const parsed = /^ICON_(\d{2})_(\d{2})$/.exec(item.code);
-      if (!parsed) {
+      const iconCatalogItem = getIconCatalogItemByCode(item.code);
+      if (!iconCatalogItem) {
         rows.set(item.id, { source: "BASE", series: null, tier: null });
         continue;
       }
 
-      const series = Number.parseInt(parsed[1], 10);
-      const index = Number.parseInt(parsed[2], 10);
-      const count = iconPackCountBySeries.get(series) ?? 40;
-      const tierSize = Math.max(1, Math.ceil(count / 4));
-      const tier = Math.max(1, Math.min(4, Math.floor((index - 1) / tierSize) + 1));
-
       rows.set(item.id, {
         source: "ICON",
-        series,
-        tier
+        series: iconCatalogItem.series,
+        tier: iconCatalogItem.tier
       });
     }
 
     return rows;
-  }, [iconPackCountBySeries, snapshot]);
+  }, [snapshot]);
 
   const itemRows = useMemo(() => {
     if (!snapshot) {

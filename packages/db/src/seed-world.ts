@@ -529,7 +529,11 @@ function resolveIconPrice(itemKey: string): bigint {
 }
 
 function isRecipeAutoUnlocked(recipeCode: string): boolean {
-  return recipeCode === "SMELT_IRON" || recipeCode === "SMELT_COPPER" || recipeCode.startsWith("FABRICATE_ICON_");
+  return (
+    recipeCode === "SMELT_IRON" ||
+    recipeCode === "SMELT_COPPER" ||
+    recipeCode.startsWith("FABRICATE_CP_")
+  );
 }
 
 export async function seedWorld(

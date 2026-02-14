@@ -1,3 +1,5 @@
+import { resolveIconItemAssetSrcByCode } from "@corpsim/shared";
+
 export const UNKNOWN_ITEM_ICON_SRC = "/assets/items/unknown.png";
 
 const ITEM_ICON_BY_CODE: Record<string, string> = {
@@ -35,8 +37,9 @@ export function getItemIconSrc(itemCode: string | null | undefined): string {
     return ITEM_ICON_BY_CODE[itemCode];
   }
 
-  if (/^ICON_\d{2}_\d{2}$/.test(itemCode)) {
-    return `/assets/items/${itemCode.toLowerCase()}.png`;
+  const generatedIconSrc = resolveIconItemAssetSrcByCode(itemCode);
+  if (generatedIconSrc) {
+    return generatedIconSrc;
   }
 
   return UNKNOWN_ITEM_ICON_SRC;
