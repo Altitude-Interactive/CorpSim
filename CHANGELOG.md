@@ -91,3 +91,8 @@ All notable changes to CorpSim are documented in this file.
 
 ### Minor
 - [web] Add hidden public player registry page with company holdings and item codes
+
+## 0.5.1 - 2026-02-14
+
+### Patch
+- [api] Fix player registry endpoint payload shape for catalog
