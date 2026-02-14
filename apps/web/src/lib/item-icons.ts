@@ -2,6 +2,13 @@ import { resolveIconItemAssetSrcByCode } from "@corpsim/shared";
 
 export const UNKNOWN_ITEM_ICON_SRC = "/assets/items/unknown.png";
 
+export type ItemIconResolutionStatus = "mapped" | "generated" | "unknown";
+
+export interface ItemIconResolution {
+  src: string;
+  status: ItemIconResolutionStatus;
+}
+
 const ITEM_ICON_BY_CODE: Record<string, string> = {
   IRON_ORE: "/assets/items/iron_ore.png",
   COAL: "/assets/items/coal.png",
@@ -28,19 +35,23 @@ const ITEM_ICON_BY_CODE: Record<string, string> = {
   CYBERNETIC_SUITE: "/assets/items/cybernetic_suite.png"
 };
 
-export function getItemIconSrc(itemCode: string | null | undefined): string {
+export function resolveItemIcon(itemCode: string | null | undefined): ItemIconResolution {
   if (!itemCode) {
-    return UNKNOWN_ITEM_ICON_SRC;
+    return { src: UNKNOWN_ITEM_ICON_SRC, status: "unknown" };
   }
 
   if (ITEM_ICON_BY_CODE[itemCode]) {
-    return ITEM_ICON_BY_CODE[itemCode];
+    return { src: ITEM_ICON_BY_CODE[itemCode], status: "mapped" };
   }
 
   const generatedIconSrc = resolveIconItemAssetSrcByCode(itemCode);
   if (generatedIconSrc) {
-    return generatedIconSrc;
+    return { src: generatedIconSrc, status: "generated" };
   }
 
-  return UNKNOWN_ITEM_ICON_SRC;
+  return { src: UNKNOWN_ITEM_ICON_SRC, status: "unknown" };
+}
+
+export function getItemIconSrc(itemCode: string | null | undefined): string {
+  return resolveItemIcon(itemCode).src;
 }
