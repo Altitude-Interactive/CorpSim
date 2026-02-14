@@ -1,5 +1,6 @@
-version: "3.9"
-
+# Docker Compose configuration for Corpsim services: PostgreSQL and Redis
+# This configuration is intended for local development and testing purposes.
+# It sets up PostgreSQL and Redis with appropriate environment variables, volumes, and health checks.
 services:
   postgres:
     image: postgres:16
