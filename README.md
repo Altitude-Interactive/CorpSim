@@ -1,140 +1,171 @@
 # CorpSim
 
-CorpSim is a SimCompanies-inspired economic management webgame focused on a persistent economy, ERP-style dashboard interaction, and simulated companies (bots).
+[![Verify](https://img.shields.io/github/actions/workflow/status/BENZOOgataga/CorpSim/verify.yml?branch=main&label=verify)](https://github.com/BENZOOgataga/CorpSim/actions/workflows/verify.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/BENZOOgataga/CorpSim/release.yml?branch=main&label=release)](https://github.com/BENZOOgataga/CorpSim/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/BENZOOgataga/CorpSim?sort=semver)](https://github.com/BENZOOgataga/CorpSim/releases)
+[![Node 20+](https://img.shields.io/badge/node-20.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm 9+](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Security Policy](https://img.shields.io/badge/security-policy-blue)](./SECURITY.md)
 
-## Documentation
+CorpSim is a solo-first, SimCompanies-inspired management and economy webgame.  
+It runs a persistent simulation with AI/bot companies, market dynamics, regional flows, and an ERP-style interface.
 
-* Project rules and architecture: `AGENTS.md`
-* UI design guidelines: `docs/design/DESIGN_GUIDELINES.md`
+## Contents
+
+- [What You Get](#what-you-get)
+- [Tech Stack](#tech-stack)
+- [Monorepo Layout](#monorepo-layout)
+- [Quick Start](#quick-start)
+- [Run Services](#run-services)
+- [Simulation Commands](#simulation-commands)
+- [Quality Gates](#quality-gates)
+- [Key Endpoints](#key-endpoints)
+- [Environment Notes](#environment-notes)
+- [Documentation](#documentation)
+- [Security](#security)
+- [Release Workflow](#release-workflow)
+
+## What You Get
+
+- Authoritative backend simulation (`api` + `worker`).
+- Persistent world tick engine with bots and market participation.
+- Regional market and company operations flows.
+- Next.js web client with keyboard controls, overlay manager, and sound feedback.
+- Dockerized local infrastructure (`postgres`, `redis`).
 
 ## Tech Stack
 
-* Node.js + TypeScript
-* PostgreSQL + Prisma
-* Redis + BullMQ
-* Next.js + ShadCN UI (dark theme only)
-* Docker Compose / Dokploy deployment
+- TypeScript + Node.js
+- NestJS (API)
+- Next.js (web)
+- BullMQ + Redis (simulation jobs)
+- PostgreSQL + Prisma (database/migrations)
+- pnpm workspaces monorepo
 
-## Repository Structure
+## Monorepo Layout
 
+```text
+apps/
+  api/      # authoritative API
+  web/      # frontend client
+  worker/   # simulation + bots runtime
+packages/
+  db/       # prisma schema, migrations, seed
+  shared/   # shared contracts/types
+  sim/      # simulation/domain packages
+docs/       # architecture, design, ADRs, project docs
+scripts/    # helper scripts (sim, release, maintenance)
 ```
-apps/       # frontend, API, worker
-packages/   # shared libraries and database
-scripts/    # simulation helpers
-docs/       # project documentation
-```
 
-## Local Setup
+## Quick Start
 
-```
+1. Install dependencies:
+
+```bash
 pnpm install
+```
+
+2. Create your local environment file:
+
+```bash
 cp .env.example .env
 ```
 
-Start infrastructure if needed:
+PowerShell:
 
-```
-docker compose up -d
+```powershell
+Copy-Item .env.example .env
 ```
 
-## Run API (Local)
+3. Start local infra:
 
+```bash
+docker compose up -d postgres redis
 ```
-pnpm install
+
+4. Generate Prisma client and apply migrations:
+
+```bash
 pnpm -C packages/db generate
 pnpm -C packages/db migrate:deploy
+```
+
+5. Seed initial simulation data:
+
+```bash
 pnpm sim:seed
-pnpm api:dev
 ```
 
 Use `pnpm sim:reset` only when you intentionally want to wipe and reseed simulation progress.
 
-API endpoint base URL is env-driven via `API_URL` and listens on `PORT` or `API_PORT` (required). Health check route: `GET /health`.
+## Run Services
 
-## Run Web (Local)
+Run each in its own terminal:
 
-```
+```bash
+pnpm api:dev
+pnpm worker:dev
 pnpm web:dev
 ```
 
-Web port is env-driven via `WEB_PORT` or `PORT` (required), and API base URL is read from `NEXT_PUBLIC_API_URL` (required).
-For logistics fee preview in web UI, set `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS` and `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS` to match API env.
+Default local ports from `.env.example`:
 
-## Run Worker (Local)
+- API: `http://localhost:4310`
+- Web: `http://localhost:4311`
 
-```
-pnpm worker:dev
-```
+## Simulation Commands
 
-Run a single batch and exit:
+- `pnpm sim:advance --ticks <N>`: advance simulation by `N` ticks.
+- `pnpm sim:seed`: seed initial world data.
+- `pnpm sim:stats`: quick simulation health snapshot.
+- `pnpm sim:reset`: destructive reset (dev-only).
 
-```
-pnpm worker:once -- --ticks 3
-```
+## Quality Gates
 
-Worker configuration env knobs:
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm verify`
+- `pnpm verify:full`
 
-* `TICK_INTERVAL_MS` (default `60000`)
-* `SIMULATION_SPEED` (default `1`)
-* `MAX_TICKS_PER_RUN` (default `10`)
-* `INVARIANTS_CHECK_EVERY_TICKS` (default `10`)
-* `ON_INVARIANT_VIOLATION` (`stop` | `pause_bots` | `log_only`, default `stop`)
-* `BOT_ENABLED` (default `true`)
-* `BOT_COUNT` (default `25`)
-* `BOT_ITEMS` (default `IRON_ORE,IRON_INGOT,HAND_TOOLS`)
-* `BOT_SPREAD_BPS` (default `500`)
-* `BOT_MAX_NOTIONAL_PER_TICK_CENTS` (default `50000`)
-* `CONTRACTS_PER_TICK` (default `2`)
-* `CONTRACT_TTL_TICKS` (default `50`)
-* `CONTRACT_ITEM_CODES` (default all seeded items)
-* `CONTRACT_PRICE_BAND_BPS` (default `500`)
-* `SHIPMENT_BASE_FEE_CENTS` (default `250`)
-* `SHIPMENT_FEE_PER_UNIT_CENTS` (default `15`)
-* `REDIS_HOST` (default `localhost`)
-* `REDIS_PORT` (default `6379`)
-* `REDIS_DB` (default `0`)
-* `REDIS_USERNAME` (optional)
-* `REDIS_PASSWORD` (optional)
-* `REDIS_TLS` (`true` | `false`, default `false`)
-* `BULLMQ_PREFIX` (default `corpsim`)
-* `BULLMQ_QUEUE_NAME` (default `simulation.tick`)
-* `BULLMQ_SCHEDULER_ID` (default `simulation-tick-scheduler`)
-* `BULLMQ_JOB_NAME` (default `simulation.tick.process`)
-* `BULLMQ_SCHEDULER_ENABLED` (`true` | `false`, default `true`)
-* `BULLMQ_WORKER_ENABLED` (`true` | `false`, default `true`)
-* `BULLMQ_WORKER_CONCURRENCY` (default `1`)
-* `BULLMQ_JOB_ATTEMPTS` (default `1`)
-* `BULLMQ_JOB_BACKOFF_MS` (default `1000`)
-* `BULLMQ_REMOVE_ON_COMPLETE` (default `500`)
-* `BULLMQ_REMOVE_ON_FAIL` (default `1000`)
+## Key Endpoints
 
-`/v1/world/health` includes invariant issues and always caps returned issues to 50 max.
+- `GET /health`
+- `GET /health/maintenance`
+- `GET /v1/world/health`
+- `GET /meta/version`
 
-Regional Markets v2: market orders, trades, and candles are region-scoped (`regionId`). Inventory and production remain region-scoped, and logistics (`/v1/shipments`) is the transport path between regions.
+## Environment Notes
 
-Market API region behavior:
+Important env vars you will commonly touch:
 
-* `GET /v1/market/orders` and `GET /v1/market/trades` accept optional `regionId` (defaults to all regions).
-* `GET /v1/market/candles` and `GET /v1/market/analytics/summary` require `regionId`.
-* `POST /v1/market/orders` accepts optional `regionId`; if omitted, it uses `company.regionId`. Remote-region placement is rejected (`403`).
+- `DATABASE_URL`
+- `REDIS_HOST`, `REDIS_PORT`
+- `API_PORT`, `WEB_PORT`
+- `NEXT_PUBLIC_API_URL`
+- `ENFORCE_SCHEMA_READINESS`
+- `COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS`
+- `NEXT_PUBLIC_COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS`
 
-## Temporary Player Identity (Pre-Auth)
+See `.env.example` for the full list.
 
-CorpSim currently uses a temporary identity model while full auth is not yet implemented.
+## Documentation
 
-* API identity is resolved from `X-Player-Handle`.
-* If the header is missing, API falls back to `PLAYER`.
-* Ownership checks are enforced for company-scoped player actions (market writes, production writes, inventory reads).
-* This is a pre-auth phase foundation, not a final authentication system.
+- Agent/development rules: `docs/agents/AGENTS.md`
+- Root agent entrypoint: `AGENTS.md`
+- UI design rules: `docs/design/DESIGN_GUIDELINES.md`
+- ADR: `docs/adr/0001-worker-runtime-bullmq.md`
+- Project docs index: `docs/README.md`
 
-## Ledger Semantics
+## Security
 
-CorpSim uses a total-cash model:
+Security reporting process is documented in `SECURITY.md`.
 
-* `Company.cashCents` is total cash.
-* `Company.reservedCashCents` is cash reserved for open BUY orders.
-* `LedgerEntry.deltaCashCents` records changes to `cashCents` only.
-* `LedgerEntry.deltaReservedCashCents` records changes to `reservedCashCents` only.
-* `LedgerEntry.balanceAfterCents` is the post-event `cashCents` balance.
+## Release Workflow
 
-Refer to AGENTS.md for development rules and architecture decisions.
+- Add release entries in `.releases/unreleased/` for non-read-only changes.
+- Do not bump `package.json` for normal commits.
+- Cut version in dedicated release commit only: `pnpm release:cut`.
+- CI workflows:
+  - Verify: `.github/workflows/verify.yml`
+  - Release: `.github/workflows/release.yml`
