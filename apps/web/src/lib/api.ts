@@ -22,6 +22,7 @@ import type {
   MarketTradeFilters,
   PlaceMarketOrderInput,
   PlayerIdentity,
+  PlayerRegistryEntry,
   ProductionJob,
   ProductionJobFilters,
   ProductionRecipe,
@@ -58,6 +59,7 @@ import {
   parseMarketOrders,
   parseMarketTrade,
   parsePlayerIdentity,
+  parsePlayerRegistryEntry,
   parseProductionJob,
   parseProductionRecipe,
   parseRegionSummary,
@@ -148,6 +150,12 @@ export async function getMePlayer(): Promise<PlayerIdentity> {
 export async function listMyCompanies(): Promise<CompanySummary[]> {
   return fetchJson("/v1/players/me/companies", (value) =>
     readArray(value, "companies").map(parseCompanySummary)
+  );
+}
+
+export async function listPlayerRegistry(): Promise<PlayerRegistryEntry[]> {
+  return fetchJson("/v1/players/registry", (value) =>
+    readArray(value, "players").map(parsePlayerRegistryEntry)
   );
 }
 

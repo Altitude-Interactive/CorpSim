@@ -24,7 +24,8 @@ const TITLES: Record<string, string> = {
   "/contracts": UI_COPY.modules.contracts,
   "/finance": UI_COPY.modules.finance,
   "/analytics": UI_COPY.modules.analytics,
-  "/world": UI_COPY.modules.world
+  "/world": UI_COPY.modules.world,
+  "/players/catalog": "Player Registry"
 };
 
 export function TopBar() {

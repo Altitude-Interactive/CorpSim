@@ -16,6 +16,9 @@ import type {
   MarketOrder,
   MarketTrade,
   PlayerIdentity,
+  PlayerRegistryCompany,
+  PlayerRegistryEntry,
+  PlayerRegistryItemHolding,
   ProductionJob,
   ProductionJobStatus,
   ProductionRecipe,
@@ -141,6 +144,52 @@ export function parsePlayerIdentity(value: unknown): PlayerIdentity {
     handle: readString(value.handle, "handle"),
     createdAt: readString(value.createdAt, "createdAt"),
     updatedAt: readString(value.updatedAt, "updatedAt")
+  };
+}
+
+export function parsePlayerRegistryItemHolding(value: unknown): PlayerRegistryItemHolding {
+  if (!isRecord(value)) {
+    throw new Error("Invalid player registry item holding");
+  }
+
+  return {
+    itemId: readString(value.itemId, "itemId"),
+    itemCode: readString(value.itemCode, "itemCode"),
+    itemName: readString(value.itemName, "itemName"),
+    quantity: readNumber(value.quantity, "quantity"),
+    reservedQuantity: readNumber(value.reservedQuantity, "reservedQuantity")
+  };
+}
+
+export function parsePlayerRegistryCompany(value: unknown): PlayerRegistryCompany {
+  if (!isRecord(value)) {
+    throw new Error("Invalid player registry company");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    code: readString(value.code, "code"),
+    name: readString(value.name, "name"),
+    isBot: readBoolean(value.isBot, "isBot"),
+    cashCents: readString(value.cashCents, "cashCents"),
+    regionId: readString(value.regionId, "regionId"),
+    regionCode: readString(value.regionCode, "regionCode"),
+    regionName: readString(value.regionName, "regionName"),
+    itemHoldings: readArray(value.itemHoldings, "itemHoldings").map(parsePlayerRegistryItemHolding)
+  };
+}
+
+export function parsePlayerRegistryEntry(value: unknown): PlayerRegistryEntry {
+  if (!isRecord(value)) {
+    throw new Error("Invalid player registry entry");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    handle: readString(value.handle, "handle"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt"),
+    companies: readArray(value.companies, "companies").map(parsePlayerRegistryCompany)
   };
 }
 

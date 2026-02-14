@@ -56,6 +56,34 @@ export interface PlayerIdentity {
   updatedAt: string;
 }
 
+export interface PlayerRegistryItemHolding {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  quantity: number;
+  reservedQuantity: number;
+}
+
+export interface PlayerRegistryCompany {
+  id: string;
+  code: string;
+  name: string;
+  isBot: boolean;
+  cashCents: string;
+  regionId: string;
+  regionCode: string;
+  regionName: string;
+  itemHoldings: PlayerRegistryItemHolding[];
+}
+
+export interface PlayerRegistryEntry {
+  id: string;
+  handle: string;
+  createdAt: string;
+  updatedAt: string;
+  companies: PlayerRegistryCompany[];
+}
+
 export interface InventoryRow {
   itemId: string;
   regionId: string;

@@ -19,4 +19,11 @@ export class PlayersController {
   async myCompanies(@CurrentPlayerHandle() playerHandle: string) {
     return this.playersService.listCurrentPlayerCompanies(playerHandle);
   }
+
+  @Get("registry")
+  async registry() {
+    return {
+      players: await this.playersService.listPlayerRegistry()
+    };
+  }
 }
