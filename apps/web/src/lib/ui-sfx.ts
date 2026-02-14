@@ -261,10 +261,7 @@ export class UiSfxManager {
     }
 
     if (!this.isUnlocked) {
-      const unlocked = await this.unlock();
-      if (!unlocked) {
-        return;
-      }
+      return;
     }
 
     const definition = SOUND_DEFINITIONS[id];
