@@ -294,7 +294,7 @@ export async function setCompanySpecialization(
       const remainingHours = Math.max(1, Math.ceil(remainingMs / (60 * 60 * 1000)));
       const remainingHoursLabel = remainingHours === 1 ? "hour" : "hours";
       throw new DomainInvariantError(
-        `company focus can be changed every ${COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} real hours; ` +
+        `company focus can be changed every ${COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} hours; ` +
           `${remainingHours} ${remainingHoursLabel} remaining (next change at ${nextChangeAt.toISOString()})`
       );
     }

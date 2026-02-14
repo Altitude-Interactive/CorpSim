@@ -471,7 +471,7 @@ export function ProductionPage() {
                 Pick one focus for this company. It decides which products this company can make and sell.
               </p>
               <p className="text-xs text-muted-foreground">
-                You can switch focus once every {COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} real hours.
+                You can switch focus once every {COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_HOURS} hours.
               </p>
               <Popover open={isFocusPickerOpen} onOpenChange={setIsFocusPickerOpen}>
                 <PopoverTrigger asChild>
