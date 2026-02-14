@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { TableFillerRows } from "@/components/ui/table-filler-rows";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -190,9 +191,10 @@ export function InventoryPage() {
               </label>
             </div>
           </div>
-          {deferredSearch !== search ? (
-            <p className="text-xs text-muted-foreground">Updating inventory search...</p>
-          ) : null}
+          <DeferredSearchStatus
+            isUpdating={deferredSearch !== search}
+            text="Updating inventory search..."
+          />
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <p>
               Showing {rangeLabel} of {filteredRows.length} rows ({rows.length} total)

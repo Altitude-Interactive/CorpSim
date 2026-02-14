@@ -6,6 +6,7 @@ import { ItemLabel } from "@/components/items/item-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -792,7 +793,7 @@ export function DevCatalogPage() {
             <p>
               Showing {itemRangeLabel} of {filteredItems.length} filtered items ({snapshot.items.length} total)
             </p>
-            {deferredItemSearch !== itemSearch ? <p>Updating results...</p> : null}
+            <DeferredSearchStatus isUpdating={deferredItemSearch !== itemSearch} />
             <div className="flex items-center gap-2">
               <Button
                 type="button"

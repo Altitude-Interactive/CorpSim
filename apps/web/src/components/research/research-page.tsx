@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { useToast } from "@/components/ui/toast";
 import {
   ApiClientError,
@@ -432,7 +433,7 @@ export function ResearchPage() {
             <p>
               Showing {nodeRangeLabel} of {filteredNodes.length} filtered initiatives ({nodes.length} total)
             </p>
-            {deferredNodeSearch !== nodeSearch ? <p>Updating results...</p> : null}
+            <DeferredSearchStatus isUpdating={deferredNodeSearch !== nodeSearch} />
             <div className="flex items-center gap-2">
               <Button
                 type="button"

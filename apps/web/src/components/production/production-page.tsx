@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
@@ -433,7 +434,7 @@ export function ProductionPage() {
               <p>
                 Showing {recipeRangeLabel} of {filteredRecipeRows.length} filtered recipes ({recipes.length} total)
               </p>
-              {deferredRecipeSearch !== recipeSearch ? <p>Updating results...</p> : null}
+              <DeferredSearchStatus isUpdating={deferredRecipeSearch !== recipeSearch} />
               <div className="flex items-center gap-2">
                 <Select
                   value={String(recipePageSize)}

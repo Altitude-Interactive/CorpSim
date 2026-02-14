@@ -6,6 +6,7 @@ import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItemLabel } from "@/components/items/item-label";
+import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableFillerRows } from "@/components/ui/table-filler-rows";
@@ -127,7 +128,7 @@ export function OrderBookCard({
           <p>
             Showing {rangeLabel} of {filteredOrders.length} rows ({orders.length} total)
           </p>
-          {deferredSearch !== search ? <p>Updating results...</p> : null}
+          <DeferredSearchStatus isUpdating={deferredSearch !== search} />
           <div className="flex items-center gap-2">
             <Button
               type="button"

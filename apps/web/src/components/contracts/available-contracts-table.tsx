@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItemLabel } from "@/components/items/item-label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DeferredSearchStatus } from "@/components/ui/deferred-search-status";
 import { TableFillerRows } from "@/components/ui/table-filler-rows";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -130,7 +131,7 @@ export function AvailableContractsTable({
           <p>
             Showing {rangeLabel} of {filteredContracts.length} rows ({contracts.length} total)
           </p>
-          {deferredSearch !== search ? <p>Updating results...</p> : null}
+          <DeferredSearchStatus isUpdating={deferredSearch !== search} />
           <div className="flex items-center gap-2">
             <Button
               type="button"
