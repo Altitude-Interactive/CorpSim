@@ -9,6 +9,7 @@ export const COMPANY_SPECIALIZATION_CODES = [
 ] as const;
 
 export type CompanySpecialization = (typeof COMPANY_SPECIALIZATION_CODES)[number];
+export const COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS = 48;
 
 export const ITEM_CATEGORY_CODES = [
   "FOUNDATIONAL",

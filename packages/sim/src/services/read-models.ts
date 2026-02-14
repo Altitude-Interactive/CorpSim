@@ -6,6 +6,7 @@ import {
   ProductionJobStatus
 } from "@prisma/client";
 import {
+  COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS,
   CompanySpecialization,
   isItemCodeLockedBySpecialization,
   normalizeCompanySpecialization
@@ -263,20 +264,54 @@ export async function setCompanySpecialization(
   }
 
   const specialization = normalizeCompanySpecialization(input.specialization);
+  const [company, world] = await Promise.all([
+    prisma.company.findUnique({
+      where: {
+        id: input.companyId
+      },
+      select: {
+        isPlayer: true,
+        specialization: true,
+        specializationChangedTick: true
+      }
+    }),
+    prisma.worldTickState.findUnique({
+      where: { id: 1 },
+      select: { currentTick: true }
+    })
+  ]);
 
-  const updated = await prisma.company.updateMany({
-    where: {
-      id: input.companyId,
-      isPlayer: true
-    },
-    data: {
-      specialization
-    }
-  });
-
-  if (updated.count !== 1) {
+  if (!company || !company.isPlayer) {
     throw new NotFoundError(`company ${input.companyId} not found`);
   }
+
+  const currentSpecialization = normalizeCompanySpecialization(company.specialization);
+  if (currentSpecialization === specialization) {
+    return getCompanyById(prisma, input.companyId);
+  }
+
+  const currentTick = world?.currentTick ?? 0;
+  const lastChangedTick = company.specializationChangedTick;
+  if (lastChangedTick !== null) {
+    const nextChangeTick = lastChangedTick + COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS;
+    if (currentTick < nextChangeTick) {
+      const remainingTicks = nextChangeTick - currentTick;
+      throw new DomainInvariantError(
+        `company focus can be changed every ${COMPANY_SPECIALIZATION_CHANGE_COOLDOWN_TICKS} ticks; ` +
+          `${remainingTicks} ticks remaining (next change at tick ${nextChangeTick})`
+      );
+    }
+  }
+
+  await prisma.company.update({
+    where: {
+      id: input.companyId
+    },
+    data: {
+      specialization,
+      specializationChangedTick: currentTick
+    }
+  });
 
   return getCompanyById(prisma, input.companyId);
 }

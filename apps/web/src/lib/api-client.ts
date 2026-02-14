@@ -78,6 +78,9 @@ function sanitizeApiErrorMessage(status: number, rawMessage: string): string {
   if (normalized.includes("contract item is not available for company specialization")) {
     return "This contract item is outside your current company focus.";
   }
+  if (normalized.includes("company focus can be changed every")) {
+    return message;
+  }
   if (normalized.includes("not found")) {
     if (normalized.includes("company")) {
       return "The selected company was not found. Refresh and try again.";

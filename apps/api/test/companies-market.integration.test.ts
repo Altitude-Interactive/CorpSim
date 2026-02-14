@@ -238,5 +238,20 @@ describe("companies and market API integration", () => {
 
     expect(afterItems.body.some((item: { code: string }) => item.code === "STEEL_INGOT")).toBe(true);
   });
+
+  it("enforces a cooldown between company focus changes", async () => {
+    await request(app.getHttpServer())
+      .post(`/v1/companies/${playerCompanyId}/specialization`)
+      .send({ specialization: "INDUSTRIAL" })
+      .expect(201);
+
+    const secondResponse = await request(app.getHttpServer())
+      .post(`/v1/companies/${playerCompanyId}/specialization`)
+      .send({ specialization: "BIOTECH" })
+      .expect(400);
+
+    expect(typeof secondResponse.body.message).toBe("string");
+    expect(secondResponse.body.message).toContain("company focus can be changed every");
+  });
 });
 
