@@ -58,7 +58,7 @@ interface PersistedControlShortcutsV1 {
 interface ControlManagerContextValue {
   registerShortcut: (shortcut: ControlShortcut) => () => void;
   registeredShortcuts: RegisteredControlShortcut[];
-  setShortcutBinding: (shortcutId: string, binding: ControlShortcutBinding) => void;
+  setShortcutBinding: (shortcutId: string, binding: ControlShortcutBinding) => boolean;
   resetShortcutBinding: (shortcutId: string) => void;
   setShortcutCaptureActive: (active: boolean) => void;
   isPanelOpen: (panelId: string) => boolean;
@@ -70,6 +70,38 @@ interface ControlManagerContextValue {
 const ControlManagerContext = createContext<ControlManagerContextValue | null>(null);
 
 const SHORTCUT_BINDINGS_STORAGE_KEY = "corpsim.control.shortcuts.v1";
+const RESERVED_BROWSER_SHORTCUT_SIGNATURES = new Set([
+  "t",
+  "n",
+  "w",
+  "r",
+  "l",
+  "d",
+  "p",
+  "s",
+  "o",
+  "tab",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "0",
+  "-",
+  "=",
+  "+",
+  "f4",
+  "f5",
+  "shift+t",
+  "shift+n",
+  "shift+w",
+  "shift+r",
+  "shift+tab"
+]);
 
 function normalizeKey(value: string): string {
   return value.trim().toLowerCase();
@@ -119,6 +151,35 @@ function isControlShortcutBinding(value: unknown): value is ControlShortcutBindi
   );
 }
 
+function hasControlLikeModifier(modifier: ControlShortcutModifier): boolean {
+  return modifier === "ctrlOrMeta" || modifier === "ctrl" || modifier === "meta";
+}
+
+function getShortcutSignature(key: string, shift: boolean): string {
+  const normalizedKey = normalizeKey(key);
+  return shift ? `shift+${normalizedKey}` : normalizedKey;
+}
+
+export function isBrowserReservedShortcutBinding(binding: ControlShortcutBinding): boolean {
+  if (!hasControlLikeModifier(binding.modifier)) {
+    return false;
+  }
+  if (binding.alt) {
+    return false;
+  }
+  return RESERVED_BROWSER_SHORTCUT_SIGNATURES.has(getShortcutSignature(binding.key, binding.shift));
+}
+
+function isBrowserReservedShortcutEvent(event: KeyboardEvent): boolean {
+  if (!event.ctrlKey && !event.metaKey) {
+    return false;
+  }
+  if (event.altKey && !event.getModifierState("AltGraph")) {
+    return false;
+  }
+  return RESERVED_BROWSER_SHORTCUT_SIGNATURES.has(getShortcutSignature(event.key, event.shiftKey));
+}
+
 function readPersistedBindings(): Record<string, ControlShortcutBinding> {
   if (typeof window === "undefined") {
     return {};
@@ -137,6 +198,9 @@ function readPersistedBindings(): Record<string, ControlShortcutBinding> {
     const next: Record<string, ControlShortcutBinding> = {};
     for (const [id, binding] of Object.entries(parsed.bindings)) {
       if (typeof id !== "string" || !isControlShortcutBinding(binding)) {
+        continue;
+      }
+      if (isBrowserReservedShortcutBinding(binding)) {
         continue;
       }
       next[id] = binding;
@@ -282,10 +346,14 @@ export function ControlManagerProvider({ children }: { children: React.ReactNode
   }, [syncRegisteredShortcuts]);
 
   const setShortcutBinding = useCallback((shortcutId: string, binding: ControlShortcutBinding) => {
+    if (isBrowserReservedShortcutBinding(binding)) {
+      return false;
+    }
     setShortcutBindings((current) => ({
       ...current,
       [shortcutId]: binding
     }));
+    return true;
   }, []);
 
   const resetShortcutBinding = useCallback((shortcutId: string) => {
@@ -324,6 +392,9 @@ export function ControlManagerProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) {
+        return;
+      }
+      if (isBrowserReservedShortcutEvent(event)) {
         return;
       }
       if (isShortcutCaptureActiveRef.current) {

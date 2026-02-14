@@ -101,6 +101,7 @@ export function ShortcutsHelpShortcut() {
   } = useControlManager();
   const open = isPanelOpen(SHORTCUTS_HELP_PANEL_ID);
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
+  const [captureError, setCaptureError] = useState<string | null>(null);
   const shortcutsHelpBinding = useMemo(
     () => registeredShortcuts.find((entry) => entry.id === SHORTCUTS_HELP_SHORTCUT_ID) ?? null,
     [registeredShortcuts]
@@ -154,6 +155,7 @@ export function ShortcutsHelpShortcut() {
   useEffect(() => {
     if (!open) {
       setEditingShortcutId(null);
+      setCaptureError(null);
     }
   }, [open]);
 
@@ -174,6 +176,7 @@ export function ShortcutsHelpShortcut() {
         if (event.key === "Escape") {
           event.preventDefault();
           setEditingShortcutId(null);
+          setCaptureError(null);
           return;
         }
 
@@ -184,7 +187,12 @@ export function ShortcutsHelpShortcut() {
 
         event.preventDefault();
         event.stopPropagation();
-        setShortcutBinding(editingShortcutId, binding);
+        const applied = setShortcutBinding(editingShortcutId, binding);
+        if (!applied) {
+          setCaptureError("This key combo is reserved by your browser.");
+          return;
+        }
+        setCaptureError(null);
         setEditingShortcutId(null);
         return;
       }
@@ -262,11 +270,15 @@ export function ShortcutsHelpShortcut() {
                 {editingShortcutId === entry.id ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-300">Press new keys...</span>
+                    {captureError ? <span className="text-xs text-red-300">{captureError}</span> : null}
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setEditingShortcutId(null)}
+                      onClick={() => {
+                        setEditingShortcutId(null);
+                        setCaptureError(null);
+                      }}
                     >
                       Cancel
                     </Button>
@@ -277,7 +289,10 @@ export function ShortcutsHelpShortcut() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setEditingShortcutId(entry.id)}
+                      onClick={() => {
+                        setEditingShortcutId(entry.id);
+                        setCaptureError(null);
+                      }}
                     >
                       Edit
                     </Button>
