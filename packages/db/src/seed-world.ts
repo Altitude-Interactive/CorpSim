@@ -12,6 +12,8 @@ export interface SeedWorldResult {
   itemIds: Record<string, string>;
 }
 
+const SEEDED_PLAYER_ID = "player_seed";
+
 interface ItemDefinition {
   key: string;
   code: string;
@@ -557,6 +559,7 @@ export async function seedWorld(
 
   const player = await prisma.player.create({
     data: {
+      id: SEEDED_PLAYER_ID,
       handle: "PLAYER"
     }
   });

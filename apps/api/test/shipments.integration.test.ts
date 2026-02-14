@@ -13,6 +13,7 @@ describe("shipments API integration", () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let playerCompanyId: string;
+  let botCompanyId: string;
   let playerRegionId: string;
   let industrialRegionId: string;
   let ironOreId: string;
@@ -43,6 +44,7 @@ describe("shipments API integration", () => {
   beforeEach(async () => {
     const seeded = await seedWorld(prisma, { reset: true });
     playerCompanyId = seeded.companyIds.player;
+    botCompanyId = seeded.companyIds.botTrader;
     ironOreId = seeded.itemIds.ironOre;
 
     const [playerCompany, industrialRegion] = await Promise.all([
@@ -268,12 +270,11 @@ describe("shipments API integration", () => {
     expect(companyAfter.cashCents).toBe(companyBefore.cashCents - expectedFee);
   });
 
-  it("enforces ownership with 403", async () => {
+  it("enforces ownership for shipment creation", async () => {
     await request(app.getHttpServer())
       .post("/v1/shipments")
-      .set("X-Player-Handle", "SECOND")
       .send({
-        companyId: playerCompanyId,
+        companyId: botCompanyId,
         toRegionId: industrialRegionId,
         itemId: ironOreId,
         quantity: 1

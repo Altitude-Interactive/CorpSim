@@ -1,5 +1,5 @@
 import { BadRequestException, Controller, Get, Inject, Query } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { FinanceService } from "./finance.service";
 import { GetFinanceSummaryDto } from "./dto/get-finance-summary.dto";
 import { ListLedgerDto } from "./dto/list-ledger.dto";
@@ -46,7 +46,7 @@ export class FinanceController {
   @Get("ledger")
   async ledger(
     @Query() query: ListLedgerDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.financeService.listLedger(
       {
@@ -59,21 +59,21 @@ export class FinanceController {
         limit: parsePositiveInteger(query.limit, "limit", 100, 500),
         cursor: query.cursor
       },
-      playerHandle
+      playerId
     );
   }
 
   @Get("summary")
   async summary(
     @Query() query: GetFinanceSummaryDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.financeService.getSummary(
       {
         companyId: query.companyId,
         windowTicks: parsePositiveInteger(query.windowTicks, "windowTicks", 100, 10_000)
       },
-      playerHandle
+      playerId
     );
   }
 }

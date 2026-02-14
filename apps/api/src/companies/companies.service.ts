@@ -14,7 +14,7 @@ import {
   listCompaniesOwnedByPlayer,
   listCompanies,
   listCompanyInventory,
-  resolvePlayerByHandle,
+  resolvePlayerById,
   setCompanySpecialization
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
@@ -43,8 +43,8 @@ export class CompaniesService {
     }));
   }
 
-  async listMyCompanies(playerHandle: string): Promise<CompanySummary[]> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async listMyCompanies(playerId: string): Promise<CompanySummary[]> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     const companies = await listCompaniesOwnedByPlayer(this.prisma, player.id);
 
     return companies.map((company) => ({
@@ -60,8 +60,8 @@ export class CompaniesService {
     }));
   }
 
-  async getCompany(companyId: string, playerHandle: string): Promise<CompanyDetails> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async getCompany(companyId: string, playerId: string): Promise<CompanyDetails> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
 
     const company = await getCompanyById(this.prisma, companyId);
@@ -84,10 +84,10 @@ export class CompaniesService {
 
   async getInventory(
     companyId: string,
-    playerHandle: string,
+    playerId: string,
     regionId?: string
   ): Promise<InventoryRow[]> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
 
     const rows = await listCompanyInventory(this.prisma, companyId, regionId);
@@ -115,9 +115,9 @@ export class CompaniesService {
   async setSpecialization(
     companyId: string,
     specialization: CompanySpecialization,
-    playerHandle: string
+    playerId: string
   ): Promise<CompanyDetails> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
 
     const company = await setCompanySpecialization(this.prisma, {

@@ -1,8 +1,6 @@
 export const HEALTH_POLL_INTERVAL_MS = 3_000;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
-const PLAYER_HANDLE_STORAGE_KEY = "corpsim.playerHandle";
-const DEFAULT_PLAYER_HANDLE = "PLAYER";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -114,15 +112,6 @@ function sanitizeApiErrorMessage(status: number, rawMessage: string): string {
   return message;
 }
 
-function resolvePlayerHandle(): string {
-  if (typeof window === "undefined") {
-    return DEFAULT_PLAYER_HANDLE;
-  }
-
-  const fromStorage = window.localStorage.getItem(PLAYER_HANDLE_STORAGE_KEY)?.trim();
-  return fromStorage && fromStorage.length > 0 ? fromStorage : DEFAULT_PLAYER_HANDLE;
-}
-
 function resolveApiBaseUrl(): string {
   if (!API_BASE_URL) {
     return "";
@@ -141,9 +130,9 @@ export async function fetchJson<T>(
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-Player-Handle": resolvePlayerHandle(),
       ...(init?.headers ?? {})
     },
+    credentials: "include",
     cache: "no-store"
   };
 

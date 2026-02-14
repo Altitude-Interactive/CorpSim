@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Inject, Param, Post, Query } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { ListResearchDto } from "./dto/list-research.dto";
 import { MutateResearchDto } from "./dto/mutate-research.dto";
 import { ResearchNodeParamDto } from "./dto/research-node-param.dto";
@@ -16,26 +16,26 @@ export class ResearchController {
   @Get()
   async list(
     @Query() query: ListResearchDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.researchService.listResearch(query.companyId, playerHandle);
+    return this.researchService.listResearch(query.companyId, playerId);
   }
 
   @Post(":nodeId/start")
   async start(
     @Param() params: ResearchNodeParamDto,
     @Body() body: MutateResearchDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.researchService.startNode(params.nodeId, body.companyId, playerHandle);
+    return this.researchService.startNode(params.nodeId, body.companyId, playerId);
   }
 
   @Post(":nodeId/cancel")
   async cancel(
     @Param() params: ResearchNodeParamDto,
     @Body() body: MutateResearchDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.researchService.cancelNode(params.nodeId, body.companyId, playerHandle);
+    return this.researchService.cancelNode(params.nodeId, body.companyId, playerId);
   }
 }

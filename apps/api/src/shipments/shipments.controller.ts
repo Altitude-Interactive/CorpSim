@@ -11,7 +11,7 @@ import {
   Query
 } from "@nestjs/common";
 import { ShipmentStatus } from "@prisma/client";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { CancelShipmentParamDto } from "./dto/cancel-shipment.dto";
 import { CreateShipmentDto } from "./dto/create-shipment.dto";
 import { ListShipmentsDto } from "./dto/list-shipments.dto";
@@ -41,7 +41,7 @@ export class ShipmentsController {
   @Get()
   async list(
     @Query() query: ListShipmentsDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.shipmentsService.list(
       {
@@ -49,14 +49,14 @@ export class ShipmentsController {
         status: query.status as ShipmentStatus | undefined,
         limit: parseLimit(query.limit)
       },
-      playerHandle
+      playerId
     );
   }
 
   @Post()
   async create(
     @Body() body: CreateShipmentDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.shipmentsService.create(
       {
@@ -65,7 +65,7 @@ export class ShipmentsController {
         itemId: body.itemId,
         quantity: body.quantity
       },
-      playerHandle
+      playerId
     );
   }
 
@@ -73,8 +73,8 @@ export class ShipmentsController {
   @HttpCode(HttpStatus.OK)
   async cancel(
     @Param() params: CancelShipmentParamDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.shipmentsService.cancel(params.id, playerHandle);
+    return this.shipmentsService.cancel(params.id, playerId);
   }
 }

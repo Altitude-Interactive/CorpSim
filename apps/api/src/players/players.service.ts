@@ -7,7 +7,7 @@ import {
 } from "@corpsim/shared";
 import {
   listCompaniesOwnedByPlayer,
-  resolvePlayerByHandle
+  resolvePlayerById
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -19,8 +19,8 @@ export class PlayersService {
     this.prisma = prisma;
   }
 
-  async getCurrentPlayer(playerHandle: string): Promise<PlayerIdentity> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async getCurrentPlayer(playerId: string): Promise<PlayerIdentity> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     return {
       id: player.id,
       handle: player.handle,
@@ -29,8 +29,8 @@ export class PlayersService {
     };
   }
 
-  async listCurrentPlayerCompanies(playerHandle: string): Promise<CompanySummary[]> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async listCurrentPlayerCompanies(playerId: string): Promise<CompanySummary[]> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     const companies = await listCompaniesOwnedByPlayer(this.prisma, player.id);
 
     return companies.map((company) => ({

@@ -10,7 +10,7 @@ import {
   Post,
   Query
 } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { ContractsService } from "./contracts.service";
 import { AcceptContractDto } from "./dto/accept-contract.dto";
 import { ContractParamDto } from "./dto/contract-param.dto";
@@ -41,7 +41,7 @@ export class ContractsController {
   @Get()
   async listContracts(
     @Query() query: ListContractsDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.contractsService.listContracts(
       {
@@ -49,7 +49,7 @@ export class ContractsController {
         itemId: query.itemId,
         limit: parseLimit(query.limit)
       },
-      playerHandle
+      playerId
     );
   }
 
@@ -57,9 +57,9 @@ export class ContractsController {
   async acceptContract(
     @Param() params: ContractParamDto,
     @Body() body: AcceptContractDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.contractsService.acceptContract(params.id, body.sellerCompanyId, playerHandle);
+    return this.contractsService.acceptContract(params.id, body.sellerCompanyId, playerId);
   }
 
   @Post(":id/fulfill")
@@ -67,13 +67,13 @@ export class ContractsController {
   async fulfillContract(
     @Param() params: ContractParamDto,
     @Body() body: FulfillContractDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.contractsService.fulfillContract(
       params.id,
       body.sellerCompanyId,
       body.quantity,
-      playerHandle
+      playerId
     );
   }
 }

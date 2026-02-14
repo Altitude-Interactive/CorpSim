@@ -59,7 +59,9 @@ function isLocalhostOrigin(origin: string): boolean {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false
+  });
   const corsOrigins = resolveCorsOrigins();
   const allowLocalhost = process.env.NODE_ENV !== "production";
 
@@ -80,7 +82,7 @@ async function bootstrap(): Promise<void> {
 
       callback(new Error(`CORS origin denied: ${origin}`), false);
     },
-    credentials: false
+    credentials: true
   });
 
   app.useGlobalPipes(

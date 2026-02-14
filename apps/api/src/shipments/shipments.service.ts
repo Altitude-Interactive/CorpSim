@@ -11,7 +11,7 @@ import {
   cancelShipment,
   createShipment,
   listShipments,
-  resolvePlayerByHandle
+  resolvePlayerById
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -94,8 +94,8 @@ export class ShipmentsService {
     };
   }
 
-  async list(input: ListShipmentsFilters, playerHandle: string): Promise<ShipmentRecord[]> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async list(input: ListShipmentsFilters, playerId: string): Promise<ShipmentRecord[]> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     if (input.companyId) {
       await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
     }
@@ -110,8 +110,8 @@ export class ShipmentsService {
     return rows.map(mapShipmentToDto);
   }
 
-  async create(input: CreateShipmentInput, playerHandle: string): Promise<ShipmentRecord> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async create(input: CreateShipmentInput, playerId: string): Promise<ShipmentRecord> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
     const shipment = await createShipment(
@@ -128,8 +128,8 @@ export class ShipmentsService {
     return mapShipmentToDto(shipment);
   }
 
-  async cancel(shipmentId: string, playerHandle: string): Promise<ShipmentRecord> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async cancel(shipmentId: string, playerId: string): Promise<ShipmentRecord> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertShipmentOwnedByPlayer(this.prisma, player.id, shipmentId);
 
     const shipment = await cancelShipment(this.prisma, { shipmentId });

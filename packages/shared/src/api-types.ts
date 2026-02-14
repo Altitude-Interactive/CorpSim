@@ -82,6 +82,13 @@ export interface PlayerIdentity {
   updatedAt: string;
 }
 
+export interface OnboardingStatus {
+  completed: boolean;
+  companyId: string | null;
+  companyName: string | null;
+  regionId: string | null;
+}
+
 export interface PlayerRegistryItemHolding {
   itemId: string;
   itemCode: string;

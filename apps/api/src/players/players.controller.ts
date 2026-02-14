@@ -1,5 +1,5 @@
 import { Controller, Get, Inject } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { PlayersService } from "./players.service";
 
 @Controller("v1/players")
@@ -11,13 +11,13 @@ export class PlayersController {
   }
 
   @Get("me")
-  async me(@CurrentPlayerHandle() playerHandle: string) {
-    return this.playersService.getCurrentPlayer(playerHandle);
+  async me(@CurrentPlayerId() playerId: string) {
+    return this.playersService.getCurrentPlayer(playerId);
   }
 
   @Get("me/companies")
-  async myCompanies(@CurrentPlayerHandle() playerHandle: string) {
-    return this.playersService.listCurrentPlayerCompanies(playerHandle);
+  async myCompanies(@CurrentPlayerId() playerId: string) {
+    return this.playersService.listCurrentPlayerCompanies(playerId);
   }
 
   @Get("registry")

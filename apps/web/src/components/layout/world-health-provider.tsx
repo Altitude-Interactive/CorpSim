@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   DatabaseSchemaReadiness,
   HEALTH_POLL_INTERVAL_MS,
@@ -8,6 +9,8 @@ import {
   getDatabaseSchemaReadiness,
   getWorldHealth
 } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
+import { isAuthPage, isOnboardingPage, isProfilePage } from "@/lib/auth-routes";
 
 export type ApiStatusLevel = "green" | "yellow" | "red";
 
@@ -58,6 +61,8 @@ function resolveApiStatus(
 }
 
 export function WorldHealthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
   const [health, setHealth] = useState<WorldHealth | null>(null);
   const [schemaReadiness, setSchemaReadiness] = useState<DatabaseSchemaReadiness | null>(null);
   const [schemaReadinessError, setSchemaReadinessError] = useState<string | null>(null);
@@ -65,8 +70,24 @@ export function WorldHealthProvider({ children }: { children: React.ReactNode })
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null);
   const mounted = useRef(true);
+  const skipPolling =
+    isSessionPending ||
+    !session?.user?.id ||
+    isAuthPage(pathname) ||
+    isOnboardingPage(pathname) ||
+    isProfilePage(pathname);
 
   const refresh = useCallback(async () => {
+    if (skipPolling) {
+      setIsRefreshing(false);
+      setHealth(null);
+      setSchemaReadiness(null);
+      setSchemaReadinessError(null);
+      setError(null);
+      setLastSuccessAt(null);
+      return;
+    }
+
     setIsRefreshing(true);
     try {
       const readiness = await getDatabaseSchemaReadiness();
@@ -112,11 +133,17 @@ export function WorldHealthProvider({ children }: { children: React.ReactNode })
         setIsRefreshing(false);
       }
     }
-  }, []);
+  }, [skipPolling]);
 
   useEffect(() => {
     mounted.current = true;
     void refresh();
+
+    if (skipPolling) {
+      return () => {
+        mounted.current = false;
+      };
+    }
 
     const id = setInterval(() => {
       void refresh();
@@ -126,7 +153,7 @@ export function WorldHealthProvider({ children }: { children: React.ReactNode })
       mounted.current = false;
       clearInterval(id);
     };
-  }, [refresh]);
+  }, [refresh, skipPolling]);
 
   const value = useMemo<WorldHealthContextValue>(
     () => ({

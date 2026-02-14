@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 import { AppShell } from "@/components/layout/app-shell";
 import { DeviceSupportGate } from "@/components/layout/device-support-gate";
 import { UiSfxProvider } from "@/components/layout/ui-sfx-provider";
@@ -29,13 +30,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <UiSfxProvider>
           <ToastProvider>
             <MaintenanceProvider>
-              <WorldHealthProvider>
-                <ActiveCompanyProvider>
-                  <DeviceSupportGate>
-                    <AppShell>{children}</AppShell>
-                  </DeviceSupportGate>
-                </ActiveCompanyProvider>
-              </WorldHealthProvider>
+              <AuthRouteGate>
+                <WorldHealthProvider>
+                  <ActiveCompanyProvider>
+                    <DeviceSupportGate>
+                      <AppShell>{children}</AppShell>
+                    </DeviceSupportGate>
+                  </ActiveCompanyProvider>
+                </WorldHealthProvider>
+              </AuthRouteGate>
             </MaintenanceProvider>
           </ToastProvider>
         </UiSfxProvider>

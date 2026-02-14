@@ -32,6 +32,29 @@ export async function resolvePlayerByHandle(prisma: PrismaClient, handle: string
   });
 }
 
+export async function resolvePlayerById(prisma: PrismaClient, playerId: string) {
+  const normalizedId = playerId.trim();
+  if (normalizedId.length === 0) {
+    throw new DomainInvariantError("player id is required");
+  }
+
+  const player = await prisma.player.findUnique({
+    where: { id: normalizedId },
+    select: {
+      id: true,
+      handle: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
+
+  if (!player) {
+    throw new ForbiddenError("player access is forbidden");
+  }
+
+  return player;
+}
+
 export async function listCompaniesOwnedByPlayer(prisma: PrismaClient, playerId: string) {
   return prisma.company.findMany({
     where: { ownerPlayerId: playerId },

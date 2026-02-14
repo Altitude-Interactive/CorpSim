@@ -7,7 +7,7 @@ import {
   assertCompanyOwnedByPlayer,
   getCompanyWorkforce,
   requestCompanyWorkforceCapacityChange,
-  resolvePlayerByHandle,
+  resolvePlayerById,
   setCompanyWorkforceAllocation
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
@@ -33,8 +33,8 @@ export class WorkforceService {
     this.prisma = prisma;
   }
 
-  async getCompanyWorkforce(companyId: string, playerHandle: string): Promise<CompanyWorkforce> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async getCompanyWorkforce(companyId: string, playerId: string): Promise<CompanyWorkforce> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
 
     const snapshot = await getCompanyWorkforce(this.prisma, companyId);
@@ -58,8 +58,8 @@ export class WorkforceService {
     };
   }
 
-  async setAllocation(input: SetAllocationInput, playerHandle: string): Promise<CompanyWorkforce> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async setAllocation(input: SetAllocationInput, playerId: string): Promise<CompanyWorkforce> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
     const snapshot = await setCompanyWorkforceAllocation(this.prisma, input);
@@ -85,9 +85,9 @@ export class WorkforceService {
 
   async requestCapacityChange(
     input: CapacityChangeInput,
-    playerHandle: string
+    playerId: string
   ): Promise<WorkforceCapacityChangeResult> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
     const result = await requestCompanyWorkforceCapacityChange(this.prisma, input);

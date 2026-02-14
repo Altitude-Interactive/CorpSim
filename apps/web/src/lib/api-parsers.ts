@@ -20,6 +20,7 @@ import type {
   MarketCandle,
   MarketOrder,
   MarketTrade,
+  OnboardingStatus,
   PlayerIdentity,
   PlayerRegistryCompany,
   PlayerRegistryEntry,
@@ -202,6 +203,19 @@ export function parsePlayerIdentity(value: unknown): PlayerIdentity {
   };
 }
 
+export function parseOnboardingStatus(value: unknown): OnboardingStatus {
+  if (!isRecord(value)) {
+    throw new Error("Invalid onboarding status payload");
+  }
+
+  return {
+    completed: readBoolean(value.completed, "completed"),
+    companyId: readNullableString(value.companyId, "companyId"),
+    companyName: readNullableString(value.companyName, "companyName"),
+    regionId: readNullableString(value.regionId, "regionId")
+  };
+}
+
 export function parsePlayerRegistryItemHolding(value: unknown): PlayerRegistryItemHolding {
   if (!isRecord(value)) {
     throw new Error("Invalid player registry item holding");
@@ -352,7 +366,13 @@ export function parseMarketOrder(value: unknown): MarketOrder {
 }
 
 export function parseMarketOrders(value: unknown): MarketOrder[] {
-  return readArray(value, "marketOrders").map(parseMarketOrder);
+  if (Array.isArray(value)) {
+    return value.map(parseMarketOrder);
+  }
+  if (!isRecord(value)) {
+    throw new Error("Invalid market orders payload");
+  }
+  return readArray(value.marketOrders, "marketOrders").map(parseMarketOrder);
 }
 
 export function parseMarketTrade(value: unknown): MarketTrade {

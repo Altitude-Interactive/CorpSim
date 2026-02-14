@@ -10,7 +10,7 @@ import {
   Post,
   Query
 } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { CancelProductionJobParamDto } from "./dto/cancel-production-job.dto";
 import { CreateProductionJobDto } from "./dto/create-production-job.dto";
 import { ListProductionJobsDto } from "./dto/list-production-jobs.dto";
@@ -41,41 +41,41 @@ export class ProductionController {
   @Get("recipes")
   async listRecipes(
     @Query("companyId") companyId: string | undefined,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.productionService.listRecipes(companyId, playerHandle);
+    return this.productionService.listRecipes(companyId, playerId);
   }
 
   @Get("jobs")
   async listJobs(
     @Query() query: ListProductionJobsDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.productionService.listJobs({
       companyId: query.companyId,
       status: query.status,
       limit: parseLimit(query.limit)
-    }, playerHandle);
+    }, playerId);
   }
 
   @Post("jobs")
   async createJob(
     @Body() body: CreateProductionJobDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.productionService.createJob({
       companyId: body.companyId,
       recipeId: body.recipeId,
       quantity: body.quantity
-    }, playerHandle);
+    }, playerId);
   }
 
   @Post("jobs/:id/cancel")
   @HttpCode(HttpStatus.OK)
   async cancelJob(
     @Param() params: CancelProductionJobParamDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.productionService.cancelJob(params.id, playerHandle);
+    return this.productionService.cancelJob(params.id, playerId);
   }
 }

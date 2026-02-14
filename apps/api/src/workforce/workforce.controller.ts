@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Inject, Post, Query } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { GetCompanyWorkforceDto } from "./dto/get-company-workforce.dto";
 import { RequestWorkforceCapacityChangeDto } from "./dto/request-workforce-capacity-change.dto";
 import { SetWorkforceAllocationDto } from "./dto/set-workforce-allocation.dto";
@@ -28,15 +28,15 @@ export class WorkforceController {
   @Get()
   async getWorkforce(
     @Query() query: GetCompanyWorkforceDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.workforceService.getCompanyWorkforce(query.companyId, playerHandle);
+    return this.workforceService.getCompanyWorkforce(query.companyId, playerId);
   }
 
   @Post("allocation")
   async setAllocation(
     @Body() body: SetWorkforceAllocationDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     assertAllocationSum(body.operationsPct, body.researchPct, body.logisticsPct, body.corporatePct);
     return this.workforceService.setAllocation(
@@ -47,21 +47,21 @@ export class WorkforceController {
         logisticsPct: body.logisticsPct,
         corporatePct: body.corporatePct
       },
-      playerHandle
+      playerId
     );
   }
 
   @Post("capacity-change")
   async requestCapacityChange(
     @Body() body: RequestWorkforceCapacityChangeDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.workforceService.requestCapacityChange(
       {
         companyId: body.companyId,
         deltaCapacity: body.deltaCapacity
       },
-      playerHandle
+      playerId
     );
   }
 }

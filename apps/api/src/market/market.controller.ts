@@ -10,7 +10,7 @@ import {
   Post,
   Query
 } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { CancelMarketOrderParamDto } from "./dto/cancel-market-order.dto";
 import { CreateMarketOrderDto } from "./dto/create-market-order.dto";
 import { GetMarketAnalyticsSummaryDto } from "./dto/get-market-analytics-summary.dto";
@@ -119,7 +119,7 @@ export class MarketController {
   @Get("orders")
   async listOrders(
     @Query() query: ListMarketOrdersDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.marketService.listOrders({
       itemId: query.itemId,
@@ -128,7 +128,7 @@ export class MarketController {
       status: query.status,
       companyId: query.companyId,
       limit: parseLimit(query.limit)
-    }, playerHandle);
+    }, playerId);
   }
 
   @Get("trades")
@@ -144,7 +144,7 @@ export class MarketController {
   @Post("orders")
   async placeOrder(
     @Body() body: CreateMarketOrderDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
     return this.marketService.placeOrder({
       companyId: body.companyId,
@@ -153,15 +153,15 @@ export class MarketController {
       side: body.side,
       priceCents: body.priceCents,
       quantity: body.quantity
-    }, playerHandle);
+    }, playerId);
   }
 
   @Post("orders/:id/cancel")
   @HttpCode(HttpStatus.OK)
   async cancelOrder(
     @Param() params: CancelMarketOrderParamDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.marketService.cancelOrder(params.id, playerHandle);
+    return this.marketService.cancelOrder(params.id, playerId);
   }
 }

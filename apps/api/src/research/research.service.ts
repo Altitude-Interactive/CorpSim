@@ -7,7 +7,7 @@ import {
   DomainInvariantError,
   listCompaniesOwnedByPlayer,
   listResearchForCompany,
-  resolvePlayerByHandle,
+  resolvePlayerById,
   startResearch
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
@@ -70,9 +70,9 @@ export class ResearchService {
 
   async listResearch(
     companyId: string | undefined,
-    playerHandle: string
+    playerId: string
   ): Promise<{ companyId: string; nodes: ResearchNode[] }> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     const resolvedCompanyId = await this.resolveOwnedCompanyId(player.id, companyId);
     const nodes = await listResearchForCompany(this.prisma, {
       companyId: resolvedCompanyId
@@ -87,9 +87,9 @@ export class ResearchService {
   async startNode(
     nodeId: string,
     companyId: string | undefined,
-    playerHandle: string
+    playerId: string
   ): Promise<ResearchJob> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     const resolvedCompanyId = await this.resolveOwnedCompanyId(player.id, companyId);
 
     const job = await startResearch(this.prisma, {
@@ -114,9 +114,9 @@ export class ResearchService {
   async cancelNode(
     nodeId: string,
     companyId: string | undefined,
-    playerHandle: string
+    playerId: string
   ): Promise<ResearchJob> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     const resolvedCompanyId = await this.resolveOwnedCompanyId(player.id, companyId);
 
     const job = await cancelResearch(this.prisma, {

@@ -23,6 +23,7 @@ import type {
   MarketOrderFilters,
   MarketTrade,
   MarketTradeFilters,
+  OnboardingStatus,
   PlaceMarketOrderInput,
   PlayerIdentity,
   PlayerRegistryEntry,
@@ -63,6 +64,7 @@ import {
   parseMarketOrder,
   parseMarketOrders,
   parseMarketTrade,
+  parseOnboardingStatus,
   parsePlayerIdentity,
   parsePlayerRegistryEntry,
   parseProductionJob,
@@ -110,6 +112,16 @@ function invalidateResearchCaches(): void {
   invalidateCachedRequestPrefix(RESEARCH_CACHE_KEY_PREFIX);
 }
 
+function readArrayPayload(value: unknown, field: string): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (!isRecord(value)) {
+    throw new Error(`Invalid response payload for "${field}"`);
+  }
+  return readArray(value[field], field);
+}
+
 export async function getWorldHealth(): Promise<WorldHealth> {
   return fetchJson("/v1/world/health", parseWorldHealth);
 }
@@ -119,9 +131,7 @@ export async function getDatabaseSchemaReadiness(): Promise<DatabaseSchemaReadin
 }
 
 export async function listCompanies(): Promise<CompanySummary[]> {
-  return fetchJson("/v1/companies", (value) =>
-    readArray(value, "companies").map(parseCompanySummary)
-  );
+  return fetchJson("/v1/companies", (value) => readArrayPayload(value, "companies").map(parseCompanySummary));
 }
 
 export async function getCompany(companyId: string): Promise<CompanyDetails> {
@@ -130,7 +140,7 @@ export async function getCompany(companyId: string): Promise<CompanyDetails> {
 
 export async function listCompanySpecializations(): Promise<CompanySpecializationOption[]> {
   return fetchJson("/v1/companies/specializations", (value) =>
-    readArray(value, "specializations").map(parseCompanySpecializationOption)
+    readArrayPayload(value, "specializations").map(parseCompanySpecializationOption)
   );
 }
 
@@ -178,15 +188,27 @@ export async function getMePlayer(): Promise<PlayerIdentity> {
   return fetchJson("/v1/players/me", parsePlayerIdentity);
 }
 
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  return fetchJson("/v1/onboarding/status", parseOnboardingStatus);
+}
+
+export async function completeOnboarding(input: {
+  companyName: string;
+  regionId?: string;
+}): Promise<OnboardingStatus> {
+  return fetchJson("/v1/onboarding/complete", parseOnboardingStatus, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function listMyCompanies(): Promise<CompanySummary[]> {
-  return fetchJson("/v1/players/me/companies", (value) =>
-    readArray(value, "companies").map(parseCompanySummary)
-  );
+  return fetchJson("/v1/players/me/companies", (value) => readArrayPayload(value, "companies").map(parseCompanySummary));
 }
 
 export async function listPlayerRegistry(): Promise<PlayerRegistryEntry[]> {
   return fetchJson("/v1/players/registry", (value) =>
-    readArray(value, "players").map(parsePlayerRegistryEntry)
+    readArrayPayload(value, "players").map(parsePlayerRegistryEntry)
   );
 }
 
@@ -201,7 +223,7 @@ export async function listCompanyInventory(
   const query = params.toString();
 
   return fetchJson(`/v1/companies/${companyId}/inventory${query ? `?${query}` : ""}`, (value) =>
-    readArray(value, "inventory").map(parseInventoryRow)
+    readArrayPayload(value, "inventory").map(parseInventoryRow)
   );
 }
 
@@ -209,7 +231,7 @@ export async function listRegions(options?: CachedRequestOptions): Promise<Regio
   return getCachedRequest(
     REGIONS_CACHE_KEY,
     CATALOG_CACHE_TTL_MS,
-    () => fetchJson("/v1/regions", (value) => readArray(value, "regions").map(parseRegionSummary)),
+    () => fetchJson("/v1/regions", (value) => readArrayPayload(value, "regions").map(parseRegionSummary)),
     options
   );
 }
@@ -228,7 +250,7 @@ export async function listShipments(filters: ListShipmentsFilters = {}): Promise
 
   const query = params.toString();
   return fetchJson(`/v1/shipments${query ? `?${query}` : ""}`, (value) =>
-    readArray(value, "shipments").map(parseShipmentRecord)
+    readArrayPayload(value, "shipments").map(parseShipmentRecord)
   );
 }
 
@@ -300,7 +322,7 @@ export async function listMarketTrades(filters: MarketTradeFilters): Promise<Mar
 
   const query = params.toString();
   return fetchJson(`/v1/market/trades${query ? `?${query}` : ""}`, (value) =>
-    readArray(value, "marketTrades").map(parseMarketTrade)
+    readArrayPayload(value, "marketTrades").map(parseMarketTrade)
   );
 }
 
@@ -320,7 +342,7 @@ export async function listMarketCandles(filters: MarketCandleFilters): Promise<M
   }
 
   return fetchJson(`/v1/market/candles?${params.toString()}`, (value) =>
-    readArray(value, "marketCandles").map(parseMarketCandle)
+    readArrayPayload(value, "marketCandles").map(parseMarketCandle)
   );
 }
 
@@ -352,7 +374,7 @@ export async function listItems(
   return getCachedRequest(
     resolveItemsCacheKey(companyId),
     ttl,
-    () => fetchJson(path, (value) => readArray(value, "items").map(parseItemCatalogItem)),
+    () => fetchJson(path, (value) => readArrayPayload(value, "items").map(parseItemCatalogItem)),
     options
   );
 }
@@ -374,7 +396,7 @@ export async function listProductionRecipes(
     ttl,
     () =>
       fetchJson(path, (value) =>
-        readArray(value, "recipes").map(parseProductionRecipe)
+        readArrayPayload(value, "recipes").map(parseProductionRecipe)
       ),
     options
   );
@@ -394,7 +416,7 @@ export async function listProductionJobs(filters: ProductionJobFilters): Promise
 
   const query = params.toString();
   return fetchJson(`/v1/production/jobs${query ? `?${query}` : ""}`, (value) =>
-    readArray(value, "productionJobs").map(parseProductionJob)
+    readArrayPayload(value, "productionJobs").map(parseProductionJob)
   );
 }
 
@@ -470,7 +492,7 @@ export async function listContracts(
 
   const query = params.toString();
   return fetchJson(`/v1/contracts${query ? `?${query}` : ""}`, (value) =>
-    readArray(value, "contracts").map(parseContractRecord)
+    readArrayPayload(value, "contracts").map(parseContractRecord)
   );
 }
 

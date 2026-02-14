@@ -11,7 +11,7 @@ import {
   assertCompanyOwnedByPlayer,
   getCompanyLedger,
   getFinanceSummary,
-  resolvePlayerByHandle
+  resolvePlayerById
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -28,8 +28,8 @@ export class FinanceService {
     this.prisma = prisma;
   }
 
-  async listLedger(filters: FinanceLedgerFilters, playerHandle: string): Promise<FinanceLedgerResult> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async listLedger(filters: FinanceLedgerFilters, playerId: string): Promise<FinanceLedgerResult> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, filters.companyId);
 
     const result = await getCompanyLedger(this.prisma, {
@@ -53,8 +53,8 @@ export class FinanceService {
     };
   }
 
-  async getSummary(input: FinanceSummaryInput, playerHandle: string): Promise<FinanceSummary> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async getSummary(input: FinanceSummaryInput, playerId: string): Promise<FinanceSummary> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
     const summary = await getFinanceSummary(this.prisma, input);

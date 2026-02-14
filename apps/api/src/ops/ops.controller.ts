@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException
 } from "@nestjs/common";
+import { AllowAnonymous } from "@thallesp/nestjs-better-auth";
 import { UpdateMaintenanceDto } from "../maintenance/dto/update-maintenance.dto";
 import { MaintenanceService } from "../maintenance/maintenance.service";
 import { WorldService } from "../world/world.service";
@@ -25,6 +26,7 @@ function readBearerToken(headerValue: string | undefined): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+@AllowAnonymous()
 @Controller("ops")
 export class OpsController {
   private readonly maintenanceService: MaintenanceService;

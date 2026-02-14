@@ -1,6 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { AuthModule } from "@thallesp/nestjs-better-auth";
 import { MaintenanceModeMiddleware } from "./common/middleware/maintenance-mode.middleware";
-import { PlayerIdentityMiddleware } from "./common/middleware/player-identity.middleware";
 import { SchemaReadinessMiddleware } from "./common/middleware/schema-readiness.middleware";
 import { CompaniesController } from "./companies/companies.controller";
 import { CompaniesService } from "./companies/companies.service";
@@ -16,6 +16,8 @@ import { MarketService } from "./market/market.service";
 import { MaintenanceService } from "./maintenance/maintenance.service";
 import { MetaController } from "./meta/meta.controller";
 import { OpsController } from "./ops/ops.controller";
+import { OnboardingController } from "./onboarding/onboarding.controller";
+import { OnboardingService } from "./onboarding/onboarding.service";
 import { PlayersController } from "./players/players.controller";
 import { PlayersService } from "./players/players.service";
 import { PrismaService } from "./prisma/prisma.service";
@@ -33,14 +35,23 @@ import { WorldController } from "./world/world.controller";
 import { WorldService } from "./world/world.service";
 import { WorkforceController } from "./workforce/workforce.controller";
 import { WorkforceService } from "./workforce/workforce.service";
+import { auth } from "./lib/auth";
 
 @Module({
-  imports: [],
+  imports: [
+    AuthModule.forRoot({
+      auth,
+      disableTrustedOriginsCors: true,
+      disableGlobalAuthGuard:
+        process.env.NODE_ENV === "test" && process.env.AUTH_ENFORCE_GUARD_IN_TESTS !== "true"
+    })
+  ],
   controllers: [
     RootController,
     MetaController,
     HealthController,
     OpsController,
+    OnboardingController,
     WorldController,
     FinanceController,
     ContractsController,
@@ -66,6 +77,7 @@ import { WorkforceService } from "./workforce/workforce.service";
     PlayersService,
     MarketService,
     MaintenanceService,
+    OnboardingService,
     ItemsService,
     RegionsService,
     ShipmentsService,
@@ -77,7 +89,7 @@ import { WorkforceService } from "./workforce/workforce.service";
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
-      .apply(SchemaReadinessMiddleware, MaintenanceModeMiddleware, PlayerIdentityMiddleware)
+      .apply(SchemaReadinessMiddleware, MaintenanceModeMiddleware)
       .forRoutes("*");
   }
 }

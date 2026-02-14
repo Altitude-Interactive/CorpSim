@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, Query } from "@nestjs/common";
-import { CurrentPlayerHandle } from "../common/decorators/current-player-handle.decorator";
+import { CurrentPlayerId } from "../common/decorators/current-player-id.decorator";
 import { ListItemsDto } from "./dto/list-items.dto";
 import { ItemsService } from "./items.service";
 
@@ -14,8 +14,8 @@ export class ItemsController {
   @Get()
   async list(
     @Query() query: ListItemsDto,
-    @CurrentPlayerHandle() playerHandle: string
+    @CurrentPlayerId() playerId: string
   ) {
-    return this.itemsService.listItems(query.companyId, playerHandle);
+    return this.itemsService.listItems(query.companyId, playerId);
   }
 }

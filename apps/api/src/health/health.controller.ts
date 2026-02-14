@@ -1,7 +1,9 @@
 import { Controller, Get, Inject } from "@nestjs/common";
+import { AllowAnonymous } from "@thallesp/nestjs-better-auth";
 import { MaintenanceService } from "../maintenance/maintenance.service";
 import { SchemaReadinessService } from "../schema-readiness/schema-readiness.service";
 
+@AllowAnonymous()
 @Controller("health")
 export class HealthController {
   private readonly maintenanceService: MaintenanceService;

@@ -12,7 +12,7 @@ import {
   createProductionJob,
   listProductionJobs,
   listRecipes,
-  resolvePlayerByHandle
+  resolvePlayerById
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 import { ProductionJobStatusFilter } from "./dto/list-production-jobs.dto";
@@ -128,9 +128,9 @@ export class ProductionService {
     this.prisma = prisma;
   }
 
-  async listRecipes(companyId: string | undefined, playerHandle: string): Promise<ProductionRecipe[]> {
+  async listRecipes(companyId: string | undefined, playerId: string): Promise<ProductionRecipe[]> {
     if (companyId) {
-      const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+      const player = await resolvePlayerById(this.prisma, playerId);
       await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
     }
 
@@ -161,8 +161,8 @@ export class ProductionService {
     }));
   }
 
-  async listJobs(filters: ProductionJobFilterInput, playerHandle: string): Promise<ProductionJob[]> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async listJobs(filters: ProductionJobFilterInput, playerId: string): Promise<ProductionJob[]> {
+    const player = await resolvePlayerById(this.prisma, playerId);
 
     if (filters.companyId) {
       await assertCompanyOwnedByPlayer(this.prisma, player.id, filters.companyId);
@@ -177,8 +177,8 @@ export class ProductionService {
     return jobs.map(mapJobToDto);
   }
 
-  async createJob(input: CreateProductionJobInput, playerHandle: string): Promise<ProductionJob> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async createJob(input: CreateProductionJobInput, playerId: string): Promise<ProductionJob> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
     const job = await createProductionJob(this.prisma, {
@@ -190,8 +190,8 @@ export class ProductionService {
     return mapJobToDto(job);
   }
 
-  async cancelJob(jobId: string, playerHandle: string): Promise<ProductionJob> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async cancelJob(jobId: string, playerId: string): Promise<ProductionJob> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertProductionJobOwnedByPlayer(this.prisma, player.id, jobId);
 
     const job = await cancelProductionJob(this.prisma, { jobId });

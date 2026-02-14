@@ -11,7 +11,7 @@ import {
   assertCompanyOwnedByPlayer,
   fulfillContract,
   listContractsForPlayer,
-  resolvePlayerByHandle
+  resolvePlayerById
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -77,8 +77,8 @@ export class ContractsService {
     this.prisma = prisma;
   }
 
-  async listContracts(input: ListContractsFilters, playerHandle: string): Promise<ContractRecord[]> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async listContracts(input: ListContractsFilters, playerId: string): Promise<ContractRecord[]> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     const contracts = await listContractsForPlayer(this.prisma, {
       playerId: player.id,
       status: input.status as PrismaContractStatus | undefined,
@@ -92,9 +92,9 @@ export class ContractsService {
   async acceptContract(
     contractId: string,
     sellerCompanyId: string,
-    playerHandle: string
+    playerId: string
   ): Promise<ContractRecord> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, sellerCompanyId);
 
     const contract = await acceptContract(this.prisma, {
@@ -109,9 +109,9 @@ export class ContractsService {
     contractId: string,
     sellerCompanyId: string,
     quantity: number,
-    playerHandle: string
+    playerId: string
   ): Promise<ContractFulfillmentResult> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, sellerCompanyId);
 
     const result = await fulfillContract(this.prisma, {

@@ -50,6 +50,7 @@
     "dotenv": "^16.6.1"
   },
   "devDependencies": {
+    "@better-auth/cli": "^1.4.18",
     "@nestjs/testing": "^11.1.13",
     "@types/node": "^22.19.11",
     "@types/supertest": "^6.0.3",

@@ -3,7 +3,7 @@ import type { ItemCatalogItem } from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   listItems,
-  resolvePlayerByHandle
+  resolvePlayerById
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -15,9 +15,9 @@ export class ItemsService {
     this.prisma = prisma;
   }
 
-  async listItems(companyId: string | undefined, playerHandle: string): Promise<ItemCatalogItem[]> {
+  async listItems(companyId: string | undefined, playerId: string): Promise<ItemCatalogItem[]> {
     if (companyId) {
-      const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+      const player = await resolvePlayerById(this.prisma, playerId);
       await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
     }
 

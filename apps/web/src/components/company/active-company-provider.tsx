@@ -1,7 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { CompanySummary, listMyCompanies } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
+import { isAuthPage, isOnboardingPage, isProfilePage } from "@/lib/auth-routes";
 
 const ACTIVE_COMPANY_STORAGE_KEY = "corpsim.activeCompanyId";
 
@@ -38,10 +41,18 @@ function pickInitialCompany(companies: CompanySummary[], storedId: string | null
 }
 
 export function ActiveCompanyProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isAuthContext =
+    isAuthPage(pathname) ||
+    isOnboardingPage(pathname) ||
+    isProfilePage(pathname) ||
+    !session?.user?.id ||
+    isSessionPending;
 
   const setActiveCompanyId = useCallback((companyId: string) => {
     setActiveCompanyIdState(companyId);
@@ -51,6 +62,14 @@ export function ActiveCompanyProvider({ children }: { children: React.ReactNode 
   }, []);
 
   const refreshCompanies = useCallback(async () => {
+    if (isAuthContext) {
+      setCompanies([]);
+      setActiveCompanyIdState(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const rows = await listMyCompanies();
@@ -69,7 +88,7 @@ export function ActiveCompanyProvider({ children }: { children: React.ReactNode 
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthContext]);
 
   useEffect(() => {
     void refreshCompanies();

@@ -19,7 +19,7 @@ import {
   listMarketTrades,
   listMarketOrders,
   placeMarketOrder,
-  resolvePlayerByHandle
+  resolvePlayerById
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -131,9 +131,9 @@ export class MarketService {
     this.prisma = prisma;
   }
 
-  async listOrders(filters: MarketOrderFilters, playerHandle: string): Promise<MarketOrder[]> {
+  async listOrders(filters: MarketOrderFilters, playerId: string): Promise<MarketOrder[]> {
     if (filters.companyId) {
-      const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+      const player = await resolvePlayerById(this.prisma, playerId);
       await assertCompanyOwnedByPlayer(this.prisma, player.id, filters.companyId);
     }
 
@@ -141,8 +141,8 @@ export class MarketService {
     return orders.map(mapOrderToDto);
   }
 
-  async placeOrder(input: PlaceMarketOrderInput, playerHandle: string): Promise<MarketOrder> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async placeOrder(input: PlaceMarketOrderInput, playerId: string): Promise<MarketOrder> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertCompanyOwnedByPlayer(this.prisma, player.id, input.companyId);
 
     const order = await placeMarketOrder(this.prisma, {
@@ -157,8 +157,8 @@ export class MarketService {
     return mapOrderToDto(order);
   }
 
-  async cancelOrder(orderId: string, playerHandle: string): Promise<MarketOrder> {
-    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+  async cancelOrder(orderId: string, playerId: string): Promise<MarketOrder> {
+    const player = await resolvePlayerById(this.prisma, playerId);
     await assertOrderOwnedByPlayer(this.prisma, player.id, orderId);
 
     const order = await cancelMarketOrder(this.prisma, { orderId });
