@@ -72,7 +72,7 @@ export function ContractsPage() {
   const deferredItemSearch = useDeferredValue(itemSearch);
 
   const loadItems = useCallback(async () => {
-    const itemRows = await listItems();
+    const itemRows = await listItems(activeCompanyId ?? undefined);
     const unlockedRecipes = activeCompanyId ? await listProductionRecipes(activeCompanyId) : [];
     const unlockedSet = new Set<string>();
     for (const recipe of unlockedRecipes) {

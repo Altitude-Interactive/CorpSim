@@ -5,6 +5,11 @@ import {
   Prisma,
   PrismaClient
 } from "@prisma/client";
+import {
+  CompanySpecialization,
+  isItemCodeLockedBySpecialization,
+  normalizeCompanySpecialization
+} from "@corpsim/shared";
 import { DomainInvariantError, ForbiddenError, NotFoundError } from "../domain/errors";
 import {
   reserveCashForBuyOrder,
@@ -129,7 +134,8 @@ export async function placeMarketOrderWithTx(
       cashCents: true,
       reservedCashCents: true,
       regionId: true,
-      isPlayer: true
+      isPlayer: true,
+      specialization: true
     }
   });
 
@@ -168,6 +174,17 @@ export async function placeMarketOrderWithTx(
     if (isItemCodeLockedByIconTier(item.code, unlockedIconTier)) {
       throw new DomainInvariantError(
         `item ${input.itemId} is not unlocked for company ${input.companyId}`
+      );
+    }
+    if (
+      input.side === OrderSide.SELL &&
+      isItemCodeLockedBySpecialization(
+        item.code,
+        normalizeCompanySpecialization(company.specialization as CompanySpecialization)
+      )
+    ) {
+      throw new DomainInvariantError(
+        `item ${input.itemId} is not available for company specialization`
       );
     }
   }

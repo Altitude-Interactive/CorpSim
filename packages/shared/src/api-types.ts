@@ -1,3 +1,5 @@
+import type { CompanySpecialization, ItemCategory } from "./company-specialization";
+
 // Shared API contracts used by both API and web.
 
 export interface InvariantIssue {
@@ -37,6 +39,7 @@ export interface CompanySummary {
   code: string;
   name: string;
   isBot: boolean;
+  specialization: CompanySpecialization;
   cashCents: string;
   regionId: string;
   regionCode: string;
@@ -47,6 +50,14 @@ export interface CompanyDetails extends CompanySummary {
   reservedCashCents: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CompanySpecializationOption {
+  code: CompanySpecialization;
+  label: string;
+  description: string;
+  unlockedCategories: ItemCategory[];
+  sampleItemCodes: string[];
 }
 
 export interface PlayerIdentity {

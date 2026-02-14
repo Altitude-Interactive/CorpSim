@@ -4,13 +4,18 @@ import {
   PrismaClient,
   ProductionJobStatus
 } from "@prisma/client";
-import { resolveIconItemFallbackPriceCents } from "@corpsim/shared";
+import {
+  CompanySpecialization,
+  normalizeCompanySpecialization,
+  resolveIconItemFallbackPriceCents
+} from "@corpsim/shared";
 import {
   DomainInvariantError,
   NotFoundError
 } from "../domain/errors";
 import { availableCash } from "../domain/reservations";
 import {
+  isRecipeLockedBySpecialization,
   isRecipeLockedByIconTier,
   resolvePlayerUnlockedIconTierFromResearchCodes
 } from "./item-tier-locker";
@@ -332,6 +337,7 @@ export async function createProductionJobWithTx(
       select: {
         id: true,
         isPlayer: true,
+        specialization: true,
         regionId: true,
         workforceCapacity: true,
         workforceAllocationOpsPct: true,
@@ -404,6 +410,16 @@ export async function createProductionJobWithTx(
     if (isRecipeLockedByIconTier(recipe, unlockedIconTier)) {
       throw new DomainInvariantError(
         `recipe ${input.recipeId} is not unlocked for company ${input.companyId}`
+      );
+    }
+    if (
+      isRecipeLockedBySpecialization(
+        recipe,
+        normalizeCompanySpecialization(company.specialization as CompanySpecialization)
+      )
+    ) {
+      throw new DomainInvariantError(
+        `recipe ${input.recipeId} is not available for company specialization`
       );
     }
   }

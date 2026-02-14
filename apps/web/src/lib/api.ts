@@ -1,4 +1,6 @@
 import type {
+  CompanySpecialization,
+  CompanySpecializationOption,
   CompanyWorkforce,
   CompanyDetails,
   CompanySummary,
@@ -45,6 +47,7 @@ import {
 } from "./request-cache";
 import {
   parseCompanyDetails,
+  parseCompanySpecializationOption,
   parseCompanyWorkforce,
   parseCompanySummary,
   parseContractFulfillmentResult,
@@ -78,7 +81,7 @@ const CATALOG_CACHE_TTL_MS = 5 * 60 * 1_000;
 const RESEARCH_CACHE_TTL_MS = 1_000;
 const COMPANY_RECIPES_CACHE_TTL_MS = 2_000;
 
-const ITEMS_CACHE_KEY = "catalog:items";
+const ITEMS_CACHE_KEY_PREFIX = "catalog:items:";
 const REGIONS_CACHE_KEY = "catalog:regions";
 const RECIPES_CACHE_KEY_PREFIX = "catalog:production-recipes:";
 const RESEARCH_CACHE_KEY_PREFIX = "research:";
@@ -87,12 +90,16 @@ function resolveRecipesCacheKey(companyId?: string): string {
   return `${RECIPES_CACHE_KEY_PREFIX}${companyId ?? "all"}`;
 }
 
+function resolveItemsCacheKey(companyId?: string): string {
+  return `${ITEMS_CACHE_KEY_PREFIX}${companyId ?? "all"}`;
+}
+
 function resolveResearchCacheKey(companyId?: string): string {
   return `${RESEARCH_CACHE_KEY_PREFIX}${companyId ?? "default"}`;
 }
 
 function invalidateStaticCatalogCaches(): void {
-  invalidateCachedRequest(ITEMS_CACHE_KEY);
+  invalidateCachedRequestPrefix(ITEMS_CACHE_KEY_PREFIX);
   invalidateCachedRequest(REGIONS_CACHE_KEY);
   invalidateCachedRequestPrefix(RECIPES_CACHE_KEY_PREFIX);
 }
@@ -113,6 +120,24 @@ export async function listCompanies(): Promise<CompanySummary[]> {
 
 export async function getCompany(companyId: string): Promise<CompanyDetails> {
   return fetchJson(`/v1/companies/${companyId}`, parseCompanyDetails);
+}
+
+export async function listCompanySpecializations(): Promise<CompanySpecializationOption[]> {
+  return fetchJson("/v1/companies/specializations", (value) =>
+    readArray(value, "specializations").map(parseCompanySpecializationOption)
+  );
+}
+
+export async function setCompanySpecialization(
+  companyId: string,
+  specialization: CompanySpecialization
+): Promise<CompanyDetails> {
+  const result = await fetchJson(`/v1/companies/${companyId}/specialization`, parseCompanyDetails, {
+    method: "POST",
+    body: JSON.stringify({ specialization })
+  });
+  invalidateStaticCatalogCaches();
+  return result;
 }
 
 export async function getCompanyWorkforce(companyId: string): Promise<CompanyWorkforce> {
@@ -306,11 +331,22 @@ export async function getMarketAnalyticsSummary(
   return fetchJson(`/v1/market/analytics/summary?${params.toString()}`, parseMarketAnalyticsSummary);
 }
 
-export async function listItems(options?: CachedRequestOptions): Promise<ItemCatalogItem[]> {
+export async function listItems(
+  companyId?: string,
+  options?: CachedRequestOptions
+): Promise<ItemCatalogItem[]> {
+  const params = new URLSearchParams();
+  if (companyId) {
+    params.set("companyId", companyId);
+  }
+  const query = params.toString();
+  const path = `/v1/items${query ? `?${query}` : ""}`;
+  const ttl = companyId ? COMPANY_RECIPES_CACHE_TTL_MS : CATALOG_CACHE_TTL_MS;
+
   return getCachedRequest(
-    ITEMS_CACHE_KEY,
-    CATALOG_CACHE_TTL_MS,
-    () => fetchJson("/v1/items", (value) => readArray(value, "items").map(parseItemCatalogItem)),
+    resolveItemsCacheKey(companyId),
+    ttl,
+    () => fetchJson(path, (value) => readArray(value, "items").map(parseItemCatalogItem)),
     options
   );
 }

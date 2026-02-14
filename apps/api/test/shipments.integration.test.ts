@@ -4,7 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
-import { getIconCatalogItemByCode } from "@corpsim/shared";
+import { getIconCatalogItemByCode, resolveItemCategoryByCode } from "@corpsim/shared";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -17,6 +17,7 @@ describe("shipments API integration", () => {
   let industrialRegionId: string;
   let ironOreId: string;
   let tierTwoIconItemId: string;
+  let consumerTierOneIconItemId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -77,6 +78,15 @@ describe("shipments API integration", () => {
       throw new Error("tier-2 icon item not found in seeded dataset");
     }
     tierTwoIconItemId = tierTwoIconItem.id;
+
+    const consumerTierOneItem = iconItems.find((item) => {
+      const icon = getIconCatalogItemByCode(item.code);
+      return icon?.tier === 1 && resolveItemCategoryByCode(item.code) === "CONSUMER_GOODS";
+    });
+    if (!consumerTierOneItem) {
+      throw new Error("tier-1 consumer icon item not found in seeded dataset");
+    }
+    consumerTierOneIconItemId = consumerTierOneItem.id;
 
     await prisma.inventory.upsert({
       where: {
@@ -283,6 +293,44 @@ describe("shipments API integration", () => {
       .expect(400);
 
     expect(String(response.body?.message ?? "")).toContain("not unlocked");
+  });
+
+  it("rejects creating shipments outside company specialization", async () => {
+    await prisma.company.update({
+      where: { id: playerCompanyId },
+      data: { specialization: "INDUSTRIAL" }
+    });
+
+    await prisma.inventory.upsert({
+      where: {
+        companyId_itemId_regionId: {
+          companyId: playerCompanyId,
+          itemId: consumerTierOneIconItemId,
+          regionId: playerRegionId
+        }
+      },
+      update: {
+        quantity: 10,
+        reservedQuantity: 0
+      },
+      create: {
+        companyId: playerCompanyId,
+        itemId: consumerTierOneIconItemId,
+        regionId: playerRegionId,
+        quantity: 10,
+        reservedQuantity: 0
+      }
+    });
+
+    await request(app.getHttpServer())
+      .post("/v1/shipments")
+      .send({
+        companyId: playerCompanyId,
+        toRegionId: industrialRegionId,
+        itemId: consumerTierOneIconItemId,
+        quantity: 1
+      })
+      .expect(400);
   });
 
   it("lists configured regions", async () => {

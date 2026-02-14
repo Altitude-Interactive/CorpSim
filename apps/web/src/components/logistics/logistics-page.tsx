@@ -98,7 +98,10 @@ export function LogisticsPage() {
 
   const loadCatalog = useCallback(async () => {
     try {
-      const [regionRows, itemRows] = await Promise.all([listRegions(), listItems()]);
+      const [regionRows, itemRows] = await Promise.all([
+        listRegions(),
+        listItems(activeCompanyId ?? undefined)
+      ]);
       const [unlockedRecipes, inventoryRows] = activeCompanyId
         ? await Promise.all([
             listProductionRecipes(activeCompanyId),

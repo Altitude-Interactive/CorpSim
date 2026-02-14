@@ -72,6 +72,12 @@ function sanitizeApiErrorMessage(status: number, rawMessage: string): string {
   if (normalized.includes("is not unlocked for company")) {
     return "This recipe is not unlocked for the active company.";
   }
+  if (normalized.includes("not available for company specialization")) {
+    return "This item is outside your current company focus.";
+  }
+  if (normalized.includes("contract item is not available for company specialization")) {
+    return "This contract item is outside your current company focus.";
+  }
   if (normalized.includes("not found")) {
     if (normalized.includes("company")) {
       return "The selected company was not found. Refresh and try again.";

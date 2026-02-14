@@ -1,4 +1,9 @@
-import { getIconCatalogItemByCode } from "@corpsim/shared";
+import {
+  CompanySpecialization,
+  getIconCatalogItemByCode,
+  isItemCodeLockedBySpecialization,
+  normalizeCompanySpecialization
+} from "@corpsim/shared";
 
 const MIN_ICON_TIER = 1;
 const MAX_ICON_TIER = 4;
@@ -15,6 +20,10 @@ const ICON_TIER_UNLOCK_MILESTONES: ReadonlyArray<{
 export interface RecipeForItemTierLock {
   outputItem: { code: string };
   inputs: Array<{ item: { code: string } }>;
+}
+
+export interface RecipeForItemSpecializationLock {
+  outputItem: { code: string };
 }
 
 function clampIconTier(tier: number): number {
@@ -64,4 +73,14 @@ export function isRecipeLockedByIconTier(
   }
 
   return false;
+}
+
+export function isRecipeLockedBySpecialization(
+  recipe: RecipeForItemSpecializationLock,
+  specialization: CompanySpecialization
+): boolean {
+  return isItemCodeLockedBySpecialization(
+    recipe.outputItem.code,
+    normalizeCompanySpecialization(specialization)
+  );
 }

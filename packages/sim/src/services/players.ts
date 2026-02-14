@@ -41,6 +41,7 @@ export async function listCompaniesOwnedByPlayer(prisma: PrismaClient, playerId:
       code: true,
       name: true,
       isPlayer: true,
+      specialization: true,
       cashCents: true,
       ownerPlayerId: true,
       region: {

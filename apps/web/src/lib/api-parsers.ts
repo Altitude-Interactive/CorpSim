@@ -1,4 +1,7 @@
 import type {
+  CompanySpecialization,
+  CompanySpecializationOption,
+  ItemCategory,
   CompanyDetails,
   CompanyWorkforce,
   CompanySummary,
@@ -31,7 +34,24 @@ import type {
   WorldHealth,
   WorldTickState
 } from "@corpsim/shared";
+import { COMPANY_SPECIALIZATION_CODES, ITEM_CATEGORY_CODES } from "@corpsim/shared";
 import { isRecord, readArray, readBoolean, readNullableString, readNumber, readString } from "./api-client";
+
+function parseCompanySpecialization(value: unknown): CompanySpecialization {
+  const specialization = readString(value, "specialization");
+  if (!COMPANY_SPECIALIZATION_CODES.includes(specialization as CompanySpecialization)) {
+    throw new Error("Invalid company specialization");
+  }
+  return specialization as CompanySpecialization;
+}
+
+function parseItemCategory(value: unknown): ItemCategory {
+  const category = readString(value, "itemCategory");
+  if (!ITEM_CATEGORY_CODES.includes(category as ItemCategory)) {
+    throw new Error("Invalid item category");
+  }
+  return category as ItemCategory;
+}
 
 export function parseInvariantIssue(value: unknown): InvariantIssue {
   if (!isRecord(value)) {
@@ -107,6 +127,7 @@ export function parseCompanySummary(value: unknown): CompanySummary {
     code: readString(value.code, "code"),
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
+    specialization: parseCompanySpecialization(value.specialization),
     cashCents: readString(value.cashCents, "cashCents"),
     regionId: readString(value.regionId, "regionId"),
     regionCode: readString(value.regionCode, "regionCode"),
@@ -124,6 +145,7 @@ export function parseCompanyDetails(value: unknown): CompanyDetails {
     code: readString(value.code, "code"),
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
+    specialization: parseCompanySpecialization(value.specialization),
     cashCents: readString(value.cashCents, "cashCents"),
     reservedCashCents: readString(value.reservedCashCents, "reservedCashCents"),
     regionId: readString(value.regionId, "regionId"),
@@ -372,6 +394,26 @@ export function parseItemCatalogItem(value: unknown): ItemCatalogItem {
     id: readString(value.id, "id"),
     code: readString(value.code, "code"),
     name: readString(value.name, "name")
+  };
+}
+
+export function parseCompanySpecializationOption(
+  value: unknown
+): CompanySpecializationOption {
+  if (!isRecord(value)) {
+    throw new Error("Invalid company specialization option");
+  }
+
+  return {
+    code: parseCompanySpecialization(value.code),
+    label: readString(value.label, "label"),
+    description: readString(value.description, "description"),
+    unlockedCategories: readArray(value.unlockedCategories, "unlockedCategories").map(
+      parseItemCategory
+    ),
+    sampleItemCodes: readArray(value.sampleItemCodes, "sampleItemCodes").map((entry) =>
+      readString(entry, "sampleItemCode")
+    )
   };
 }
 
@@ -808,3 +850,4 @@ export function parseWorkforceCapacityChangeResult(
     orgEfficiencyBps: readNumber(value.orgEfficiencyBps, "orgEfficiencyBps")
   };
 }
+

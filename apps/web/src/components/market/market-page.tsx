@@ -116,7 +116,7 @@ export function MarketPage() {
 
   const loadCatalog = useCallback(async (): Promise<string> => {
     const [itemRows, regionRows, companyRows] = await Promise.all([
-      listItems(),
+      listItems(activeCompanyId ?? undefined),
       listRegions(),
       listCompanies()
     ]);

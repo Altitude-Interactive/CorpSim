@@ -4,7 +4,12 @@ import {
   Prisma,
   PrismaClient
 } from "@prisma/client";
-import { resolveIconItemFallbackPriceCents } from "@corpsim/shared";
+import {
+  CompanySpecialization,
+  isItemCodeLockedBySpecialization,
+  normalizeCompanySpecialization,
+  resolveIconItemFallbackPriceCents
+} from "@corpsim/shared";
 import {
   DomainInvariantError,
   NotFoundError,
@@ -310,6 +315,11 @@ export async function acceptContract(prisma: PrismaClient, input: AcceptContract
     const contract = await tx.contract.findUnique({
       where: { id: input.contractId },
       include: {
+        item: {
+          select: {
+            code: true
+          }
+        },
         buyerCompany: {
           select: {
             id: true,
@@ -405,6 +415,11 @@ export async function fulfillContract(prisma: PrismaClient, input: FulfillContra
     const contract = await tx.contract.findUnique({
       where: { id: input.contractId },
       include: {
+        item: {
+          select: {
+            code: true
+          }
+        },
         buyerCompany: {
           select: {
             id: true,
@@ -444,12 +459,25 @@ export async function fulfillContract(prisma: PrismaClient, input: FulfillContra
       select: {
         id: true,
         cashCents: true,
-        regionId: true
+        regionId: true,
+        isPlayer: true,
+        specialization: true
       }
     });
 
     if (!sellerCompany) {
       throw new NotFoundError(`company ${input.sellerCompanyId} not found`);
+    }
+    if (
+      sellerCompany.isPlayer &&
+      isItemCodeLockedBySpecialization(
+        contract.item.code,
+        normalizeCompanySpecialization(
+          sellerCompany.specialization as CompanySpecialization
+        )
+      )
+    ) {
+      throw new DomainInvariantError("contract item is not available for company specialization");
     }
 
     const sellerInventory = await tx.inventory.findUnique({

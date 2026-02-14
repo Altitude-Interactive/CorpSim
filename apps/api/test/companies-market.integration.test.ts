@@ -204,5 +204,39 @@ describe("companies and market API integration", () => {
       name: expect.any(String)
     });
   });
+
+  it("lists company focus options", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/v1/companies/specializations")
+      .expect(200);
+
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body.some((row: { code: string }) => row.code === "INDUSTRIAL")).toBe(true);
+    expect(response.body.some((row: { code: string }) => row.code === "CONSUMER")).toBe(true);
+  });
+
+  it("updates company focus and filters company-scoped item catalog", async () => {
+    const beforeItems = await request(app.getHttpServer())
+      .get("/v1/items")
+      .query({ companyId: playerCompanyId })
+      .expect(200);
+
+    expect(beforeItems.body.some((item: { code: string }) => item.code === "IRON_ORE")).toBe(true);
+    expect(beforeItems.body.some((item: { code: string }) => item.code === "STEEL_INGOT")).toBe(false);
+
+    const updateResponse = await request(app.getHttpServer())
+      .post(`/v1/companies/${playerCompanyId}/specialization`)
+      .send({ specialization: "INDUSTRIAL" })
+      .expect(201);
+
+    expect(updateResponse.body.specialization).toBe("INDUSTRIAL");
+
+    const afterItems = await request(app.getHttpServer())
+      .get("/v1/items")
+      .query({ companyId: playerCompanyId })
+      .expect(200);
+
+    expect(afterItems.body.some((item: { code: string }) => item.code === "STEEL_INGOT")).toBe(true);
+  });
 });
 

@@ -32,6 +32,14 @@ enum CompanyResearchStatus {
   COMPLETED
 }
 
+enum CompanySpecialization {
+  UNASSIGNED
+  INDUSTRIAL
+  BIOTECH
+  CONSUMER
+  DEFENSE
+}
+
 enum ResearchJobStatus {
   RUNNING
   COMPLETED
@@ -71,6 +79,7 @@ model Company {
   code              String       @unique
   name              String
   isPlayer          Boolean      @default(false)
+  specialization    CompanySpecialization @default(UNASSIGNED)
   ownerPlayerId     String?
   regionId          String
   cashCents         BigInt

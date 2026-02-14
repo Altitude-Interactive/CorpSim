@@ -1,5 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { CompanySummary, PlayerIdentity, PlayerRegistryEntry } from "@corpsim/shared";
+import {
+  type CompanySummary,
+  type PlayerIdentity,
+  type PlayerRegistryEntry,
+  normalizeCompanySpecialization
+} from "@corpsim/shared";
 import {
   listCompaniesOwnedByPlayer,
   resolvePlayerByHandle
@@ -33,6 +38,7 @@ export class PlayersService {
       code: company.code,
       name: company.name,
       isBot: !company.isPlayer,
+      specialization: normalizeCompanySpecialization(company.specialization),
       cashCents: company.cashCents.toString(),
       regionId: company.region.id,
       regionCode: company.region.code,

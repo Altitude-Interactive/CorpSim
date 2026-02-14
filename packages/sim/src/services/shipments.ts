@@ -5,6 +5,11 @@ import {
   ShipmentStatus
 } from "@prisma/client";
 import {
+  CompanySpecialization,
+  isItemCodeLockedBySpecialization,
+  normalizeCompanySpecialization
+} from "@corpsim/shared";
+import {
   DomainInvariantError,
   NotFoundError,
   OptimisticLockConflictError
@@ -208,6 +213,7 @@ export async function createShipmentWithTx(
       select: {
         id: true,
         isPlayer: true,
+        specialization: true,
         regionId: true,
         cashCents: true,
         reservedCashCents: true,
@@ -265,6 +271,16 @@ export async function createShipmentWithTx(
     if (isItemCodeLockedByIconTier(item.code, unlockedIconTier)) {
       throw new DomainInvariantError(
         `item ${input.itemId} is not unlocked for company ${input.companyId}`
+      );
+    }
+    if (
+      isItemCodeLockedBySpecialization(
+        item.code,
+        normalizeCompanySpecialization(company.specialization as CompanySpecialization)
+      )
+    ) {
+      throw new DomainInvariantError(
+        `item ${input.itemId} is not available for company specialization`
       );
     }
   }

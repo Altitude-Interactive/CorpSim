@@ -1,12 +1,21 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { CompanyDetails, CompanySummary, InventoryRow } from "@corpsim/shared";
+import {
+  type CompanyDetails,
+  type CompanySpecialization,
+  type CompanySpecializationOption,
+  type CompanySummary,
+  type InventoryRow,
+  listCompanySpecializationDefinitions,
+  normalizeCompanySpecialization
+} from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   getCompanyById,
   listCompaniesOwnedByPlayer,
   listCompanies,
   listCompanyInventory,
-  resolvePlayerByHandle
+  resolvePlayerByHandle,
+  setCompanySpecialization
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -26,6 +35,7 @@ export class CompaniesService {
       code: company.code,
       name: company.name,
       isBot: company.isBot,
+      specialization: normalizeCompanySpecialization(company.specialization),
       cashCents: company.cashCents.toString(),
       regionId: company.regionId,
       regionCode: company.regionCode,
@@ -42,6 +52,7 @@ export class CompaniesService {
       code: company.code,
       name: company.name,
       isBot: !company.isPlayer,
+      specialization: normalizeCompanySpecialization(company.specialization),
       cashCents: company.cashCents.toString(),
       regionId: company.region.id,
       regionCode: company.region.code,
@@ -60,6 +71,7 @@ export class CompaniesService {
       code: company.code,
       name: company.name,
       isBot: company.isBot,
+      specialization: normalizeCompanySpecialization(company.specialization),
       cashCents: company.cashCents.toString(),
       reservedCashCents: company.reservedCashCents.toString(),
       regionId: company.regionId,
@@ -88,6 +100,45 @@ export class CompaniesService {
       quantity: row.quantity,
       reservedQuantity: row.reservedQuantity
     }));
+  }
+
+  listSpecializationOptions(): CompanySpecializationOption[] {
+    return listCompanySpecializationDefinitions().map((entry) => ({
+      code: entry.code,
+      label: entry.label,
+      description: entry.description,
+      unlockedCategories: [...entry.unlockedCategories],
+      sampleItemCodes: [...entry.sampleItemCodes]
+    }));
+  }
+
+  async setSpecialization(
+    companyId: string,
+    specialization: CompanySpecialization,
+    playerHandle: string
+  ): Promise<CompanyDetails> {
+    const player = await resolvePlayerByHandle(this.prisma, playerHandle);
+    await assertCompanyOwnedByPlayer(this.prisma, player.id, companyId);
+
+    const company = await setCompanySpecialization(this.prisma, {
+      companyId,
+      specialization
+    });
+
+    return {
+      id: company.id,
+      code: company.code,
+      name: company.name,
+      isBot: company.isBot,
+      specialization: normalizeCompanySpecialization(company.specialization),
+      cashCents: company.cashCents.toString(),
+      reservedCashCents: company.reservedCashCents.toString(),
+      regionId: company.regionId,
+      regionCode: company.regionCode,
+      regionName: company.regionName,
+      createdAt: company.createdAt.toISOString(),
+      updatedAt: company.updatedAt.toISOString()
+    };
   }
 }
 

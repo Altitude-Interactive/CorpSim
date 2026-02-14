@@ -16,12 +16,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/toast-manager";
 import {
   ApiClientError,
+  CompanySpecialization,
+  CompanySpecializationOption,
   ProductionJob,
   ProductionRecipe,
   cancelProductionJob,
   createProductionJob,
+  listCompanySpecializations,
   listProductionJobs,
-  listProductionRecipes
+  listProductionRecipes,
+  setCompanySpecialization
 } from "@/lib/api";
 import { formatCadenceCount, UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { formatCodeLabel, UI_COPY } from "@/lib/ui-copy";
@@ -56,7 +60,7 @@ function mapProductionErrorMessage(error: unknown): string {
 export function ProductionPage() {
   const { showToast } = useToast();
   const { play } = useUiSfx();
-  const { activeCompany, activeCompanyId } = useActiveCompany();
+  const { activeCompany, activeCompanyId, refreshCompanies } = useActiveCompany();
   const { health } = useWorldHealth();
 
   const [recipes, setRecipes] = useState<ProductionRecipe[]>([]);
@@ -73,6 +77,9 @@ export function ProductionPage() {
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [hasLoadedRecipes, setHasLoadedRecipes] = useState(false);
   const [hasLoadedJobs, setHasLoadedJobs] = useState(false);
+  const [specializationOptions, setSpecializationOptions] = useState<CompanySpecializationOption[]>([]);
+  const [isLoadingSpecializations, setIsLoadingSpecializations] = useState(true);
+  const [isUpdatingSpecialization, setIsUpdatingSpecialization] = useState(false);
   const [isCancellingJobId, setIsCancellingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deferredRecipeSearch = useDeferredValue(recipeSearch);
@@ -158,6 +165,12 @@ export function ProductionPage() {
       Number.MAX_SAFE_INTEGER
     );
   }, [runningJobs]);
+
+  const activeSpecializationOption = useMemo(
+    () =>
+      specializationOptions.find((option) => option.code === activeCompany?.specialization) ?? null,
+    [activeCompany?.specialization, specializationOptions]
+  );
 
   const loadRecipes = useCallback(async (options?: { showLoadingState?: boolean }) => {
     const showLoadingState = options?.showLoadingState ?? !hasLoadedRecipesRef.current;
@@ -247,16 +260,30 @@ export function ProductionPage() {
     }
   }, [activeCompanyId]);
 
+  const loadSpecializations = useCallback(async () => {
+    setIsLoadingSpecializations(true);
+    try {
+      const rows = await listCompanySpecializations();
+      setSpecializationOptions(rows);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to load company focus options");
+    } finally {
+      setIsLoadingSpecializations(false);
+    }
+  }, []);
+
   const loadProductionState = useCallback(async () => {
     try {
       await Promise.all([
         loadRecipes({ showLoadingState: true }),
-        loadJobs({ showLoadingState: true })
+        loadJobs({ showLoadingState: true }),
+        loadSpecializations()
       ]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load production state");
     }
-  }, [loadJobs, loadRecipes]);
+  }, [loadJobs, loadRecipes, loadSpecializations]);
 
   useEffect(() => {
     void loadProductionState();
@@ -306,6 +333,44 @@ export function ProductionPage() {
   }, [completedJobs, play]);
   const showInitialRecipesSkeleton = isLoadingRecipes && !hasLoadedRecipes;
   const showInitialJobsSkeleton = isLoadingJobs && !hasLoadedJobs;
+
+  const handleSpecializationChange = async (nextSpecialization: string) => {
+    if (!activeCompanyId) {
+      setError(UI_COPY.common.selectCompanyFirst);
+      return;
+    }
+
+    const specialization = nextSpecialization as CompanySpecialization;
+    if (specialization === activeCompany?.specialization) {
+      return;
+    }
+
+    setIsUpdatingSpecialization(true);
+    try {
+      await setCompanySpecialization(activeCompanyId, specialization);
+      await Promise.all([
+        refreshCompanies(),
+        loadRecipes({ showLoadingState: false })
+      ]);
+      showToast({
+        title: "Company focus updated",
+        description: "Unlocked item lanes were refreshed for this company.",
+        variant: "success"
+      });
+      play("feedback_success");
+      setError(null);
+    } catch (caught) {
+      const message = mapProductionErrorMessage(caught);
+      setError(message);
+      showToast({
+        title: "Focus update failed",
+        description: message,
+        variant: "error"
+      });
+    } finally {
+      setIsUpdatingSpecialization(false);
+    }
+  };
 
   const submitStartJob = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -389,89 +454,130 @@ export function ProductionPage() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Start Production</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-3" onSubmit={submitStartJob}>
-              <div>
-                <p className="mb-1 text-xs text-muted-foreground">Active Company</p>
-                <p className="text-sm font-medium">
-                  {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
-                </p>
-              </div>
-
-              <div>
-                <p className="mb-1 text-xs text-muted-foreground">Recipe</p>
-                <Input
-                  value={recipeSearch}
-                  onChange={(event) => setRecipeSearch(event.target.value)}
-                  placeholder="Search recipe by code, name, output, or input"
-                  className="mb-2"
-                />
-                <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select recipe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectRecipeRows.map((row) => (
-                      <SelectItem key={row.recipe.id} value={row.recipe.id}>
-                        {row.recipe.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {filteredRecipeRows.length > selectRecipeRows.length ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Showing first {selectRecipeRows.length} matching recipes in dropdown.
-                  </p>
-                ) : null}
-              </div>
-
-              <div>
-                <p className="mb-1 text-xs text-muted-foreground">Quantity</p>
-                <Input
-                  value={quantityInput}
-                  onChange={(event) => setQuantityInput(event.target.value)}
-                  placeholder="1"
-                />
-              </div>
-
-              {selectedRecipe ? (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Company Focus</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Pick one focus for this company. It decides which products this company can make and sell.
+              </p>
+              <Select
+                value={activeCompany?.specialization ?? "UNASSIGNED"}
+                onValueChange={(value) => {
+                  void handleSpecializationChange(value);
+                }}
+                disabled={!activeCompanyId || isUpdatingSpecialization || isLoadingSpecializations}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select company focus" />
+                </SelectTrigger>
+                <SelectContent>
+                  {specializationOptions.map((option) => (
+                    <SelectItem key={option.code} value={option.code}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeSpecializationOption ? (
                 <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground">{selectedRecipe.name}</p>
-                  <p>
-                    Duration: {formatCadenceCount(selectedRecipe.durationTicks)} / run
+                  <p className="font-medium text-foreground">{activeSpecializationOption.label}</p>
+                  <p>{activeSpecializationOption.description}</p>
+                  <p className="mt-2">Example item codes:</p>
+                  <p className="font-mono text-[11px] text-foreground">
+                    {activeSpecializationOption.sampleItemCodes.join(", ")}
                   </p>
-                  <p>
-                    Output: {selectedRecipe.outputQuantity}{" "}
-                    <ItemLabel
-                      itemCode={selectedRecipe.outputItem.code}
-                      itemName={selectedRecipe.outputItem.name}
-                      className="inline-flex"
-                    />
-                  </p>
-                  <p>Inputs:</p>
-                  <ul className="list-disc pl-4">
-                    {selectedRecipe.inputs.map((input) => (
-                      <li key={input.itemId} className="flex items-center gap-1">
-                        <span>{input.quantityPerRun}</span>
-                        <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
-                        <span>/ run</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               ) : null}
+            </CardContent>
+          </Card>
 
-              <Button type="submit" disabled={isSubmitting || !activeCompanyId || !selectedRecipeId}>
-                Start Job
-              </Button>
-              {error ? <p className="text-xs text-red-300">{error}</p> : null}
-            </form>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Start Production</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-3" onSubmit={submitStartJob}>
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Active Company</p>
+                  <p className="text-sm font-medium">
+                    {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Recipe</p>
+                  <Input
+                    value={recipeSearch}
+                    onChange={(event) => setRecipeSearch(event.target.value)}
+                    placeholder="Search recipe by code, name, output, or input"
+                    className="mb-2"
+                  />
+                  <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select recipe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectRecipeRows.map((row) => (
+                        <SelectItem key={row.recipe.id} value={row.recipe.id}>
+                          {row.recipe.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {filteredRecipeRows.length > selectRecipeRows.length ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Showing first {selectRecipeRows.length} matching recipes in dropdown.
+                    </p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Quantity</p>
+                  <Input
+                    value={quantityInput}
+                    onChange={(event) => setQuantityInput(event.target.value)}
+                    placeholder="1"
+                  />
+                </div>
+
+                {selectedRecipe ? (
+                  <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground">{selectedRecipe.name}</p>
+                    <p>
+                      Duration: {formatCadenceCount(selectedRecipe.durationTicks)} / run
+                    </p>
+                    <p>
+                      Output: {selectedRecipe.outputQuantity}{" "}
+                      <ItemLabel
+                        itemCode={selectedRecipe.outputItem.code}
+                        itemName={selectedRecipe.outputItem.name}
+                        className="inline-flex"
+                      />
+                    </p>
+                    <p>Inputs:</p>
+                    <ul className="list-disc pl-4">
+                      {selectedRecipe.inputs.map((input) => (
+                        <li key={input.itemId} className="flex items-center gap-1">
+                          <span>{input.quantityPerRun}</span>
+                          <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
+                          <span>/ run</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <Button type="submit" disabled={isSubmitting || !activeCompanyId || !selectedRecipeId}>
+                  Start Job
+                </Button>
+                {error ? <p className="text-xs text-red-300">{error}</p> : null}
+              </form>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>

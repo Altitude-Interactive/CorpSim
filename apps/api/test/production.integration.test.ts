@@ -4,7 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
-import { getIconCatalogItemByCode } from "@corpsim/shared";
+import { getIconCatalogItemByCode, resolveItemCategoryByCode } from "@corpsim/shared";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -18,6 +18,7 @@ describe("production API integration", () => {
   let ironIngotId: string;
   let smeltRecipeId: string;
   let tierTwoIconRecipeId: string;
+  let consumerTierOneIconRecipeId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -80,6 +81,15 @@ describe("production API integration", () => {
       throw new Error("tier-2 icon recipe not found in seeded dataset");
     }
     tierTwoIconRecipeId = tierTwoRecipe.id;
+
+    const consumerTierOneRecipe = iconRecipes.find((recipe) => {
+      const icon = getIconCatalogItemByCode(recipe.outputItem.code);
+      return icon?.tier === 1 && resolveItemCategoryByCode(recipe.outputItem.code) === "CONSUMER_GOODS";
+    });
+    if (!consumerTierOneRecipe) {
+      throw new Error("tier-1 consumer icon recipe not found in seeded dataset");
+    }
+    consumerTierOneIconRecipeId = consumerTierOneRecipe.id;
   });
 
   afterAll(async () => {
@@ -349,6 +359,22 @@ describe("production API integration", () => {
       .send({
         companyId: playerCompanyId,
         recipeId: tierTwoIconRecipeId,
+        quantity: 1
+      })
+      .expect(400);
+  });
+
+  it("rejects starting production outside company specialization", async () => {
+    await prisma.company.update({
+      where: { id: playerCompanyId },
+      data: { specialization: "INDUSTRIAL" }
+    });
+
+    await request(app.getHttpServer())
+      .post("/v1/production/jobs")
+      .send({
+        companyId: playerCompanyId,
+        recipeId: consumerTierOneIconRecipeId,
         quantity: 1
       })
       .expect(400);

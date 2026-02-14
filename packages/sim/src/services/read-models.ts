@@ -5,9 +5,16 @@ import {
   PrismaClient,
   ProductionJobStatus
 } from "@prisma/client";
+import {
+  CompanySpecialization,
+  isItemCodeLockedBySpecialization,
+  normalizeCompanySpecialization
+} from "@corpsim/shared";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
 import { scanSimulationInvariants } from "./invariants";
 import {
+  isItemCodeLockedByIconTier,
+  isRecipeLockedBySpecialization,
   isRecipeLockedByIconTier,
   resolvePlayerUnlockedIconTierFromResearchCodes
 } from "./item-tier-locker";
@@ -65,6 +72,15 @@ export interface ProductionJobFilters {
 
 export interface RecipeFilters {
   companyId?: string;
+}
+
+export interface ItemFilters {
+  companyId?: string;
+}
+
+export interface SetCompanySpecializationInput {
+  companyId: string;
+  specialization: CompanySpecialization;
 }
 
 export interface CompanyLedgerFilters {
@@ -170,6 +186,7 @@ export async function listCompanies(prisma: PrismaClient) {
       code: true,
       name: true,
       isPlayer: true,
+      specialization: true,
       cashCents: true,
       region: {
         select: {
@@ -186,6 +203,7 @@ export async function listCompanies(prisma: PrismaClient) {
     code: company.code,
     name: company.name,
     isBot: !company.isPlayer,
+    specialization: normalizeCompanySpecialization(company.specialization),
     cashCents: company.cashCents,
     regionId: company.region.id,
     regionCode: company.region.code,
@@ -201,6 +219,7 @@ export async function getCompanyById(prisma: PrismaClient, companyId: string) {
       code: true,
       name: true,
       isPlayer: true,
+      specialization: true,
       cashCents: true,
       reservedCashCents: true,
       region: {
@@ -223,6 +242,7 @@ export async function getCompanyById(prisma: PrismaClient, companyId: string) {
     id: company.id,
     code: company.code,
     name: company.name,
+    specialization: normalizeCompanySpecialization(company.specialization),
     cashCents: company.cashCents,
     reservedCashCents: company.reservedCashCents,
     regionId: company.region.id,
@@ -232,6 +252,33 @@ export async function getCompanyById(prisma: PrismaClient, companyId: string) {
     updatedAt: company.updatedAt,
     isBot: !company.isPlayer
   };
+}
+
+export async function setCompanySpecialization(
+  prisma: PrismaClient,
+  input: SetCompanySpecializationInput
+) {
+  if (!input.companyId) {
+    throw new DomainInvariantError("companyId is required");
+  }
+
+  const specialization = normalizeCompanySpecialization(input.specialization);
+
+  const updated = await prisma.company.updateMany({
+    where: {
+      id: input.companyId,
+      isPlayer: true
+    },
+    data: {
+      specialization
+    }
+  });
+
+  if (updated.count !== 1) {
+    throw new NotFoundError(`company ${input.companyId} not found`);
+  }
+
+  return getCompanyById(prisma, input.companyId);
 }
 
 export async function listCompanyInventory(
@@ -569,14 +616,62 @@ export async function getMarketAnalyticsSummary(
   };
 }
 
-export async function listItems(prisma: PrismaClient) {
-  return prisma.item.findMany({
+export async function listItems(prisma: PrismaClient, filters: ItemFilters = {}) {
+  const rows = await prisma.item.findMany({
     orderBy: [{ code: "asc" }],
     select: {
       id: true,
       code: true,
       name: true
     }
+  });
+
+  if (!filters.companyId) {
+    return rows;
+  }
+
+  const company = await prisma.company.findUnique({
+    where: { id: filters.companyId },
+    select: {
+      isPlayer: true,
+      specialization: true
+    }
+  });
+
+  if (!company) {
+    throw new NotFoundError(`company ${filters.companyId} not found`);
+  }
+
+  if (!company.isPlayer) {
+    return rows;
+  }
+
+  const completedResearchRows = await prisma.companyResearch.findMany({
+    where: {
+      companyId: filters.companyId,
+      status: "COMPLETED"
+    },
+    select: {
+      node: {
+        select: {
+          code: true
+        }
+      }
+    }
+  });
+
+  const unlockedIconTier = resolvePlayerUnlockedIconTierFromResearchCodes(
+    completedResearchRows.map((row) => row.node.code)
+  );
+  const specialization = normalizeCompanySpecialization(
+    company.specialization as CompanySpecialization
+  );
+
+  return rows.filter((item) => {
+    if (isItemCodeLockedByIconTier(item.code, unlockedIconTier)) {
+      return false;
+    }
+    return !isItemCodeLockedBySpecialization(item.code, specialization);
   });
 }
 
@@ -622,12 +717,13 @@ export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters =
       id: filters.companyId
     },
     select: {
-      isPlayer: true
+      isPlayer: true,
+      specialization: true
     }
   });
 
   let playerUnlockedIconTier: number | null = null;
-  const applyItemTierLock = async (
+  const applyItemAccessLock = async (
     recipes: Array<{
       id: string;
       code: string;
@@ -672,9 +768,14 @@ export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters =
         completedResearchRows.map((row) => row.node.code)
       );
     }
+    const specialization = normalizeCompanySpecialization(
+      company.specialization as CompanySpecialization
+    );
 
     return recipes.filter(
-      (recipe) => !isRecipeLockedByIconTier(recipe, playerUnlockedIconTier ?? 1)
+      (recipe) =>
+        !isRecipeLockedByIconTier(recipe, playerUnlockedIconTier ?? 1) &&
+        !isRecipeLockedBySpecialization(recipe, specialization)
     );
   };
 
@@ -692,7 +793,7 @@ export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters =
   });
 
   if (unlockedRecipes.length > 0) {
-    return applyItemTierLock(unlockedRecipes);
+    return applyItemAccessLock(unlockedRecipes);
   }
 
   // Legacy data fallback: older/local worlds may miss companyRecipe rows entirely.
@@ -710,10 +811,10 @@ export async function listRecipes(prisma: PrismaClient, filters: RecipeFilters =
       orderBy: [{ code: "asc" }],
       select: baseSelect
     });
-    return applyItemTierLock(fallbackRecipes);
+    return applyItemAccessLock(fallbackRecipes);
   }
 
-  return applyItemTierLock(unlockedRecipes);
+  return applyItemAccessLock(unlockedRecipes);
 }
 
 export async function listProductionJobs(

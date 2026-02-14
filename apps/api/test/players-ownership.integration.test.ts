@@ -122,6 +122,13 @@ describe("players ownership integration", () => {
         quantity: 1
       })
       .expect(403);
+
+    await request(app.getHttpServer())
+      .post(`/v1/companies/${botCompanyId}/specialization`)
+      .send({
+        specialization: "INDUSTRIAL"
+      })
+      .expect(403);
   });
 });
 

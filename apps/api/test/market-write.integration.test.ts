@@ -4,7 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
-import { getIconCatalogItemByCode } from "@corpsim/shared";
+import { getIconCatalogItemByCode, resolveItemCategoryByCode } from "@corpsim/shared";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
@@ -17,6 +17,7 @@ describe("market write API integration", () => {
   let industrialRegionId: string;
   let ironOreId: string;
   let tierTwoIconItemId: string;
+  let consumerTierOneIconItemId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -74,6 +75,15 @@ describe("market write API integration", () => {
       throw new Error("tier-2 icon item not found in seeded dataset");
     }
     tierTwoIconItemId = tierTwoIconItem.id;
+
+    const consumerTierOneItem = iconItems.find((item) => {
+      const icon = getIconCatalogItemByCode(item.code);
+      return icon?.tier === 1 && resolveItemCategoryByCode(item.code) === "CONSUMER_GOODS";
+    });
+    if (!consumerTierOneItem) {
+      throw new Error("tier-1 consumer icon item not found in seeded dataset");
+    }
+    consumerTierOneIconItemId = consumerTierOneItem.id;
   });
 
   afterAll(async () => {
@@ -170,6 +180,24 @@ describe("market write API integration", () => {
         companyId: playerCompanyId,
         itemId: tierTwoIconItemId,
         side: "BUY",
+        priceCents: 100,
+        quantity: 1
+      })
+      .expect(400);
+  });
+
+  it("rejects SELL orders outside company specialization", async () => {
+    await prisma.company.update({
+      where: { id: playerCompanyId },
+      data: { specialization: "INDUSTRIAL" }
+    });
+
+    await request(app.getHttpServer())
+      .post("/v1/market/orders")
+      .send({
+        companyId: playerCompanyId,
+        itemId: consumerTierOneIconItemId,
+        side: "SELL",
         priceCents: 100,
         quantity: 1
       })
