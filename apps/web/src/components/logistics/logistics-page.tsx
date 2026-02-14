@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -40,6 +40,8 @@ const SHIPMENT_FEE_PER_UNIT_CENTS = Number.parseInt(
   process.env.NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS ?? "15",
   10
 );
+const SHIPMENT_TABLE_PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const LOGISTICS_ITEM_SELECT_LIMIT = 200;
 
 const TRAVEL_TICKS_BY_REGION_PAIR = new Map<string, number>([
   ["CORE:INDUSTRIAL", 5],
@@ -72,7 +74,14 @@ export function LogisticsPage() {
   const [shipments, setShipments] = useState<ShipmentRecord[]>([]);
   const [toRegionId, setToRegionId] = useState<string>("");
   const [itemId, setItemId] = useState<string>("");
+  const [itemSearch, setItemSearch] = useState("");
   const [quantityInput, setQuantityInput] = useState("1");
+  const [inTransitPageSize, setInTransitPageSize] =
+    useState<(typeof SHIPMENT_TABLE_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [inTransitPage, setInTransitPage] = useState(1);
+  const [deliveredPageSize, setDeliveredPageSize] =
+    useState<(typeof SHIPMENT_TABLE_PAGE_SIZE_OPTIONS)[number]>(20);
+  const [deliveredPage, setDeliveredPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingArbitrage, setIsLoadingArbitrage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,6 +89,7 @@ export function LogisticsPage() {
   const [analyticsByRegion, setAnalyticsByRegion] = useState<Record<string, MarketAnalyticsSummary | null>>({});
   const deliveredIdsRef = useRef<Set<string>>(new Set());
   const didPrimeDeliveredRef = useRef(false);
+  const deferredItemSearch = useDeferredValue(itemSearch);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -253,6 +263,63 @@ export function LogisticsPage() {
   const delivered = shipments.filter((shipment) => shipment.status !== "IN_TRANSIT");
 
   useEffect(() => {
+    setInTransitPage(1);
+  }, [inTransitPageSize, shipments.length]);
+
+  useEffect(() => {
+    setDeliveredPage(1);
+  }, [deliveredPageSize, shipments.length]);
+
+  const inTransitTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(inTransit.length / inTransitPageSize)),
+    [inTransit.length, inTransitPageSize]
+  );
+  const deliveredTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(delivered.length / deliveredPageSize)),
+    [delivered.length, deliveredPageSize]
+  );
+
+  useEffect(() => {
+    if (inTransitPage > inTransitTotalPages) {
+      setInTransitPage(inTransitTotalPages);
+    }
+  }, [inTransitPage, inTransitTotalPages]);
+  useEffect(() => {
+    if (deliveredPage > deliveredTotalPages) {
+      setDeliveredPage(deliveredTotalPages);
+    }
+  }, [deliveredPage, deliveredTotalPages]);
+
+  const pagedInTransit = useMemo(() => {
+    const start = (inTransitPage - 1) * inTransitPageSize;
+    return inTransit.slice(start, start + inTransitPageSize);
+  }, [inTransit, inTransitPage, inTransitPageSize]);
+  const pagedDelivered = useMemo(() => {
+    const start = (deliveredPage - 1) * deliveredPageSize;
+    return delivered.slice(start, start + deliveredPageSize);
+  }, [delivered, deliveredPage, deliveredPageSize]);
+
+  const sortedItems = useMemo(
+    () => [...items].sort((left, right) => left.name.localeCompare(right.name)),
+    [items]
+  );
+  const filteredItemOptions = useMemo(() => {
+    const needle = deferredItemSearch.trim().toLowerCase();
+    if (!needle) {
+      return sortedItems;
+    }
+    return sortedItems.filter((item) => `${item.code} ${item.name}`.toLowerCase().includes(needle));
+  }, [deferredItemSearch, sortedItems]);
+  const visibleItemOptions = useMemo(() => {
+    const selected = sortedItems.find((item) => item.id === itemId) ?? null;
+    const head = filteredItemOptions.slice(0, LOGISTICS_ITEM_SELECT_LIMIT);
+    if (!selected || head.some((item) => item.id === selected.id)) {
+      return head;
+    }
+    return [selected, ...head.slice(0, LOGISTICS_ITEM_SELECT_LIMIT - 1)];
+  }, [filteredItemOptions, itemId, sortedItems]);
+
+  useEffect(() => {
     const deliveredIds = new Set(
       delivered
         .filter((shipment) => shipment.status === "DELIVERED")
@@ -416,18 +483,30 @@ export function LogisticsPage() {
                   ))}
               </SelectContent>
             </Select>
-            <Select value={itemId} onValueChange={setItemId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Item" />
-              </SelectTrigger>
-              <SelectContent>
-                {items.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    <ItemLabel itemCode={item.code} itemName={item.name} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Input
+                value={itemSearch}
+                onChange={(event) => setItemSearch(event.target.value)}
+                placeholder="Search item"
+              />
+              <Select value={itemId} onValueChange={setItemId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {visibleItemOptions.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      <ItemLabel itemCode={item.code} itemName={item.name} />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {filteredItemOptions.length > visibleItemOptions.length ? (
+                <p className="text-xs text-muted-foreground">
+                  Showing first {visibleItemOptions.length} matching items in dropdown.
+                </p>
+              ) : null}
+            </div>
             <Input
               value={quantityInput}
               onChange={(event) => setQuantityInput(event.target.value)}
@@ -530,7 +609,54 @@ export function LogisticsPage() {
         <CardHeader>
           <CardTitle>In Transit</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="space-y-3 pt-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              Showing {pagedInTransit.length === 0 ? "0-0" : `${(inTransitPage - 1) * inTransitPageSize + 1}-${Math.min(inTransitPage * inTransitPageSize, inTransit.length)}`} of {inTransit.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Select
+                value={String(inTransitPageSize)}
+                onValueChange={(value) =>
+                  setInTransitPageSize(
+                    Number.parseInt(value, 10) as (typeof SHIPMENT_TABLE_PAGE_SIZE_OPTIONS)[number]
+                  )
+                }
+              >
+                <SelectTrigger className="h-8 w-32">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHIPMENT_TABLE_PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size} / page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setInTransitPage((page) => Math.max(1, page - 1))}
+                disabled={inTransitPage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="tabular-nums">
+                Page {inTransitPage} / {inTransitTotalPages}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setInTransitPage((page) => Math.min(inTransitTotalPages, page + 1))}
+                disabled={inTransitPage >= inTransitTotalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -542,8 +668,8 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && inTransit.length === 0 ? <TableSkeletonRows columns={5} /> : null}
-              {inTransit.map((shipment) => (
+              {isLoading && pagedInTransit.length === 0 ? <TableSkeletonRows columns={5} /> : null}
+              {pagedInTransit.map((shipment) => (
                 <TableRow key={shipment.id}>
                   <TableCell>
                     <ItemLabel itemCode={shipment.item.code} itemName={shipment.item.name} />
@@ -565,7 +691,7 @@ export function LogisticsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && inTransit.length === 0 ? (
+              {!isLoading && pagedInTransit.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No shipments in transit.
@@ -581,7 +707,54 @@ export function LogisticsPage() {
         <CardHeader>
           <CardTitle>Delivered / Cancelled</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="space-y-3 pt-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              Showing {pagedDelivered.length === 0 ? "0-0" : `${(deliveredPage - 1) * deliveredPageSize + 1}-${Math.min(deliveredPage * deliveredPageSize, delivered.length)}`} of {delivered.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Select
+                value={String(deliveredPageSize)}
+                onValueChange={(value) =>
+                  setDeliveredPageSize(
+                    Number.parseInt(value, 10) as (typeof SHIPMENT_TABLE_PAGE_SIZE_OPTIONS)[number]
+                  )
+                }
+              >
+                <SelectTrigger className="h-8 w-32">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHIPMENT_TABLE_PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size} / page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeliveredPage((page) => Math.max(1, page - 1))}
+                disabled={deliveredPage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="tabular-nums">
+                Page {deliveredPage} / {deliveredTotalPages}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeliveredPage((page) => Math.min(deliveredTotalPages, page + 1))}
+                disabled={deliveredPage >= deliveredTotalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -593,8 +766,8 @@ export function LogisticsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && delivered.length === 0 ? <TableSkeletonRows columns={5} /> : null}
-              {delivered.map((shipment) => (
+              {isLoading && pagedDelivered.length === 0 ? <TableSkeletonRows columns={5} /> : null}
+              {pagedDelivered.map((shipment) => (
                 <TableRow key={shipment.id}>
                   <TableCell>
                     <ItemLabel itemCode={shipment.item.code} itemName={shipment.item.name} />
@@ -607,7 +780,7 @@ export function LogisticsPage() {
                   <TableCell className="tabular-nums">{shipment.tickClosed ?? "--"}</TableCell>
                 </TableRow>
               ))}
-              {!isLoading && delivered.length === 0 ? (
+              {!isLoading && pagedDelivered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No shipment history yet.

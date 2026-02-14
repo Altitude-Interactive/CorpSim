@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useDeferredValue, useMemo, useState } from "react";
 import { ItemLabel } from "@/components/items/item-label";
 import { CompanySummary, ItemCatalogItem, PlaceMarketOrderInput } from "@/lib/api";
 import { parseCurrencyToCents } from "@/lib/format";
@@ -17,6 +17,8 @@ interface OrderPlacementCardProps {
   isSubmitting: boolean;
 }
 
+const ORDER_PLACEMENT_ITEM_SELECT_LIMIT = 200;
+
 export function OrderPlacementCard({
   activeCompany,
   items,
@@ -25,14 +27,37 @@ export function OrderPlacementCard({
 }: OrderPlacementCardProps) {
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [itemSearch, setItemSearch] = useState("");
   const [priceInput, setPriceInput] = useState("1.00");
   const [quantityInput, setQuantityInput] = useState("1");
   const [error, setError] = useState<string | null>(null);
+  const deferredItemSearch = useDeferredValue(itemSearch);
 
   const selectedItem = useMemo(
     () => items.find((entry) => entry.id === selectedItemId) ?? null,
     [items, selectedItemId]
   );
+  const sortedItems = useMemo(
+    () => [...items].sort((left, right) => left.name.localeCompare(right.name)),
+    [items]
+  );
+  const filteredItemOptions = useMemo(() => {
+    const needle = deferredItemSearch.trim().toLowerCase();
+    if (!needle) {
+      return sortedItems;
+    }
+    return sortedItems.filter((item) =>
+      `${item.code} ${item.name}`.toLowerCase().includes(needle)
+    );
+  }, [deferredItemSearch, sortedItems]);
+  const visibleItemOptions = useMemo(() => {
+    const selected = sortedItems.find((item) => item.id === selectedItemId) ?? null;
+    const head = filteredItemOptions.slice(0, ORDER_PLACEMENT_ITEM_SELECT_LIMIT);
+    if (!selected || head.some((item) => item.id === selected.id)) {
+      return head;
+    }
+    return [selected, ...head.slice(0, ORDER_PLACEMENT_ITEM_SELECT_LIMIT - 1)];
+  }, [filteredItemOptions, selectedItemId, sortedItems]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -119,18 +144,29 @@ export function OrderPlacementCard({
 
           <div>
             <p className="mb-1 text-xs text-muted-foreground">Item</p>
+            <Input
+              value={itemSearch}
+              onChange={(event) => setItemSearch(event.target.value)}
+              placeholder="Search item"
+              className="mb-2"
+            />
             <Select value={selectedItemId} onValueChange={setSelectedItemId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select item" />
               </SelectTrigger>
               <SelectContent>
-                {items.map((item) => (
+                {visibleItemOptions.map((item) => (
                   <SelectItem value={item.id} key={item.id}>
                     <ItemLabel itemCode={item.code} itemName={item.name} />
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {filteredItemOptions.length > visibleItemOptions.length ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Showing first {visibleItemOptions.length} matching items in dropdown.
+              </p>
+            ) : null}
           </div>
 
           <div>

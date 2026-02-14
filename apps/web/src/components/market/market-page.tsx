@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
@@ -38,6 +38,7 @@ import { RecentTradesCard } from "./recent-trades-card";
 const DEFAULT_ORDER_LIMIT = 100;
 const DEFAULT_TRADE_LIMIT = 50;
 const MARKET_REFRESH_DEBOUNCE_MS = 500;
+const MARKET_ITEM_SELECT_LIMIT = 200;
 
 interface OrderBookFilters {
   itemId: string;
@@ -95,8 +96,12 @@ export function MarketPage() {
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [orderFilters, setOrderFilters] = useState<OrderBookFilters>(INITIAL_ORDER_FILTERS);
   const [tradeFilters, setTradeFilters] = useState<TradeFilters>(INITIAL_TRADE_FILTERS);
+  const [orderItemSearch, setOrderItemSearch] = useState("");
+  const [tradeItemSearch, setTradeItemSearch] = useState("");
   const orderFiltersRef = useRef(orderFilters);
   const tradeFiltersRef = useRef(tradeFilters);
+  const deferredOrderItemSearch = useDeferredValue(orderItemSearch);
+  const deferredTradeItemSearch = useDeferredValue(tradeItemSearch);
 
   const [orderBook, setOrderBook] = useState<MarketOrder[]>([]);
   const [myOrders, setMyOrders] = useState<MarketOrder[]>([]);
@@ -393,6 +398,46 @@ export function MarketPage() {
     }
     return sortedItems.filter((item) => unlockedItemIdSet.has(item.id));
   }, [sortedItems, unlockedItemIdSet]);
+  const filteredOrderSelectableItems = useMemo(() => {
+    const needle = deferredOrderItemSearch.trim().toLowerCase();
+    if (!needle) {
+      return sortedSelectableItems;
+    }
+    return sortedSelectableItems.filter((item) =>
+      `${item.code} ${item.name}`.toLowerCase().includes(needle)
+    );
+  }, [deferredOrderItemSearch, sortedSelectableItems]);
+  const visibleOrderSelectableItems = useMemo(() => {
+    const selected =
+      orderFilters.itemId
+        ? sortedSelectableItems.find((item) => item.id === orderFilters.itemId) ?? null
+        : null;
+    const head = filteredOrderSelectableItems.slice(0, MARKET_ITEM_SELECT_LIMIT);
+    if (!selected || head.some((item) => item.id === selected.id)) {
+      return head;
+    }
+    return [selected, ...head.slice(0, MARKET_ITEM_SELECT_LIMIT - 1)];
+  }, [filteredOrderSelectableItems, orderFilters.itemId, sortedSelectableItems]);
+  const filteredTradeSelectableItems = useMemo(() => {
+    const needle = deferredTradeItemSearch.trim().toLowerCase();
+    if (!needle) {
+      return sortedSelectableItems;
+    }
+    return sortedSelectableItems.filter((item) =>
+      `${item.code} ${item.name}`.toLowerCase().includes(needle)
+    );
+  }, [deferredTradeItemSearch, sortedSelectableItems]);
+  const visibleTradeSelectableItems = useMemo(() => {
+    const selected =
+      tradeFilters.itemId
+        ? sortedSelectableItems.find((item) => item.id === tradeFilters.itemId) ?? null
+        : null;
+    const head = filteredTradeSelectableItems.slice(0, MARKET_ITEM_SELECT_LIMIT);
+    if (!selected || head.some((item) => item.id === selected.id)) {
+      return head;
+    }
+    return [selected, ...head.slice(0, MARKET_ITEM_SELECT_LIMIT - 1)];
+  }, [filteredTradeSelectableItems, sortedSelectableItems, tradeFilters.itemId]);
   const sortedCompanies = useMemo(
     () => [...companies].sort((left, right) => left.name.localeCompare(right.name)),
     [companies]
@@ -514,13 +559,18 @@ export function MarketPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All items</SelectItem>
-                  {sortedSelectableItems.map((item) => (
+                  {visibleOrderSelectableItems.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
                       <ItemLabel itemCode={item.code} itemName={item.name} />
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <Input
+                placeholder="Search order item"
+                value={orderItemSearch}
+                onChange={(event) => setOrderItemSearch(event.target.value)}
+              />
               <Select
                 value={orderFilters.companyId || "ALL"}
                 onValueChange={(value) =>
@@ -549,6 +599,11 @@ export function MarketPage() {
               />
               <Button type="submit">Apply</Button>
             </form>
+            {filteredOrderSelectableItems.length > visibleOrderSelectableItems.length ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Showing first {visibleOrderSelectableItems.length} matching items in order-item dropdown.
+              </p>
+            ) : null}
             {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
           </CardContent>
         </Card>
@@ -590,13 +645,18 @@ export function MarketPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All items</SelectItem>
-                {sortedSelectableItems.map((item) => (
+                {visibleTradeSelectableItems.map((item) => (
                   <SelectItem value={item.id} key={item.id}>
                     <ItemLabel itemCode={item.code} itemName={item.name} />
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <Input
+              placeholder="Search trade item"
+              value={tradeItemSearch}
+              onChange={(event) => setTradeItemSearch(event.target.value)}
+            />
             <Select
               value={selectedRegionId || "ALL"}
               onValueChange={(value) => setSelectedRegionId(value === "ALL" ? "" : value)}
@@ -625,6 +685,11 @@ export function MarketPage() {
             </label>
             <Button type="submit">Apply</Button>
           </form>
+          {filteredTradeSelectableItems.length > visibleTradeSelectableItems.length ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Showing first {visibleTradeSelectableItems.length} matching items in trade-item dropdown.
+            </p>
+          ) : null}
           {selectedRegionId && activeCompany && selectedRegionId !== activeCompany.regionId ? (
             <p className="mt-2 text-xs text-amber-300">
               Viewing a non-home region. New orders still place in {activeCompanyRegionLabel}.

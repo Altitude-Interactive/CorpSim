@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -27,6 +28,7 @@ import { MyContractsTable } from "./my-contracts-table";
 type ContractsTab = "available" | "my" | "history";
 
 const CONTRACTS_REFRESH_DEBOUNCE_MS = 500;
+const CONTRACT_ITEM_SELECT_LIMIT = 200;
 
 function mapApiError(error: unknown): string {
   if (error instanceof ApiClientError) {
@@ -53,6 +55,7 @@ export function ContractsPage() {
 
   const [tab, setTab] = useState<ContractsTab>("available");
   const [itemFilter, setItemFilter] = useState<string>("ALL");
+  const [itemSearch, setItemSearch] = useState("");
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
   const [contracts, setContracts] = useState<ContractRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +67,7 @@ export function ContractsPage() {
   const statusByContractIdRef = useRef<Map<string, ContractRecord["status"]>>(new Map());
   const didPrimeStatusesRef = useRef(false);
   const suppressEventSoundUntilRef = useRef(0);
+  const deferredItemSearch = useDeferredValue(itemSearch);
 
   const loadItems = useCallback(async () => {
     const itemRows = await listItems();
@@ -88,7 +92,8 @@ export function ContractsPage() {
     setIsLoading(true);
     try {
       const rows = await listContracts({
-        limit: 500,
+        status: tab === "available" ? "OPEN" : undefined,
+        limit: tab === "available" ? 300 : 500,
         itemId: itemFilter === "ALL" ? undefined : itemFilter
       });
       setContracts(rows);
@@ -98,7 +103,7 @@ export function ContractsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [itemFilter]);
+  }, [itemFilter, tab]);
 
   const refreshAll = useCallback(async () => {
     await Promise.all([loadItems(), loadContracts()]);
@@ -126,6 +131,33 @@ export function ContractsPage() {
       setItemFilter("ALL");
     }
   }, [itemFilter, items]);
+
+  const sortedItems = useMemo(
+    () => [...items].sort((left, right) => left.name.localeCompare(right.name)),
+    [items]
+  );
+
+  const filteredItemOptions = useMemo(() => {
+    const needle = deferredItemSearch.trim().toLowerCase();
+    if (!needle) {
+      return sortedItems;
+    }
+    return sortedItems.filter((item) =>
+      `${item.code} ${item.name}`.toLowerCase().includes(needle)
+    );
+  }, [deferredItemSearch, sortedItems]);
+
+  const visibleItemOptions = useMemo(() => {
+    const selected =
+      itemFilter !== "ALL" ? sortedItems.find((item) => item.id === itemFilter) ?? null : null;
+    const head = filteredItemOptions.slice(0, CONTRACT_ITEM_SELECT_LIMIT);
+
+    if (!selected || head.some((item) => item.id === selected.id)) {
+      return head;
+    }
+
+    return [selected, ...head.slice(0, CONTRACT_ITEM_SELECT_LIMIT - 1)];
+  }, [filteredItemOptions, itemFilter, sortedItems]);
 
   useEffect(() => {
     statusByContractIdRef.current = new Map();
@@ -291,20 +323,32 @@ export function ContractsPage() {
               History
             </Button>
           </div>
-          <div className="grid gap-3 md:grid-cols-[320px_minmax(0,1fr)]">
-            <Select value={itemFilter} onValueChange={setItemFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by item" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All items</SelectItem>
-                {items.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    <ItemLabel itemCode={item.code} itemName={item.name} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid gap-3 md:grid-cols-[320px_320px_minmax(0,1fr)]">
+            <Input
+              value={itemSearch}
+              onChange={(event) => setItemSearch(event.target.value)}
+              placeholder="Search item filter by code or name"
+            />
+            <div className="space-y-1">
+              <Select value={itemFilter} onValueChange={setItemFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by item" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All items</SelectItem>
+                  {visibleItemOptions.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      <ItemLabel itemCode={item.code} itemName={item.name} />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {filteredItemOptions.length > visibleItemOptions.length ? (
+                <p className="text-xs text-muted-foreground">
+                  Showing first {visibleItemOptions.length} matching items in dropdown.
+                </p>
+              ) : null}
+            </div>
             <p className="self-center text-sm text-muted-foreground">
               Active company:{" "}
               {activeCompany ? activeCompany.name : UI_COPY.common.noCompanySelected}

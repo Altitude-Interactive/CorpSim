@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableSkeletonRows } from "@/components/ui/table-skeleton-rows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,6 +29,7 @@ import { CandleVolumeChart } from "./candle-volume-chart";
 
 const ANALYTICS_REFRESH_DEBOUNCE_MS = 500;
 const DEFAULT_POINTS = 200;
+const ANALYTICS_ITEM_SELECT_LIMIT = 200;
 
 function mapApiError(error: unknown): string {
   if (error instanceof ApiClientError) {
@@ -54,17 +56,41 @@ export function AnalyticsPage() {
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
   const [regions, setRegions] = useState<RegionSummary[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [itemSearch, setItemSearch] = useState("");
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [pointLimit, setPointLimit] = useState<number>(DEFAULT_POINTS);
   const [candles, setCandles] = useState<MarketCandle[]>([]);
   const [summary, setSummary] = useState<MarketAnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const deferredItemSearch = useDeferredValue(itemSearch);
 
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedItemId) ?? null,
     [items, selectedItemId]
   );
+
+  const sortedItems = useMemo(
+    () => [...items].sort((left, right) => left.name.localeCompare(right.name)),
+    [items]
+  );
+  const filteredItemOptions = useMemo(() => {
+    const needle = deferredItemSearch.trim().toLowerCase();
+    if (!needle) {
+      return sortedItems;
+    }
+    return sortedItems.filter((item) =>
+      `${item.code} ${item.name}`.toLowerCase().includes(needle)
+    );
+  }, [deferredItemSearch, sortedItems]);
+  const visibleItemOptions = useMemo(() => {
+    const selected = sortedItems.find((item) => item.id === selectedItemId) ?? null;
+    const head = filteredItemOptions.slice(0, ANALYTICS_ITEM_SELECT_LIMIT);
+    if (!selected || head.some((item) => item.id === selected.id)) {
+      return head;
+    }
+    return [selected, ...head.slice(0, ANALYTICS_ITEM_SELECT_LIMIT - 1)];
+  }, [filteredItemOptions, selectedItemId, sortedItems]);
 
   const loadCatalog = useCallback(async () => {
     const [itemRows, regionRows] = await Promise.all([listItems(), listRegions()]);
@@ -164,19 +190,31 @@ export function AnalyticsPage() {
         <CardHeader>
           <CardTitle>Market Analytics</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 lg:grid-cols-[320px_180px_240px_minmax(0,1fr)]">
-          <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select item" />
-            </SelectTrigger>
-            <SelectContent>
-              {items.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  <ItemLabel itemCode={item.code} itemName={item.name} />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CardContent className="grid gap-3 lg:grid-cols-[minmax(0,320px)_320px_180px_240px_minmax(0,1fr)]">
+          <Input
+            value={itemSearch}
+            onChange={(event) => setItemSearch(event.target.value)}
+            placeholder="Search item by code or name"
+          />
+          <div className="space-y-1">
+            <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select item" />
+              </SelectTrigger>
+              <SelectContent>
+                {visibleItemOptions.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    <ItemLabel itemCode={item.code} itemName={item.name} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {filteredItemOptions.length > visibleItemOptions.length ? (
+              <p className="text-xs text-muted-foreground">
+                Showing first {visibleItemOptions.length} matching items in dropdown.
+              </p>
+            ) : null}
+          </div>
           <Select
             value={String(pointLimit)}
             onValueChange={(value) => setPointLimit(Number.parseInt(value, 10))}
@@ -209,7 +247,7 @@ export function AnalyticsPage() {
               "No item selected"
             )}
           </p>
-          {error ? <p className="text-sm text-red-300 lg:col-span-4">{error}</p> : null}
+          {error ? <p className="text-sm text-red-300 lg:col-span-5">{error}</p> : null}
         </CardContent>
       </Card>
 
