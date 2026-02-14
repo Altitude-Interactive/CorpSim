@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { createHmac, randomUUID } from "node:crypto";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import request, { SuperAgentTest } from "supertest";
+import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedWorld } from "@corpsim/db";
 import { HttpErrorFilter } from "../src/common/filters/http-error.filter";
@@ -55,7 +55,7 @@ function uniqueUsername(prefix: string): string {
 }
 
 async function signUp(
-  agent: SuperAgentTest,
+  agent: ReturnType<typeof request.agent>,
   email: string,
   username: string
 ): Promise<{ userId: string }> {

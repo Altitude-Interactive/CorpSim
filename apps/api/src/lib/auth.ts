@@ -10,6 +10,199 @@ const prisma = createPrismaClient();
 
 const MAX_HANDLE_LENGTH = 32;
 const FALLBACK_HANDLE = "player";
+const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
+const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 120;
+const DEFAULT_SIGN_IN_RATE_LIMIT_WINDOW_SECONDS = 300;
+const DEFAULT_SIGN_IN_RATE_LIMIT_MAX_REQUESTS = 8;
+const DEFAULT_SIGN_UP_RATE_LIMIT_WINDOW_SECONDS = 900;
+const DEFAULT_SIGN_UP_RATE_LIMIT_MAX_REQUESTS = 5;
+const DEFAULT_TWO_FACTOR_RATE_LIMIT_WINDOW_SECONDS = 300;
+const DEFAULT_TWO_FACTOR_RATE_LIMIT_MAX_REQUESTS = 10;
+const DEFAULT_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS = 900;
+const DEFAULT_PASSWORD_RESET_RATE_LIMIT_MAX_REQUESTS = 5;
+
+type RateLimitStorage = "memory" | "database" | "secondary-storage";
+type Ipv6SubnetPrefix = 128 | 64 | 48 | 32;
+
+function parseBooleanEnv(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on") {
+    return true;
+  }
+  if (normalized === "0" || normalized === "false" || normalized === "no" || normalized === "off") {
+    return false;
+  }
+  return fallback;
+}
+
+function parseIntegerEnv(
+  name: string,
+  fallback: number,
+  options?: { min?: number; max?: number }
+): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw.trim(), 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  if (typeof options?.min === "number" && parsed < options.min) {
+    return fallback;
+  }
+
+  if (typeof options?.max === "number" && parsed > options.max) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function parseCsvEnv(name: string): string[] {
+  const raw = process.env[name];
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function resolveRateLimitStorage(): RateLimitStorage {
+  const raw = process.env.AUTH_RATE_LIMIT_STORAGE?.trim().toLowerCase();
+  if (raw === "memory" || raw === "database" || raw === "secondary-storage") {
+    return raw;
+  }
+  return "memory";
+}
+
+function resolveIpv6Subnet(): Ipv6SubnetPrefix {
+  const value = parseIntegerEnv("AUTH_IPV6_SUBNET", 64, {
+    min: 32,
+    max: 128
+  });
+  if (value === 128 || value === 64 || value === 48 || value === 32) {
+    return value;
+  }
+  return 64;
+}
+
+function resolveAuthRateLimit() {
+  return {
+    enabled: parseBooleanEnv("AUTH_RATE_LIMIT_ENABLED", process.env.NODE_ENV !== "test"),
+    storage: resolveRateLimitStorage(),
+    window: parseIntegerEnv("AUTH_RATE_LIMIT_WINDOW_SECONDS", DEFAULT_RATE_LIMIT_WINDOW_SECONDS, {
+      min: 1
+    }),
+    max: parseIntegerEnv("AUTH_RATE_LIMIT_MAX_REQUESTS", DEFAULT_RATE_LIMIT_MAX_REQUESTS, {
+      min: 1
+    }),
+    customRules: {
+      "/sign-in/email": {
+        window: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_SIGN_IN_WINDOW_SECONDS",
+          DEFAULT_SIGN_IN_RATE_LIMIT_WINDOW_SECONDS,
+          { min: 1 }
+        ),
+        max: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_SIGN_IN_MAX_REQUESTS",
+          DEFAULT_SIGN_IN_RATE_LIMIT_MAX_REQUESTS,
+          { min: 1 }
+        )
+      },
+      "/sign-up/email": {
+        window: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_SIGN_UP_WINDOW_SECONDS",
+          DEFAULT_SIGN_UP_RATE_LIMIT_WINDOW_SECONDS,
+          { min: 1 }
+        ),
+        max: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_SIGN_UP_MAX_REQUESTS",
+          DEFAULT_SIGN_UP_RATE_LIMIT_MAX_REQUESTS,
+          { min: 1 }
+        )
+      },
+      "/two-factor/verify-totp": {
+        window: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_TWO_FACTOR_WINDOW_SECONDS",
+          DEFAULT_TWO_FACTOR_RATE_LIMIT_WINDOW_SECONDS,
+          { min: 1 }
+        ),
+        max: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_TWO_FACTOR_MAX_REQUESTS",
+          DEFAULT_TWO_FACTOR_RATE_LIMIT_MAX_REQUESTS,
+          { min: 1 }
+        )
+      },
+      "/two-factor/verify-backup-code": {
+        window: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_TWO_FACTOR_WINDOW_SECONDS",
+          DEFAULT_TWO_FACTOR_RATE_LIMIT_WINDOW_SECONDS,
+          { min: 1 }
+        ),
+        max: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_TWO_FACTOR_MAX_REQUESTS",
+          DEFAULT_TWO_FACTOR_RATE_LIMIT_MAX_REQUESTS,
+          { min: 1 }
+        )
+      },
+      "/forget-password": {
+        window: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS",
+          DEFAULT_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS,
+          { min: 1 }
+        ),
+        max: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS",
+          DEFAULT_PASSWORD_RESET_RATE_LIMIT_MAX_REQUESTS,
+          { min: 1 }
+        )
+      },
+      "/reset-password": {
+        window: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS",
+          DEFAULT_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS,
+          { min: 1 }
+        ),
+        max: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS",
+          DEFAULT_PASSWORD_RESET_RATE_LIMIT_MAX_REQUESTS,
+          { min: 1 }
+        )
+      }
+    }
+  } as const;
+}
+
+function resolveAuthAdvancedOptions() {
+  const ipAddressHeaders = parseCsvEnv("AUTH_IP_ADDRESS_HEADERS");
+  return {
+    useSecureCookies: process.env.NODE_ENV === "production",
+    ipAddress: {
+      ipAddressHeaders:
+        ipAddressHeaders.length > 0
+          ? ipAddressHeaders
+          : [
+              "x-client-ip",
+              "x-forwarded-for",
+              "cf-connecting-ip",
+              "x-real-ip",
+              "true-client-ip",
+              "fly-client-ip"
+            ],
+      ipv6Subnet: resolveIpv6Subnet()
+    }
+  } as const;
+}
 
 function normalizeHandleSeed(seed: string): string {
   const normalized = seed
@@ -154,6 +347,8 @@ export const auth = betterAuth({
   baseURL: resolveAuthBaseUrl(),
   secret: resolveAuthSecret(),
   trustedOrigins: resolveTrustedOrigins(),
+  rateLimit: resolveAuthRateLimit(),
+  advanced: resolveAuthAdvancedOptions(),
   emailAndPassword: {
     enabled: true
   },
