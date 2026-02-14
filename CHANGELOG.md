@@ -101,3 +101,35 @@ All notable changes to CorpSim are documented in this file.
 
 ### Patch
 - [web] Fix player registry badge variant for web typecheck
+
+## 0.6.0 - 2026-02-14
+
+### Minor
+- [web] Add toast manager with top-right notifications and popup overlays
+- [sim] Add player item tier locker to hide and block locked-tier production items
+- [sim] Enforce item tier locker on market and shipment write actions
+- [sim] Add company focus specialization with item category gating across production and selling flows
+- [api] Add database schema readiness checks that block game loading until updates are applied
+
+### Patch
+- [web] Stabilize page width to prevent route flicker and resize
+- [web] Move remaining overlays and notices to toast manager primitives
+- [web] Add submit interaction sounds to market order form
+- [web] Add sound cues for important popup overlays
+- [db] Make default seed non-destructive so restarts preserve simulation progress
+- [worker] Pause simulation tick processing while maintenance mode is enabled
+- [worker] Allow worker startup in processor-only mode when scheduler lease is occupied
+- [web] Stabilize page width when select overlays toggle scroll lock
+- [web] Prevent horizontal page shift when opening the Company Focus selector
+- [web] Replace Production recipe selects with non-locking pickers to prevent page shift
+- [web] Replace Company Focus dropdown with non-locking picker to stop page shift
+- [web] Replace shared select with non-locking popover picker and capped results
+- [sim] Enforce cooldown between company focus changes
+- [sim] Configure company focus cooldown via environment variables
+- [web] Show company focus cooldown errors in the focus card with friendlier copy
+- [sim] Change company focus cooldown from ticks to hours
+- [web] Use hours-only wording for company focus cooldown copy
+- [api] Wire preview Docker env for schema readiness migration directory
+- [api] Reset maintenance state after worker integration tests to prevent cross-suite 503s
+- [ci] Harden Prisma generate against Windows file locks in dev workflows
+- [ci] Prevent Prisma no-engine fallback from breaking local DATABASE_URL runtime
