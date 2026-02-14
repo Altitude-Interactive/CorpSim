@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { ToastOverlay } from "@/components/ui/toast-manager";
 import { DEFAULT_MAINTENANCE_REASON, MaintenanceState } from "@/lib/maintenance";
 
 export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
+  const { play } = useUiSfx();
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,6 +44,13 @@ export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
       document.removeEventListener("keydown", onKeyDown, true);
     };
   }, []);
+
+  useEffect(() => {
+    play("feedback_warning", { volumeMultiplier: 0.85, throttleMs: 900 });
+    return () => {
+      play("ui_close", { volumeMultiplier: 0.6, throttleMs: 180 });
+    };
+  }, [play]);
 
   const message =
     state.reason.trim().length > 0 ? state.reason : DEFAULT_MAINTENANCE_REASON;

@@ -187,12 +187,8 @@ function playPopupSound(
     return;
   }
 
-  if (variant === "danger") {
+  if (variant === "danger" || backdrop === "blur") {
     play("feedback_warning");
-    return;
-  }
-  if (backdrop === "blur") {
-    play("ui_open");
     return;
   }
   play("feedback_neutral");
