@@ -47,6 +47,22 @@ describe("worker iteration integration", () => {
 
   beforeEach(async () => {
     await seedWorld(prisma, { reset: true });
+    await prisma.maintenanceState.upsert({
+      where: { id: 1 },
+      update: {
+        enabled: false,
+        scope: "all",
+        reason: "Systems are currently being updated.",
+        enabledBy: null
+      },
+      create: {
+        id: 1,
+        enabled: false,
+        scope: "all",
+        reason: "Systems are currently being updated.",
+        enabledBy: null
+      }
+    });
   });
 
   afterAll(async () => {
@@ -268,6 +284,90 @@ describe("worker iteration integration", () => {
     expect(before._sum.quantity).not.toBeNull();
     expect(after._sum.quantity).not.toBeNull();
     expect(after._sum.quantity as number).toBe((before._sum.quantity as number) - 5);
+  });
+
+  it("pauses all simulation effects when maintenance mode scope is all", async () => {
+    await prisma.maintenanceState.upsert({
+      where: { id: 1 },
+      update: {
+        enabled: true,
+        scope: "all",
+        reason: "maintenance test",
+        enabledBy: "integration-test"
+      },
+      create: {
+        id: 1,
+        enabled: true,
+        scope: "all",
+        reason: "maintenance test",
+        enabledBy: "integration-test"
+      }
+    });
+
+    const pausedConfig: WorkerConfig = {
+      ...config,
+      demandConfig: {
+        enabled: true,
+        itemCodes: ["HAND_TOOLS"],
+        baseQuantityPerCompany: 5,
+        variabilityQuantity: 0
+      },
+      contractConfig: {
+        ...config.contractConfig,
+        contractsPerTick: 3
+      }
+    };
+
+    const handToolsItem = await prisma.item.findUniqueOrThrow({
+      where: { code: "HAND_TOOLS" },
+      select: { id: true }
+    });
+    const beforeTick = await prisma.worldTickState.findUniqueOrThrow({
+      where: { id: 1 },
+      select: { currentTick: true }
+    });
+    const beforeOpenContracts = await prisma.contract.count({
+      where: { status: "OPEN" }
+    });
+    const beforeNpcHandTools = await prisma.inventory.aggregate({
+      where: {
+        itemId: handToolsItem.id,
+        company: {
+          isPlayer: false,
+          ownerPlayerId: null
+        }
+      },
+      _sum: { quantity: true }
+    });
+
+    const result = await runWorkerIteration(prisma, pausedConfig, {
+      ticksOverride: 1,
+      maxConflictRetries: 0
+    });
+
+    const afterTick = await prisma.worldTickState.findUniqueOrThrow({
+      where: { id: 1 },
+      select: { currentTick: true }
+    });
+    const afterOpenContracts = await prisma.contract.count({
+      where: { status: "OPEN" }
+    });
+    const afterNpcHandTools = await prisma.inventory.aggregate({
+      where: {
+        itemId: handToolsItem.id,
+        company: {
+          isPlayer: false,
+          ownerPlayerId: null
+        }
+      },
+      _sum: { quantity: true }
+    });
+
+    expect(result.ticksAdvanced).toBe(0);
+    expect(result.tickAfter).toBe(beforeTick.currentTick);
+    expect(afterTick.currentTick).toBe(beforeTick.currentTick);
+    expect(afterOpenContracts).toBe(beforeOpenContracts);
+    expect(afterNpcHandTools._sum.quantity).toBe(beforeNpcHandTools._sum.quantity);
   });
 });
 

@@ -70,6 +70,26 @@ interface RunSingleTickResult {
   retries: number;
 }
 
+async function isSimulationPausedByMaintenance(prisma: PrismaClient): Promise<boolean> {
+  try {
+    const state = await prisma.maintenanceState.findUnique({
+      where: { id: 1 },
+      select: {
+        enabled: true,
+        scope: true
+      }
+    });
+
+    if (!state) {
+      return false;
+    }
+
+    return state.enabled && state.scope === "all";
+  } catch {
+    return false;
+  }
+}
+
 async function runSingleTickWithRetries(
   prisma: PrismaClient,
   options: RunSingleTickOptions
@@ -126,10 +146,24 @@ export async function runWorkerIteration(
   try {
     const before = await getWorldTickState(prisma);
     const tickBefore = before?.currentTick ?? 0;
+
+    if (await isSimulationPausedByMaintenance(prisma)) {
+      return {
+        ticksAdvanced: 0,
+        tickBefore,
+        tickAfter: tickBefore,
+        retries: 0
+      };
+    }
+
     let ticksAdvanced = 0;
     let retries = 0;
 
     for (let tickIndex = 0; tickIndex < ticks; tickIndex += 1) {
+      if (await isSimulationPausedByMaintenance(prisma)) {
+        break;
+      }
+
       const executionKey =
         options.executionKey === undefined ? undefined : `${options.executionKey}:tick:${tickIndex}`;
 
