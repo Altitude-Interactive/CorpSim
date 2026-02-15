@@ -7,9 +7,6 @@ on:
   push:
   pull_request:
 
-permissions:
-  contents: read
-
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
