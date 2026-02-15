@@ -380,7 +380,7 @@ function printState(state, source) {
   console.log(`Reason: ${state.reason}`);
   console.log(`Updated at: ${state.updatedAt}`);
   if (state.enabledBy) {
-    console.log(`Enabled by: ${state.enabledBy}`);
+    console.log("Enabled by: [redacted]");
   }
   console.log(`Source: ${source}`);
 }
