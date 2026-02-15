@@ -208,6 +208,11 @@ This project is licensed under the CorpSim Non-Commercial License. See the [LICE
 - Modified versions must be clearly marked
 - No warranty provided
 
+**Asset Credits:**
+- **Icons, sprites, pixel art**: [Craftpix.net](https://free-game-assets.itch.io/) ([License](https://craftpix.net/file-licenses))
+- **UI sounds**: [snd.dev](https://snd.dev/) ("SND01 Sine")
+- **Hand-made pixel art icons**: BENZOOgataga
+
 ## Release Workflow
 
 - Add release entries in `.releases/unreleased/` for non-read-only changes.
@@ -220,6 +225,12 @@ This project is licensed under the CorpSim Non-Commercial License. See the [LICE
 ## Acknowledgements
 
 CorpSim is inspired by [SimCompanies](https://www.simcompanies.com/), a browser-based business simulation game. We're grateful to the simulation game community for the inspiration and ideas that helped shape this project.
+
+### Asset Credits
+
+- **Icons, sprites, pixel art**: [Craftpix.net](https://free-game-assets.itch.io/) ([License](https://craftpix.net/file-licenses))
+- **UI sounds**: [snd.dev](https://snd.dev/) ("SND01 Sine")
+- **Hand-made pixel art icons**: BENZOOgataga
 
 ### Contributors
 
