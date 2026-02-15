@@ -6,7 +6,7 @@
 [![pnpm 9+](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Security Policy](https://img.shields.io/badge/security-policy-blue)](./SECURITY.md)
 
-A SimCompanies-inspired management and economy webgame featuring a persistent simulation environment with AI-driven companies and dynamic market systems. The game includes regional trade flows and a sophisticated ERP-style interface for players to manage their virtual enterprises.
+A SimCompanies-inspired management and economy webgame. It features a persistent simulation environment with AI-driven companies, dynamic market systems, regional trade flows, and a sophisticated ERP-style interface for players to manage their virtual enterprises.
 
 ## Contents
 
@@ -226,9 +226,7 @@ This project is licensed under the CorpSim Non-Commercial License. See the [LICE
 
 CorpSim is inspired by [SimCompanies](https://www.simcompanies.com/), a browser-based business simulation game. We're grateful to the simulation game community for the inspiration and ideas that helped shape this project.
 
-### Asset Credits
-
-For a full list of asset credits, please see the **Asset Credits** subsection in the [License](#license) section above.
+For third-party asset credits and licensing information, please refer to the **Asset Credits** subsection in the [License](#license) section above.
 
 ### Contributors
 
