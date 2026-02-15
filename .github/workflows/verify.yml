@@ -106,7 +106,7 @@ jobs:
           cache: pnpm
 
       - name: Enforce release entry on PR code changes
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -133,3 +133,32 @@ jobs:
 
       - name: Run verification gates
         run: pnpm verify:full
+
+  gate:
+    name: Verify Gate
+    runs-on: ubuntu-latest
+    permissions: {}
+    needs:
+      - changes
+      - docs-only
+      - verify
+    if: always()
+    steps:
+      - name: Summarize and enforce verification outcome
+        shell: bash
+        run: |
+          echo "changes=${{ needs.changes.result }}"
+          echo "verify=${{ needs.verify.result }}"
+          echo "docs-only=${{ needs['docs-only'].result }}"
+
+          if [ "${{ needs.changes.result }}" != "success" ]; then
+            echo "Change detection failed."
+            exit 1
+          fi
+
+          if [ "${{ needs.verify.result }}" = "success" ] || [ "${{ needs['docs-only'].result }}" = "success" ]; then
+            exit 0
+          fi
+
+          echo "No successful verification job (verify/docs-only)."
+          exit 1
