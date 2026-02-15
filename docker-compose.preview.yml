@@ -51,6 +51,8 @@ services:
       PORT: ${API_PORT:-4310}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://corpsim.altitude-interactive.com}
       ENFORCE_SCHEMA_READINESS: ${ENFORCE_SCHEMA_READINESS:-true}
       PRISMA_MIGRATIONS_DIR: ${PRISMA_MIGRATIONS_DIR:-/app/packages/db/prisma/migrations}

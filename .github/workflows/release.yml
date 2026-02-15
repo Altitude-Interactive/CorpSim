@@ -183,6 +183,8 @@ jobs:
           APP_IMAGE_REPO: ${{ steps.image.outputs.repo }}
           APP_IMAGE_TAG: ${{ steps.version.outputs.version }}
           COMPOSE_NETWORK_NAME: corpsim-release-smoke-${{ github.run_id }}
+          BETTER_AUTH_SECRET: release-smoke-only-secret-do-not-use
+          BETTER_AUTH_URL: http://127.0.0.1:4310
         run: |
           docker compose -f docker-compose.preview.yml down -v --remove-orphans || true
           docker compose -f docker-compose.preview.yml up -d frontend
