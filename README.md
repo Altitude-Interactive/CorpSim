@@ -2,6 +2,7 @@
 
 [![Verify](https://github.com/Altitude-Interactive/CorpSim/actions/workflows/verify.yml/badge.svg)](https://github.com/Altitude-Interactive/CorpSim/actions/workflows/verify.yml)
 [![Contributors](https://img.shields.io/github/contributors/Altitude-Interactive/CorpSim)](https://github.com/Altitude-Interactive/CorpSim/graphs/contributors)
+[![License: Non-Commercial](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](./LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm 9+](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Security Policy](https://img.shields.io/badge/security-policy-blue)](./SECURITY.md)
@@ -200,7 +201,13 @@ Security reporting process is documented in `SECURITY.md`.
 
 ## License
 
-This project does not currently have a license file. Please contact the repository maintainers for licensing information.
+This project is licensed under the CorpSim Non-Commercial License. See the [LICENSE](./LICENSE) file for details.
+
+**Key Points:**
+- Free to use, copy, modify, and distribute for non-commercial purposes
+- Cannot be used for commercial purposes (selling, revenue generation, commercial services)
+- Modified versions must be clearly marked
+- No warranty provided
 
 ## Release Workflow
 
