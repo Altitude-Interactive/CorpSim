@@ -66,14 +66,12 @@ export class HttpErrorFilter implements ExceptionFilter {
     }
 
     // Log unhandled exceptions with context
-    this.logger.error(
-      `Unhandled exception: ${exception instanceof Error ? exception.message : String(exception)}`,
-      {
-        url: request?.url,
-        method: request?.method,
-        exception: exception instanceof Error ? exception.stack : exception
-      }
-    );
+    this.logger.error("Unhandled exception", {
+      url: request?.url,
+      method: request?.method,
+      message: exception instanceof Error ? exception.message : String(exception),
+      stack: exception instanceof Error ? exception.stack : undefined
+    });
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
