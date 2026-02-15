@@ -10,6 +10,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException
 } from "@nestjs/common";
+import { AllowAnonymous } from "@thallesp/nestjs-better-auth";
 import { AdvanceWorldDto } from "./dto/advance-world.dto";
 import { ResetWorldBodyDto, ResetWorldQueryDto } from "./dto/reset-world.dto";
 import { WorldService } from "./world.service";
@@ -76,6 +77,7 @@ export class WorldController {
   }
 
   @Get("health")
+  @AllowAnonymous()
   async getHealth() {
     return this.worldService.getHealth();
   }

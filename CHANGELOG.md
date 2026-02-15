@@ -178,3 +178,8 @@ All notable changes to CorpSim are documented in this file.
 - [ci] Simplify roadmap into a concise Now/Next/Later format
 - [ci] Expand and harden .env.preview with required and recommended production values
 - [web] Fix Next.js production build failure from useSearchParams in always-mounted layout components
+
+## 0.7.1 - 2026-02-15
+
+### Patch
+- [api] Allow anonymous access to v1/world/health so public health probes work without session auth.
