@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { ValidationPipe } from "@nestjs/common";
+import { Logger, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ensureEnvironmentLoaded } from "@corpsim/db";
 import { AppModule } from "./app.module";
@@ -101,7 +101,8 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error: unknown) => {
-  console.error("API bootstrap failed", error);
+  const logger = new Logger("Bootstrap");
+  logger.error("API bootstrap failed", error instanceof Error ? error.stack : error);
   process.exitCode = 1;
 });
 

@@ -149,7 +149,16 @@ export async function fetchJson<T>(
     response = await fetch(path, requestInit);
   }
 
-  const payload = (await response.json().catch(() => null)) as unknown;
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch (parseError) {
+    // If JSON parsing fails and response is not OK, we'll still throw with status
+    // If JSON parsing fails but response is OK, payload remains null
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Failed to parse API response JSON:", parseError);
+    }
+  }
 
   if (!response.ok) {
     let message = `Request failed: ${response.status}`;

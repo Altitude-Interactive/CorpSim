@@ -1,16 +1,23 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 import { ensureEnvironmentLoaded } from "@corpsim/db";
 
 ensureEnvironmentLoaded();
 
+interface PrismaErrorWithCode extends Error {
+  errorCode?: string;
+}
+
+function isPrismaErrorWithCode(error: unknown): error is PrismaErrorWithCode {
+  return error instanceof Error && "errorCode" in error;
+}
+
 function shouldRetryConnect(error: unknown): boolean {
-  if (!(error instanceof Error)) {
+  if (!isPrismaErrorWithCode(error)) {
     return false;
   }
 
-  const prismaCode = (error as { errorCode?: string }).errorCode;
-  if (prismaCode === "P1001") {
+  if (error.errorCode === "P1001") {
     return true;
   }
 
@@ -25,6 +32,8 @@ function sleep(ms: number): Promise<void> {
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
+
   async onModuleInit(): Promise<void> {
     const maxAttempts = 30;
     const baseDelayMs = 1_000;
@@ -39,8 +48,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         }
 
         const delayMs = Math.min(baseDelayMs * attempt, 5_000);
-        console.warn(
-          `[prisma] database not reachable on attempt ${attempt}/${maxAttempts}; retrying in ${delayMs}ms`
+        this.logger.warn(
+          `Database not reachable on attempt ${attempt}/${maxAttempts}; retrying in ${delayMs}ms`
         );
         await sleep(delayMs);
       }

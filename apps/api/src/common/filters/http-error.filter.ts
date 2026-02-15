@@ -3,7 +3,8 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
-  HttpStatus
+  HttpStatus,
+  Logger
 } from "@nestjs/common";
 import {
   DomainInvariantError,
@@ -14,9 +15,12 @@ import {
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpErrorFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const context = host.switchToHttp();
     const response = context.getResponse();
+    const request = context.getRequest();
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
@@ -60,6 +64,14 @@ export class HttpErrorFilter implements ExceptionFilter {
       });
       return;
     }
+
+    // Log unhandled exceptions with context
+    this.logger.error("Unhandled exception", {
+      url: request?.url,
+      method: request?.method,
+      message: exception instanceof Error ? exception.message : String(exception),
+      stack: exception instanceof Error ? exception.stack : undefined
+    });
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
