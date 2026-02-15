@@ -6,7 +6,7 @@
 [![pnpm 9+](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Security Policy](https://img.shields.io/badge/security-policy-blue)](./SECURITY.md)
 
-A SimCompanies-inspired management and economy webgame featuring a persistent simulation environment with AI-driven companies, dynamic market systems, regional trade flows, and a sophisticated ERP-style interface for players to manage their virtual enterprises.
+A SimCompanies-inspired management and economy webgame featuring a persistent simulation environment with AI-driven companies and dynamic market systems. The game includes regional trade flows and a sophisticated ERP-style interface for players to manage their virtual enterprises.
 
 ## Contents
 
@@ -228,9 +228,7 @@ CorpSim is inspired by [SimCompanies](https://www.simcompanies.com/), a browser-
 
 ### Asset Credits
 
-- **Icons, sprites, pixel art**: [Craftpix.net](https://free-game-assets.itch.io/) ([License](https://craftpix.net/file-licenses))
-- **UI sounds**: [snd.dev](https://snd.dev/) ("SND01 Sine")
-- **Hand-made pixel art icons**: BENZOOgataga
+For a full list of asset credits, please see the **Asset Credits** subsection in the [License](#license) section above.
 
 ### Contributors
 
