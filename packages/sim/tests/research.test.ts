@@ -1,18 +1,11 @@
-import { Prisma, PrismaClient, ResearchJobStatus } from "@prisma/client";
+import { Prisma, ResearchJobStatus } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import {
   DomainInvariantError,
   completeDueResearchJobs,
   startResearch
 } from "../src";
-
-function createPrismaTransactionMock(tx: Prisma.TransactionClient): PrismaClient {
-  return {
-    $transaction: async <T>(
-      callback: (transactionClient: Prisma.TransactionClient) => Promise<T>
-    ): Promise<T> => callback(tx)
-  } as unknown as PrismaClient;
-}
+import { createPrismaTransactionMock } from "./test-utils";
 
 describe("research service", () => {
   it("enforces prerequisite gating before starting research", async () => {

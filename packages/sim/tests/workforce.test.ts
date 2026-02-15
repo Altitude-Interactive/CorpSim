@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import {
   assertValidWorkforceAllocation,
@@ -6,14 +6,7 @@ import {
   requestCompanyWorkforceCapacityChange,
   runWorkforceForTick
 } from "../src";
-
-function createPrismaTransactionMock(tx: Prisma.TransactionClient): PrismaClient {
-  return {
-    $transaction: async <T>(
-      callback: (transactionClient: Prisma.TransactionClient) => Promise<T>
-    ): Promise<T> => callback(tx)
-  } as unknown as PrismaClient;
-}
+import { createPrismaTransactionMock } from "./test-utils";
 
 describe("workforce service", () => {
   it("validates allocation percentages sum to 100", () => {

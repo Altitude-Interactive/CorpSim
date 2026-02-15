@@ -4,13 +4,20 @@ import { ensureEnvironmentLoaded } from "@corpsim/db";
 
 ensureEnvironmentLoaded();
 
+interface PrismaErrorWithCode extends Error {
+  errorCode?: string;
+}
+
+function isPrismaErrorWithCode(error: unknown): error is PrismaErrorWithCode {
+  return error instanceof Error && "errorCode" in error;
+}
+
 function shouldRetryConnect(error: unknown): boolean {
-  if (!(error instanceof Error)) {
+  if (!isPrismaErrorWithCode(error)) {
     return false;
   }
 
-  const prismaCode = (error as { errorCode?: string }).errorCode;
-  if (prismaCode === "P1001") {
+  if (error.errorCode === "P1001") {
     return true;
   }
 
