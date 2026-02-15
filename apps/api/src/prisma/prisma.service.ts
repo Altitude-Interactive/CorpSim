@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 import { ensureEnvironmentLoaded } from "@corpsim/db";
 
@@ -25,6 +25,8 @@ function sleep(ms: number): Promise<void> {
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
+
   async onModuleInit(): Promise<void> {
     const maxAttempts = 30;
     const baseDelayMs = 1_000;
@@ -39,8 +41,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         }
 
         const delayMs = Math.min(baseDelayMs * attempt, 5_000);
-        console.warn(
-          `[prisma] database not reachable on attempt ${attempt}/${maxAttempts}; retrying in ${delayMs}ms`
+        this.logger.warn(
+          `Database not reachable on attempt ${attempt}/${maxAttempts}; retrying in ${delayMs}ms`
         );
         await sleep(delayMs);
       }
