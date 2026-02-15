@@ -23,6 +23,21 @@ following conditions:
    this list of conditions, and the following disclaimer in the documentation
    and/or other materials provided with the distribution.
 
+THIRD-PARTY ASSET ATTRIBUTION
+
+This software includes assets from third-party sources:
+
+- Icons, sprites, and pixel art from Craftpix.net (https://free-game-assets.itch.io/)
+  Licensed under Craftpix.net File Licenses (https://craftpix.net/file-licenses)
+
+- UI sounds "SND01 Sine" from snd.dev (https://snd.dev/)
+
+- Hand-made pixel art icons created by BENZOOgataga
+
+These assets are subject to their respective licenses and are not covered by the
+CorpSim Non-Commercial License above. Users must comply with the original license
+terms for these third-party assets.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
