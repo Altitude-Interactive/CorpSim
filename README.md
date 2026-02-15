@@ -1,7 +1,6 @@
 # CorpSim
 
 [![Verify](https://github.com/Altitude-Interactive/CorpSim/actions/workflows/verify.yml/badge.svg)](https://github.com/Altitude-Interactive/CorpSim/actions/workflows/verify.yml)
-[![Contributors](https://img.shields.io/github/contributors/Altitude-Interactive/CorpSim)](https://github.com/Altitude-Interactive/CorpSim/graphs/contributors)
 [![License: Non-Commercial](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](./LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm 9+](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
@@ -222,4 +221,10 @@ This project is licensed under the CorpSim Non-Commercial License. See the [LICE
 
 CorpSim is inspired by [SimCompanies](https://www.simcompanies.com/), a browser-based business simulation game. We're grateful to the simulation game community for the inspiration and ideas that helped shape this project.
 
-Special thanks to all our [contributors](https://github.com/Altitude-Interactive/CorpSim/graphs/contributors) who have helped improve CorpSim through code contributions, bug reports, and feature suggestions.
+### Contributors
+
+Special thanks to all our contributors who have helped improve CorpSim through code contributions, bug reports, and feature suggestions.
+
+<a href="https://github.com/Altitude-Interactive/CorpSim/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Altitude-Interactive/CorpSim" />
+</a>
