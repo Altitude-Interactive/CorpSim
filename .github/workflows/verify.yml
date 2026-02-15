@@ -103,7 +103,7 @@ jobs:
           cache: pnpm
 
       - name: Enforce release entry on PR code changes
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
