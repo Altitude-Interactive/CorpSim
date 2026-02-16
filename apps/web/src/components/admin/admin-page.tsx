@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
@@ -28,6 +29,7 @@ interface UserData {
 }
 
 export function AdminPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -179,7 +181,7 @@ export function AdminPage() {
     }
   };
 
-  const handleImpersonate = async (userId: string) => {
+  const handleSupportProfile = async (userId: string) => {
     setActionLoading(`impersonate-${userId}`);
     try {
       const result = await authClient.admin.impersonateUser({ userId });
@@ -191,12 +193,12 @@ export function AdminPage() {
         });
       } else {
         showToast({
-          title: "Impersonating user",
-          description: "You are now signed in as this user",
+          title: "Support session started",
+          description: "You can now manage the user's profile and linked accounts",
           variant: "success",
         });
-        // Reload the page to reflect the impersonation
-        window.location.reload();
+        router.push("/overview?panel=profile");
+        router.refresh();
       }
     } catch (error) {
       showToast({
@@ -287,9 +289,13 @@ export function AdminPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleImpersonate(user.id)}
+                            onClick={() => handleSupportProfile(user.id)}
                             disabled={actionLoading !== null || isAdmin(user.role)}
-                            title={isAdmin(user.role) ? "Cannot impersonate admin users" : "Impersonate user"}
+                            title={
+                              isAdmin(user.role)
+                                ? "Cannot impersonate admin users"
+                                : "Open profile for support"
+                            }
                           >
                             <UserCircle className="h-4 w-4" />
                           </Button>

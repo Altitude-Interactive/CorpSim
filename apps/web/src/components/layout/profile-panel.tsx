@@ -72,11 +72,15 @@ export function ProfilePanel() {
   const { data: session } = authClient.useSession();
   const open = isPanelOpen(PROFILE_PANEL_ID);
   const isAdmin = isAdminRole(session?.user?.role);
+  const impersonatedBy =
+    (session as unknown as { session?: { impersonatedBy?: string } })?.session?.impersonatedBy ?? null;
+  const isImpersonating = Boolean(impersonatedBy);
   const [player, setPlayer] = useState<PlayerIdentity | null>(null);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [isLoading, setLoading] = useState(false);
   const [isLoadingAccounts, setLoadingAccounts] = useState(false);
   const [isSigningOut, setSigningOut] = useState(false);
+  const [isStoppingImpersonation, setStoppingImpersonation] = useState(false);
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null);
   const [unlinkingProvider, setUnlinkingProvider] = useState<string | null>(null);
   const lastAuthErrorRef = useRef<string | null>(null);
@@ -125,6 +129,37 @@ export function ProfilePanel() {
       setLoadingAccounts(false);
     }
   }, [showToast]);
+
+  const handleStopImpersonating = useCallback(async () => {
+    setStoppingImpersonation(true);
+    try {
+      const result = await authClient.admin.stopImpersonating({});
+      if (result.error) {
+        showToast({
+          title: "Stop impersonation failed",
+          description: result.error.message || "Unable to stop the support session.",
+          variant: "error"
+        });
+        return;
+      }
+      showToast({
+        title: "Support session ended",
+        description: "You are back in your admin session.",
+        variant: "success"
+      });
+      closePanel(PROFILE_PANEL_ID);
+      router.push("/admin");
+      router.refresh();
+    } catch (caught) {
+      showToast({
+        title: "Stop impersonation failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
+    } finally {
+      setStoppingImpersonation(false);
+    }
+  }, [closePanel, router, showToast]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -365,6 +400,27 @@ export function ProfilePanel() {
       </header>
 
       <div className="space-y-3 px-4 py-4 text-sm">
+        {isImpersonating ? (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-amber-200">Support mode</p>
+                <p className="text-sm text-amber-100">
+                  You are viewing this profile as an admin.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={handleStopImpersonating}
+                disabled={isStoppingImpersonation}
+              >
+                {isStoppingImpersonation ? "Stopping..." : "Return to admin"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <div className="rounded-md border border-border/70 bg-background/40 p-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Account Email</p>
           <p className="mt-1 font-medium">{session?.user?.email ?? "-"}</p>
