@@ -1,7 +1,7 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
-import { twoFactorClient, usernameClient } from "better-auth/client/plugins";
+import { adminClient, twoFactorClient, usernameClient } from "better-auth/client/plugins";
 
 function resolveAuthBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
@@ -21,7 +21,8 @@ export const authClient = createAuthClient({
           window.location.assign("/two-factor");
         }
       }
-    })
+    }),
+    adminClient()
   ]
 });
 

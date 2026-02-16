@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { createPrismaClient, ensureEnvironmentLoaded } from "@corpsim/db";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { twoFactor, username } from "better-auth/plugins";
+import { admin, twoFactor, username } from "better-auth/plugins";
 
 ensureEnvironmentLoaded();
 
@@ -20,6 +20,8 @@ const DEFAULT_TWO_FACTOR_RATE_LIMIT_WINDOW_SECONDS = 300;
 const DEFAULT_TWO_FACTOR_RATE_LIMIT_MAX_REQUESTS = 10;
 const DEFAULT_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS = 900;
 const DEFAULT_PASSWORD_RESET_RATE_LIMIT_MAX_REQUESTS = 5;
+const ADMIN_EMAIL = "admin@corpsim.local";
+const ADMIN_NAME = "Admin";
 
 type RateLimitStorage = "memory" | "database" | "secondary-storage";
 type Ipv6SubnetPrefix = 128 | 64 | 48 | 32;
@@ -85,6 +87,16 @@ function parseTrimmedEnv(name: string): string | null {
     return null;
   }
   return value;
+}
+
+function isAdminRole(role: string | null | undefined): boolean {
+  if (!role) {
+    return false;
+  }
+  return role
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .some((entry) => entry === "admin");
 }
 
 function parseGoogleAccessType(name: string): GoogleAccessType | null {
@@ -434,6 +446,21 @@ const githubProviderOptions = resolveGitHubProviderOptions();
 const microsoftProviderOptions = resolveMicrosoftProviderOptions();
 const discordProviderOptions = resolveDiscordProviderOptions();
 
+async function assertAdminAccountLinking(account: { userId?: string | null; providerId?: string | null }) {
+  if (!account.userId || !account.providerId || account.providerId === "credential") {
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: account.userId },
+    select: { role: true }
+  });
+
+  if (user && isAdminRole(user.role)) {
+    throw new Error("Admin accounts cannot link external providers.");
+  }
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql"
@@ -463,7 +490,8 @@ export const auth = betterAuth({
     username(),
     twoFactor({
       trustDeviceMaxAge: 60 * 60 * 24 * 30
-    })
+    }),
+    admin()
   ],
   databaseHooks: {
     user: {
@@ -472,6 +500,62 @@ export const auth = betterAuth({
           await ensurePlayerExistsForAuthUser(user);
         }
       }
+    },
+    account: {
+      create: {
+        before: async (account) => {
+          await assertAdminAccountLinking(account);
+        }
+      }
     }
   }
+});
+
+async function ensureAdminAccount() {
+  const adminPassword = parseTrimmedEnv("ADMIN_PASSWORD");
+  if (!adminPassword) {
+    return;
+  }
+
+  const ctx = await auth.$context;
+  const existingUser = await ctx.internalAdapter.findUserByEmail(ADMIN_EMAIL, {
+    includeAccounts: true
+  });
+
+  let adminUser = existingUser?.user ?? null;
+  if (!adminUser) {
+    adminUser = await ctx.internalAdapter.createUser({
+      email: ADMIN_EMAIL,
+      name: ADMIN_NAME,
+      role: "admin"
+    });
+  } else if (!isAdminRole(adminUser.role)) {
+    adminUser = await ctx.internalAdapter.updateUser(adminUser.id, {
+      role: "admin"
+    });
+  }
+
+  if (!adminUser) {
+    throw new Error("Unable to create admin user.");
+  }
+
+  const hashedPassword = await ctx.password.hash(adminPassword);
+  const hasCredentialAccount =
+    existingUser?.accounts?.some((account) => account.providerId === "credential") ??
+    false;
+
+  if (!hasCredentialAccount) {
+    await ctx.internalAdapter.linkAccount({
+      userId: adminUser.id,
+      providerId: "credential",
+      accountId: adminUser.id,
+      password: hashedPassword
+    });
+  } else {
+    await ctx.internalAdapter.updatePassword(adminUser.id, hashedPassword);
+  }
+}
+
+void ensureAdminAccount().catch((error) => {
+  console.error("Failed to ensure admin account:", error);
 });

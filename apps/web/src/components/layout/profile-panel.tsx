@@ -54,6 +54,16 @@ function readErrorMessage(error: unknown): string {
   return "Unable to load profile details right now.";
 }
 
+function isAdminRole(role: string | null | undefined): boolean {
+  if (!role) {
+    return false;
+  }
+  return role
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .some((entry) => entry === "admin");
+}
+
 export function ProfilePanel() {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,6 +71,7 @@ export function ProfilePanel() {
   const { isPanelOpen, openPanel, closePanel } = useControlManager();
   const { data: session } = authClient.useSession();
   const open = isPanelOpen(PROFILE_PANEL_ID);
+  const isAdmin = isAdminRole(session?.user?.role);
   const [player, setPlayer] = useState<PlayerIdentity | null>(null);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [isLoading, setLoading] = useState(false);
@@ -226,6 +237,15 @@ export function ProfilePanel() {
   }, [closePanel, isSigningOut, router, showToast]);
 
   const handleLinkAccount = useCallback(async (provider: string) => {
+    if (isAdmin) {
+      showToast({
+        title: "Linking unavailable",
+        description: "Admin accounts cannot link external providers.",
+        variant: "warning"
+      });
+      return;
+    }
+
     if (linkingProvider || unlinkingProvider) {
       return;
     }
@@ -262,7 +282,7 @@ export function ProfilePanel() {
     } finally {
       setLinkingProvider(null);
     }
-  }, [linkingProvider, unlinkingProvider, showToast]);
+  }, [isAdmin, linkingProvider, unlinkingProvider, showToast]);
 
   const handleUnlinkAccount = useCallback(async (provider: string, accountId: string) => {
     if (linkingProvider || unlinkingProvider) {
@@ -355,6 +375,11 @@ export function ProfilePanel() {
         {OAUTH_PROVIDERS.length > 0 ? (
           <div className="rounded-md border border-border/70 bg-background/40 p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Linked Accounts</p>
+            {isAdmin ? (
+              <p className="mb-3 text-xs text-muted-foreground">
+                Admin accounts cannot link external providers.
+              </p>
+            ) : null}
             {isLoadingAccounts ? (
               <p className="text-xs text-muted-foreground">Loading accounts...</p>
             ) : (
@@ -395,7 +420,7 @@ export function ProfilePanel() {
                           size="sm"
                           className="h-7 text-xs"
                           onClick={() => void handleLinkAccount(provider.id)}
-                          disabled={isLinking || isUnlinking}
+                          disabled={isLinking || isUnlinking || isAdmin}
                         >
                           {isLinking ? "Linking..." : "Link"}
                         </Button>
