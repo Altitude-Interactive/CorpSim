@@ -68,6 +68,35 @@ describe("maintenance mode integration", () => {
     });
   });
 
+  it("supports optional eta field in maintenance state", async () => {
+    const futureEta = new Date(Date.now() + 3600000).toISOString(); // 1 hour from now
+
+    const enableResponse = await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Scheduled maintenance",
+        scope: "all",
+        enabledBy: "integration-test",
+        eta: futureEta
+      })
+      .expect(201);
+
+    expect(enableResponse.body).toMatchObject({
+      enabled: true,
+      reason: "Scheduled maintenance",
+      scope: "all",
+      eta: futureEta
+    });
+
+    const stateResponse = await request(app.getHttpServer()).get("/health/maintenance").expect(200);
+
+    expect(stateResponse.body).toMatchObject({
+      enabled: true,
+      eta: futureEta
+    });
+  });
+
   it("blocks write requests with 503 when maintenance scope is all", async () => {
     const enableResponse = await request(app.getHttpServer())
       .post("/ops/maintenance")
