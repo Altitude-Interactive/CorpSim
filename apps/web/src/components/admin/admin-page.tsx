@@ -371,7 +371,7 @@ export function AdminPage() {
     const confirmed = await confirmPopup({
       title: "Import data to this account?",
       description:
-        "This overwrites the user's company data with the selected export file. Make sure the file is current.",
+        "This overwrites the user's company data with the selected export file. Make sure the file is correct.",
       confirmLabel: "Import data",
       cancelLabel: "Cancel",
       variant: "danger"
@@ -809,8 +809,8 @@ export function AdminPage() {
             <div className="rounded-lg border border-border/70 bg-background/40 p-4">
               <p className="text-sm font-semibold text-slate-100">Export / Import Data</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Export this user's company data to a local file, or import a recent export file
-                back into this account.
+                Export this user's company data to a local file, or import an export file back
+                into this account.
               </p>
               <div className="mt-3 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">

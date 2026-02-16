@@ -282,13 +282,6 @@ export class SupportService {
   }): Promise<void> {
     this.assertExportPayload(input.payload);
 
-    const currentTick = await this.getCurrentTick();
-    if (input.payload.exportedTick !== currentTick) {
-      throw new BadRequestException(
-        `Export file is out of date (tick ${input.payload.exportedTick}, current ${currentTick}). Please export again.`
-      );
-    }
-
     const targetCompany = await this.findActivePlayerCompany(input.targetUserId, true);
     if (!targetCompany) {
       throw new NotFoundException("Active player company not found.");
