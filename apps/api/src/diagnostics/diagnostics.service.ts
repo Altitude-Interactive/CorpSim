@@ -1,4 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface LogMissingItemInput {
@@ -56,9 +57,16 @@ export class DiagnosticsService {
   }
 
   async deleteMissingItemLog(id: string): Promise<void> {
-    await this.prisma.missingItemLog.delete({
-      where: { id }
-    });
+    try {
+      await this.prisma.missingItemLog.delete({
+        where: { id }
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new NotFoundException(`Missing item log with id ${id} not found`);
+      }
+      throw error;
+    }
   }
 
   async clearMissingItemLogs(source?: string): Promise<number> {

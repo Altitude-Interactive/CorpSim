@@ -24,6 +24,7 @@ async function logMissingItemToApi(itemCode: string | null, itemName: string, co
       headers: {
         "Content-Type": "application/json"
       },
+      credentials: "include",
       body: JSON.stringify({
         itemCode,
         itemName,
