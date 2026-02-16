@@ -45,6 +45,7 @@ export function AdminPage() {
   const [supportError, setSupportError] = useState<string | null>(null);
   const [isSupportLoading, setSupportLoading] = useState(false);
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string | null>(null);
+  const [isSupportStatusLoading, setSupportStatusLoading] = useState(false);
   const { showToast } = useToast();
 
   const isSupportOpen = useMemo(() => Boolean(supportUser), [supportUser]);
@@ -261,6 +262,43 @@ export function AdminPage() {
     [loadSupportAccounts, showToast, supportUser]
   );
 
+  const handleUnbanSupportUser = useCallback(async () => {
+    if (!supportUser) {
+      return;
+    }
+
+    setSupportStatusLoading(true);
+    try {
+      const result = await authClient.admin.unbanUser({ userId: supportUser.id });
+      if (result.error) {
+        showToast({
+          title: "Failed to unban user",
+          description: result.error.message || "Unknown error",
+          variant: "error"
+        });
+        return;
+      }
+
+      showToast({
+        title: "User unbanned",
+        description: "User can now sign in.",
+        variant: "success"
+      });
+      setSupportUser((current) =>
+        current ? { ...current, banned: false, banReason: null } : current
+      );
+      await loadUsers();
+    } catch (error) {
+      showToast({
+        title: "Failed to unban user",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error"
+      });
+    } finally {
+      setSupportStatusLoading(false);
+    }
+  }, [loadUsers, showToast, supportUser]);
+
   const isAdmin = (role: string | null) => {
     if (!role) return false;
     return role.split(",").some((r) => r.trim().toLowerCase() === "admin");
@@ -440,6 +478,36 @@ export function AdminPage() {
               <Button type="button" size="sm" variant="ghost" onClick={handleCloseSupport}>
                 Close
               </Button>
+            </div>
+
+            <div className="rounded-lg border border-border/70 bg-background/40 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Account Status</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    {supportUser.banned ? (
+                      <Badge variant="danger">Banned</Badge>
+                    ) : (
+                      <Badge variant="success">Active</Badge>
+                    )}
+                    {supportUser.banReason ? (
+                      <span className="text-xs text-muted-foreground">
+                        Reason: {supportUser.banReason}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleUnbanSupportUser}
+                  disabled={!supportUser.banned || isSupportStatusLoading}
+                  title={supportUser.banned ? "Unban user" : "User is not banned"}
+                >
+                  {isSupportStatusLoading ? "Unbanning..." : "Unban user"}
+                </Button>
+              </div>
             </div>
 
             <div className="rounded-lg border border-border/70 bg-background/40 p-4">
