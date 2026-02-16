@@ -1,8 +1,23 @@
-import { UnauthorizedException, createParamDecorator, ExecutionContext } from "@nestjs/common";
+import {
+  ForbiddenException,
+  UnauthorizedException,
+  createParamDecorator,
+  ExecutionContext
+} from "@nestjs/common";
 import type { UserSession } from "@thallesp/nestjs-better-auth";
 
 interface RequestWithSession {
   session?: UserSession | null;
+}
+
+function isAdminRole(role: string | string[] | null | undefined): boolean {
+  if (!role) {
+    return false;
+  }
+  const roleValues = Array.isArray(role) ? role : role.split(",");
+  return roleValues
+    .map((entry) => entry.trim().toLowerCase())
+    .some((entry) => entry === "admin");
 }
 
 function resolveTestFallbackPlayerId(): string | null {
@@ -25,6 +40,10 @@ export const CurrentPlayerId = createParamDecorator(
         return fallbackPlayerId;
       }
       throw new UnauthorizedException("missing authenticated user session");
+    }
+
+    if (isAdminRole(request.session?.user?.role)) {
+      throw new ForbiddenException("Admin accounts cannot access player gameplay endpoints.");
     }
     return playerId;
   }
