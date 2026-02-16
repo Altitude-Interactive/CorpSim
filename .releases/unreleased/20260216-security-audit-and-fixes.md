@@ -13,10 +13,6 @@ Performed comprehensive security audit of the codebase with focus on API layer. 
 - Restricted cash balance visibility to owned companies only
 - Restricted sensitive data (cash, inventory) in player registry to own player's data
 
-**Documentation:**
-- Created comprehensive security audit report (docs/SECURITY_AUDIT.md)
-- Created security remediation guide (docs/SECURITY_REMEDIATION.md)
-
 **Audit Summary:**
 - 0 critical dependency vulnerabilities found
 - 0 high-severity vulnerabilities after fixes

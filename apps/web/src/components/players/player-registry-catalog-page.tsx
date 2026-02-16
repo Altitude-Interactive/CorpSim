@@ -189,7 +189,9 @@ export function PlayerRegistryCatalogPage() {
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Location: {company.regionName} ({company.regionCode}) | Cash on hand:{" "}
-                        <span className="text-foreground">{formatCents(company.cashCents)}</span>
+                        <span className="text-foreground">
+                          {company.cashCents !== undefined ? formatCents(company.cashCents) : "Hidden"}
+                        </span>
                       </p>
                       {company.itemHoldings.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No stock right now.</p>

@@ -57,15 +57,8 @@ export class PlayersService {
   }
 
   async listPlayerRegistry(requestingPlayerId: string): Promise<PlayerRegistryEntry[]> {
-    // Verify the requesting player exists and has completed tutorial
-    const requester = await this.prisma.player.findUnique({
-      where: { id: requestingPlayerId },
-      select: { tutorialCompletedAt: true }
-    });
-    
-    if (!requester) {
-      throw new Error('Player not found');
-    }
+    // Verify the requesting player exists (throws if not found)
+    await resolvePlayerById(this.prisma, requestingPlayerId);
     
     const adminUserIds = await this.listAdminUserIds();
     const players = await this.prisma.player.findMany({

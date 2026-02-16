@@ -27,14 +27,15 @@ export function timingSafeCompare(
     return false;
   }
 
-  // Ensure equal length to prevent timing leak
-  if (a.length !== b.length) {
-    return false;
-  }
-
   try {
     const bufA = Buffer.from(a, "utf8");
     const bufB = Buffer.from(b, "utf8");
+
+    // Ensure equal byte length to prevent timing leak based on UTF-16 code units
+    if (bufA.length !== bufB.length) {
+      return false;
+    }
+
     return timingSafeEqual(bufA, bufB);
   } catch {
     return false;
