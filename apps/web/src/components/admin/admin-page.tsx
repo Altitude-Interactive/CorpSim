@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
-import { listSupportUserAccounts, unlinkSupportUserAccount } from "@/lib/api";
+import {
+  listSupportUserAccounts,
+  transferSupportUserData,
+  unlinkSupportUserAccount,
+  type SupportTransferModule
+} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ToastOverlay } from "@/components/ui/toast-manager";
 import {
@@ -36,6 +41,15 @@ interface SupportAccount {
   createdAt: string;
 }
 
+const MAIN_ADMIN_EMAIL = "admin@corpsim.local";
+const SUPPORT_TRANSFER_MODULES: Array<{ id: SupportTransferModule; label: string }> = [
+  { id: "all", label: "All data (transfer full company)" },
+  { id: "cash", label: "Cash balance" },
+  { id: "inventory", label: "Inventory" },
+  { id: "specialization", label: "Company specialization" },
+  { id: "workforce", label: "Workforce + efficiency" }
+];
+
 export function AdminPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,9 +61,15 @@ export function AdminPage() {
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string | null>(null);
   const [isSupportStatusLoading, setSupportStatusLoading] = useState(false);
   const [isDeletingSupportUser, setDeletingSupportUser] = useState(false);
+  const [transferSource, setTransferSource] = useState("");
+  const [transferModules, setTransferModules] = useState<SupportTransferModule[]>(["all"]);
+  const [isTransferLoading, setTransferLoading] = useState(false);
+  const [isRemovingAdmin, setRemovingAdmin] = useState<string | null>(null);
   const { showToast, confirmPopup } = useToast();
+  const { data: session } = authClient.useSession();
 
   const isSupportOpen = useMemo(() => Boolean(supportUser), [supportUser]);
+  const isMainAdmin = session?.user?.email?.toLowerCase() === MAIN_ADMIN_EMAIL;
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -233,6 +253,8 @@ export function AdminPage() {
     setSupportAccounts([]);
     setSupportError(null);
     setUnlinkingAccountId(null);
+    setTransferSource("");
+    setTransferModules(["all"]);
   }, []);
 
   const handleUnlinkAccount = useCallback(
@@ -299,6 +321,123 @@ export function AdminPage() {
       setSupportStatusLoading(false);
     }
   }, [loadUsers, showToast, supportUser]);
+
+  const handleTransferModuleToggle = useCallback((moduleId: SupportTransferModule) => {
+    setTransferModules((current) => {
+      if (moduleId === "all") {
+        return ["all"];
+      }
+
+      const filtered = current.filter((id) => id !== "all");
+      if (filtered.includes(moduleId)) {
+        const next = filtered.filter((id) => id !== moduleId);
+        return next.length > 0 ? next : ["all"];
+      }
+      return [...filtered, moduleId];
+    });
+  }, []);
+
+  const handleTransferSupportData = useCallback(async () => {
+    if (!supportUser) {
+      return;
+    }
+
+    const source = transferSource.trim();
+    if (!source) {
+      showToast({
+        title: "Source required",
+        description: "Enter the source account email or user id.",
+        variant: "error"
+      });
+      return;
+    }
+
+    const confirmed = await confirmPopup({
+      title: "Transfer data to this account?",
+      description:
+        "This will overwrite selected data on the target account. Transfers with 'All data' will move the source company.",
+      confirmLabel: "Transfer data",
+      cancelLabel: "Cancel",
+      variant: "danger"
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setTransferLoading(true);
+    try {
+      await transferSupportUserData({
+        targetUserId: supportUser.id,
+        sourceEmail: source.includes("@") ? source : undefined,
+        sourceUserId: source.includes("@") ? undefined : source,
+        modules: transferModules
+      });
+
+      showToast({
+        title: "Transfer complete",
+        description: "The selected data has been transferred.",
+        variant: "success"
+      });
+      await loadUsers();
+    } catch (error) {
+      showToast({
+        title: "Transfer failed",
+        description: error instanceof Error ? error.message : "Unable to transfer data.",
+        variant: "error"
+      });
+    } finally {
+      setTransferLoading(false);
+    }
+  }, [confirmPopup, loadUsers, showToast, supportUser, transferModules, transferSource]);
+
+  const handleRemoveAdmin = useCallback(
+    async (user: UserData) => {
+      const confirmed = await confirmPopup({
+        title: "Remove admin role?",
+        description: `Remove admin privileges from ${user.email}?`,
+        confirmLabel: "Remove admin",
+        cancelLabel: "Cancel",
+        variant: "danger"
+      });
+
+      if (!confirmed) {
+        return;
+      }
+
+      setRemovingAdmin(user.id);
+      try {
+        const result = await authClient.admin.setRole({
+          userId: user.id,
+          role: "user"
+        });
+
+        if (result.error) {
+          showToast({
+            title: "Failed to update role",
+            description: result.error.message || "Unknown error",
+            variant: "error"
+          });
+        } else {
+          showToast({
+            title: "Admin removed",
+            description: "User is no longer an admin.",
+            variant: "success"
+          });
+          await loadUsers();
+        }
+      } catch (error) {
+        showToast({
+          title: "Failed to update role",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "error"
+        });
+      } finally {
+        setRemovingAdmin(null);
+      }
+    },
+    [confirmPopup, loadUsers, showToast]
+  );
 
   const handleDeleteSupportUser = useCallback(async () => {
     if (!supportUser) {
@@ -472,6 +611,17 @@ export function AdminPage() {
                               <Shield className="h-4 w-4" />
                             </Button>
                           )}
+                          {isMainAdmin && isAdmin(user.role) && user.email !== MAIN_ADMIN_EMAIL && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveAdmin(user)}
+                              disabled={isRemovingAdmin === user.id}
+                              title="Remove admin"
+                            >
+                              <ShieldAlert className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -631,6 +781,54 @@ export function AdminPage() {
                   })}
                 </div>
               )}
+            </div>
+
+            <div className="rounded-lg border border-border/70 bg-background/40 p-4">
+              <p className="text-sm font-semibold text-slate-100">Export / Import Data</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Transfer selected company data from a source account into this account.
+              </p>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Source account (email or id)
+                  </label>
+                  <input
+                    className="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={transferSource}
+                    onChange={(event) => setTransferSource(event.target.value)}
+                    placeholder="user@example.com or userId"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Modules</p>
+                  <div className="flex flex-wrap gap-3">
+                    {SUPPORT_TRANSFER_MODULES.map((module) => {
+                      const checked = transferModules.includes(module.id);
+                      const isAll = module.id === "all";
+                      return (
+                        <label key={module.id} className="flex items-center gap-2 text-xs text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleTransferModuleToggle(module.id)}
+                          />
+                          {module.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleTransferSupportData}
+                  disabled={isTransferLoading}
+                >
+                  {isTransferLoading ? "Transferring..." : "Transfer data"}
+                </Button>
+              </div>
             </div>
           </div>
         </ToastOverlay>

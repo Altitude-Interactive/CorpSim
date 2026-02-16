@@ -23,6 +23,12 @@ interface UnlinkAccountDto {
   accountId?: string;
 }
 
+interface TransferCompanyDto {
+  sourceUserId?: string;
+  sourceEmail?: string;
+  modules?: string[];
+}
+
 function isAdminRole(role: string | string[] | null | undefined): boolean {
   if (!role) {
     return false;
@@ -72,6 +78,47 @@ export class SupportController {
     return { success: true };
   }
 
+  @Post("users/:userId/transfer")
+  async transferCompanyData(
+    @Req() request: RequestWithSession,
+    @Param("userId") userId: string,
+    @Body() body: TransferCompanyDto
+  ) {
+    this.assertAdminSession(request);
+    await this.assertTargetNotAdmin(userId);
+
+    const sourceUserId = body.sourceUserId?.trim();
+    const sourceEmail = body.sourceEmail?.trim();
+
+    if (!sourceUserId && !sourceEmail) {
+      throw new BadRequestException("sourceUserId or sourceEmail is required");
+    }
+
+    const resolvedSourceUserId = sourceUserId || (await this.resolveUserIdByEmail(sourceEmail!));
+    if (!resolvedSourceUserId) {
+      throw new NotFoundException("Source account not found.");
+    }
+
+    if (resolvedSourceUserId === userId) {
+      throw new BadRequestException("Source and target accounts must be different.");
+    }
+
+    await this.assertTargetNotAdmin(resolvedSourceUserId);
+
+    const modules = Array.isArray(body.modules) ? body.modules : [];
+    const result = await this.supportService.transferPlayerCompanyData({
+      sourceUserId: resolvedSourceUserId,
+      targetUserId: userId,
+      modules
+    });
+
+    return {
+      success: true,
+      sourceCompanyId: result.sourceCompanyId,
+      targetCompanyId: result.targetCompanyId
+    };
+  }
+
   private assertAdminSession(request: RequestWithSession): void {
     const session = request.session;
     if (!session?.user) {
@@ -96,5 +143,13 @@ export class SupportController {
     if (isAdminRole(role)) {
       throw new ForbiddenException("Admin accounts cannot be modified.");
     }
+  }
+
+  private async resolveUserIdByEmail(email: string): Promise<string | null> {
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "user" WHERE lower(email) = lower(${email}) LIMIT 1
+    `;
+
+    return rows?.[0]?.id ?? null;
   }
 }

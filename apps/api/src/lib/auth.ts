@@ -100,6 +100,13 @@ function isAdminRole(role: string | null | undefined): boolean {
     .some((entry) => entry === "admin");
 }
 
+function isMainAdminEmail(email: string | null | undefined): boolean {
+  if (!email) {
+    return false;
+  }
+  return email.trim().toLowerCase() === ADMIN_EMAIL;
+}
+
 async function assertAdminNotBanned(
   userUpdate: Partial<{ banned?: boolean } & Record<string, unknown>>,
   context:
@@ -132,6 +139,65 @@ async function assertAdminNotBanned(
     throw new APIError("FORBIDDEN", {
       message: "Admin accounts cannot be banned."
     });
+  }
+}
+
+async function assertAdminRoleChangeAllowed(
+  userUpdate: Partial<{ role?: string | string[] | null } & Record<string, unknown>>,
+  context:
+    | {
+        body?: Record<string, unknown>;
+        context?: {
+          session?: { user?: { email?: string | null } } | null;
+          internalAdapter?: {
+            findUserById: (userId: string) => Promise<{ role?: string | null; email?: string | null } | null>;
+          };
+        };
+      }
+    | null
+): Promise<void> {
+  if (!("role" in userUpdate)) {
+    return;
+  }
+
+  const userId = context?.body?.userId;
+  if (typeof userId !== "string") {
+    return;
+  }
+
+  const adapter = context?.context?.internalAdapter;
+  if (!adapter || typeof adapter.findUserById !== "function") {
+    return;
+  }
+
+  const targetUser = await adapter.findUserById(userId);
+  if (!targetUser) {
+    return;
+  }
+
+  const newRoleValue = userUpdate.role;
+  const newRoles = Array.isArray(newRoleValue)
+    ? newRoleValue
+    : typeof newRoleValue === "string"
+      ? newRoleValue.split(",")
+      : [];
+  const nextHasAdmin = newRoles
+    .map((entry) => entry.trim().toLowerCase())
+    .some((entry) => entry === "admin");
+
+  if (isMainAdminEmail(targetUser.email) && !nextHasAdmin) {
+    throw new APIError("FORBIDDEN", {
+      message: "Main admin role cannot be removed."
+    });
+  }
+
+  if (isAdminRole(targetUser.role) && !nextHasAdmin) {
+    const actorEmail = context?.context?.session?.user?.email ?? null;
+    if (!isMainAdminEmail(actorEmail)) {
+      throw new APIError("FORBIDDEN", {
+        message: "Only the main admin can remove admin roles."
+      });
+    }
   }
 }
 
@@ -540,6 +606,7 @@ export const auth = betterAuth({
       update: {
         before: async (user, context) => {
           await assertAdminNotBanned(user, context);
+          await assertAdminRoleChangeAllowed(user, context);
         }
       }
     },

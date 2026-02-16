@@ -88,6 +88,8 @@ export type SupportAccountSummary = {
   createdAt: string;
 };
 
+export type SupportTransferModule = "all" | "cash" | "inventory" | "specialization" | "workforce";
+
 const CATALOG_CACHE_TTL_MS = 5 * 60 * 1_000;
 const RESEARCH_CACHE_TTL_MS = 1_000;
 const COMPANY_RECIPES_CACHE_TTL_MS = 2_000;
@@ -218,6 +220,22 @@ export async function unlinkSupportUserAccount(userId: string, accountId: string
   await fetchJson(`/v1/support/users/${userId}/unlink`, () => undefined, {
     method: "POST",
     body: JSON.stringify({ accountId })
+  });
+}
+
+export async function transferSupportUserData(input: {
+  targetUserId: string;
+  sourceEmail?: string;
+  sourceUserId?: string;
+  modules: SupportTransferModule[];
+}): Promise<void> {
+  await fetchJson(`/v1/support/users/${input.targetUserId}/transfer`, () => undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      sourceEmail: input.sourceEmail,
+      sourceUserId: input.sourceUserId,
+      modules: input.modules
+    })
   });
 }
 
