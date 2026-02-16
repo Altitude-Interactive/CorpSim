@@ -193,6 +193,7 @@ export async function listCompanies(prisma: PrismaClient) {
       isPlayer: true,
       specialization: true,
       cashCents: true,
+      ownerPlayerId: true,
       region: {
         select: {
           id: true,
@@ -210,6 +211,7 @@ export async function listCompanies(prisma: PrismaClient) {
     isBot: !company.isPlayer,
     specialization: normalizeCompanySpecialization(company.specialization),
     cashCents: company.cashCents,
+    ownerPlayerId: company.ownerPlayerId,
     regionId: company.region.id,
     regionCode: company.region.code,
     regionName: company.region.name

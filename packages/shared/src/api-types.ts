@@ -55,7 +55,7 @@ export interface CompanySummary {
   name: string;
   isBot: boolean;
   specialization: CompanySpecialization;
-  cashCents: string;
+  cashCents?: string; // Optional for security - only visible for owned companies
   regionId: string;
   regionCode: string;
   regionName: string;
@@ -103,7 +103,7 @@ export interface PlayerRegistryCompany {
   code: string;
   name: string;
   isBot: boolean;
-  cashCents: string;
+  cashCents?: string; // Optional for security - only visible for own companies
   regionId: string;
   regionCode: string;
   regionName: string;
