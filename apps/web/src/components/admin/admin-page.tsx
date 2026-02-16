@@ -46,7 +46,8 @@ export function AdminPage() {
   const [isSupportLoading, setSupportLoading] = useState(false);
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string | null>(null);
   const [isSupportStatusLoading, setSupportStatusLoading] = useState(false);
-  const { showToast } = useToast();
+  const [isDeletingSupportUser, setDeletingSupportUser] = useState(false);
+  const { showToast, confirmPopup } = useToast();
 
   const isSupportOpen = useMemo(() => Boolean(supportUser), [supportUser]);
 
@@ -299,6 +300,54 @@ export function AdminPage() {
     }
   }, [loadUsers, showToast, supportUser]);
 
+  const handleDeleteSupportUser = useCallback(async () => {
+    if (!supportUser) {
+      return;
+    }
+
+    const confirmed = await confirmPopup({
+      title: "Delete user account?",
+      description:
+        "This permanently removes the user and all linked accounts. This action cannot be undone.",
+      confirmLabel: "Delete account",
+      cancelLabel: "Cancel",
+      variant: "danger"
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingSupportUser(true);
+    try {
+      const result = await authClient.admin.removeUser({ userId: supportUser.id });
+      if (result.error) {
+        showToast({
+          title: "Failed to delete user",
+          description: result.error.message || "Unknown error",
+          variant: "error"
+        });
+        return;
+      }
+
+      showToast({
+        title: "User deleted",
+        description: "The account has been removed.",
+        variant: "success"
+      });
+      handleCloseSupport();
+      await loadUsers();
+    } catch (error) {
+      showToast({
+        title: "Failed to delete user",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error"
+      });
+    } finally {
+      setDeletingSupportUser(false);
+    }
+  }, [confirmPopup, handleCloseSupport, loadUsers, showToast, supportUser]);
+
   const isAdmin = (role: string | null) => {
     if (!role) return false;
     return role.split(",").some((r) => r.trim().toLowerCase() === "admin");
@@ -506,6 +555,19 @@ export function AdminPage() {
                   title={supportUser.banned ? "Unban user" : "User is not banned"}
                 >
                   {isSupportStatusLoading ? "Unbanning..." : "Unban user"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleDeleteSupportUser}
+                  disabled={isDeletingSupportUser}
+                  className="text-red-300 hover:text-red-200"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="ml-2 text-xs">
+                    {isDeletingSupportUser ? "Deleting..." : "Delete account"}
+                  </span>
                 </Button>
               </div>
             </div>
