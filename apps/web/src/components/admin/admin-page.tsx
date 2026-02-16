@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { authClient } from "@/lib/auth-client";
 import {
   exportSupportUserData,
+  getWorldHealth,
   importSupportUserData,
   listSupportUserAccounts,
   unlinkSupportUserAccount,
@@ -43,6 +44,7 @@ interface SupportAccount {
 }
 
 const MAIN_ADMIN_EMAIL = "admin@corpsim.local";
+const STALE_IMPORT_TICK_THRESHOLD = 5;
 export function AdminPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -368,19 +370,6 @@ export function AdminPage() {
       return;
     }
 
-    const confirmed = await confirmPopup({
-      title: "Import data to this account?",
-      description:
-        "This overwrites the user's company data with the selected export file. Make sure the file is correct.",
-      confirmLabel: "Import data",
-      cancelLabel: "Cancel",
-      variant: "danger"
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
     setImportingSupportData(true);
     try {
       let payload: SupportCompanyExportPayload;
@@ -389,6 +378,31 @@ export function AdminPage() {
         payload = JSON.parse(text) as SupportCompanyExportPayload;
       } catch (parseError) {
         throw new Error("Unable to read the export file. Make sure it is valid JSON.");
+      }
+
+      let warningLine = "";
+      try {
+        const worldHealth = await getWorldHealth();
+        const tickDelta = worldHealth.currentTick - payload.exportedTick;
+        if (Number.isFinite(tickDelta) && tickDelta >= STALE_IMPORT_TICK_THRESHOLD) {
+          warningLine = ` Warning: this file is ${tickDelta} ticks behind (exported ${payload.exportedTick}, current ${worldHealth.currentTick}).`;
+        }
+      } catch (error) {
+        // Ignore warning lookup errors and continue import flow.
+      }
+
+      const confirmed = await confirmPopup({
+        title: "Import data to this account?",
+        description:
+          "This overwrites the user's company data with the selected export file. Make sure the file is correct." +
+          warningLine,
+        confirmLabel: "Import data",
+        cancelLabel: "Cancel",
+        variant: "danger"
+      });
+
+      if (!confirmed) {
+        return;
       }
 
       await importSupportUserData({
