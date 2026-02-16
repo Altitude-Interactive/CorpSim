@@ -6,6 +6,8 @@ import { CompaniesController } from "./companies/companies.controller";
 import { CompaniesService } from "./companies/companies.service";
 import { ContractsController } from "./contracts/contracts.controller";
 import { ContractsService } from "./contracts/contracts.service";
+import { DiagnosticsController } from "./diagnostics/diagnostics.controller";
+import { DiagnosticsService } from "./diagnostics/diagnostics.service";
 import { HealthController } from "./health/health.controller";
 import { FinanceController } from "./finance/finance.controller";
 import { FinanceService } from "./finance/finance.service";
@@ -69,7 +71,8 @@ import { auth } from "./lib/auth";
     ResearchController,
     WorkforceController,
     SupportController,
-    ModerationController
+    ModerationController,
+    DiagnosticsController
   ],
   providers: [
     PrismaService,
@@ -91,7 +94,8 @@ import { auth } from "./lib/auth";
     ResearchService,
     WorkforceService,
     SupportService,
-    ModerationService
+    ModerationService,
+    DiagnosticsService
   ]
 })
 export class AppModule implements NestModule {

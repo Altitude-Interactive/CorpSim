@@ -16,18 +16,42 @@ interface ItemIconProps {
 const loggedMissingMappingKeys = new Set<string>();
 const loggedMissingAssetKeys = new Set<string>();
 
-function warnMissingIconOnce(key: string, message: string, details: Record<string, string>) {
-  if (process.env.NODE_ENV === "production") {
-    return;
+async function logMissingItemToApi(itemCode: string | null, itemName: string, context: string, metadata?: string) {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4310";
+    await fetch(`${apiUrl}/diagnostics/missing-items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        itemCode: itemCode || undefined,
+        itemName,
+        context,
+        source: "web-ui",
+        metadata
+      })
+    });
+  } catch (error) {
+    console.error("Failed to log missing item to API:", error);
   }
+}
 
+function warnMissingIconOnce(key: string, message: string, details: Record<string, string>) {
   const bucket = key.startsWith("asset:") ? loggedMissingAssetKeys : loggedMissingMappingKeys;
   if (bucket.has(key)) {
     return;
   }
 
   bucket.add(key);
-  console.warn(message, details);
+  
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(message, details);
+  }
+
+  const context = key.startsWith("asset:") ? "icon-asset-load-failure" : "icon-mapping-missing";
+  const metadata = JSON.stringify(details);
+  logMissingItemToApi(details.itemCode === "(null)" ? null : details.itemCode, details.itemName, context, metadata);
 }
 
 export const ItemIcon = memo(function ItemIcon({ itemCode, itemName, size = 16, className }: ItemIconProps) {
