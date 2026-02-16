@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
+import { listSupportUserAccounts, unlinkSupportUserAccount } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { ToastOverlay } from "@/components/ui/toast-manager";
 import {
   Table,
   TableBody,
@@ -28,12 +29,25 @@ interface UserData {
   emailVerified: boolean;
 }
 
+interface SupportAccount {
+  id: string;
+  providerId: string;
+  accountId: string;
+  createdAt: string;
+}
+
 export function AdminPage() {
-  const router = useRouter();
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [supportUser, setSupportUser] = useState<UserData | null>(null);
+  const [supportAccounts, setSupportAccounts] = useState<SupportAccount[]>([]);
+  const [supportError, setSupportError] = useState<string | null>(null);
+  const [isSupportLoading, setSupportLoading] = useState(false);
+  const [unlinkingAccountId, setUnlinkingAccountId] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  const isSupportOpen = useMemo(() => Boolean(supportUser), [supportUser]);
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -181,35 +195,71 @@ export function AdminPage() {
     }
   };
 
-  const handleSupportProfile = async (userId: string) => {
-    setActionLoading(`impersonate-${userId}`);
-    try {
-      const result = await authClient.admin.impersonateUser({ userId });
-      if (result.error) {
+  const loadSupportAccounts = useCallback(
+    async (userId: string) => {
+      setSupportLoading(true);
+      setSupportError(null);
+      try {
+        const accounts = await listSupportUserAccounts(userId);
+        setSupportAccounts(accounts);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to load linked accounts.";
+        setSupportError(message);
         showToast({
-          title: "Failed to impersonate user",
-          description: result.error.message || "Unknown error",
-          variant: "error",
+          title: "Failed to load linked accounts",
+          description: message,
+          variant: "error"
         });
-      } else {
-        showToast({
-          title: "Support session started",
-          description: "You can now manage the user's profile and linked accounts",
-          variant: "success",
-        });
-        router.push("/overview?panel=profile");
-        router.refresh();
+      } finally {
+        setSupportLoading(false);
       }
-    } catch (error) {
-      showToast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "error",
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
+    },
+    [showToast]
+  );
+
+  const handleOpenSupport = useCallback(
+    async (user: UserData) => {
+      setSupportUser(user);
+      setSupportAccounts([]);
+      await loadSupportAccounts(user.id);
+    },
+    [loadSupportAccounts]
+  );
+
+  const handleCloseSupport = useCallback(() => {
+    setSupportUser(null);
+    setSupportAccounts([]);
+    setSupportError(null);
+    setUnlinkingAccountId(null);
+  }, []);
+
+  const handleUnlinkAccount = useCallback(
+    async (accountId: string) => {
+      if (!supportUser) {
+        return;
+      }
+
+      setUnlinkingAccountId(accountId);
+      try {
+        await unlinkSupportUserAccount(supportUser.id, accountId);
+        showToast({
+          title: "Account unlinked",
+          description: "The account has been disconnected.",
+          variant: "success"
+        });
+        await loadSupportAccounts(supportUser.id);
+      } catch (error) {
+        showToast({
+          title: "Failed to unlink account",
+          description: error instanceof Error ? error.message : "Unable to unlink the account.",
+          variant: "error"
+        });
+      } finally {
+        setUnlinkingAccountId(null);
+      }
+    },
+    [loadSupportAccounts, showToast, supportUser]
+  );
 
   const isAdmin = (role: string | null) => {
     if (!role) return false;
@@ -289,15 +339,16 @@ export function AdminPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleSupportProfile(user.id)}
+                            onClick={() => handleOpenSupport(user)}
                             disabled={actionLoading !== null || isAdmin(user.role)}
                             title={
                               isAdmin(user.role)
-                                ? "Cannot impersonate admin users"
-                                : "Open profile for support"
+                                ? "Cannot support admin users"
+                                : "Open support overlay"
                             }
                           >
                             <UserCircle className="h-4 w-4" />
+                            <span className="ml-2 text-xs">Support</span>
                           </Button>
                           <Button
                             size="sm"
@@ -370,6 +421,90 @@ export function AdminPage() {
           </CardContent>
         </Card>
       )}
+      {isSupportOpen && supportUser ? (
+        <ToastOverlay
+          labelledBy="support-overlay-title"
+          describedBy="support-overlay-description"
+          onBackdropMouseDown={handleCloseSupport}
+        >
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p id="support-overlay-title" className="text-lg font-semibold text-slate-100">
+                  Support: {supportUser.email}
+                </p>
+                <p id="support-overlay-description" className="text-sm text-slate-300">
+                  Manage linked accounts for this user without impersonation.
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="ghost" onClick={handleCloseSupport}>
+                Close
+              </Button>
+            </div>
+
+            <div className="rounded-lg border border-border/70 bg-background/40 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-100">Linked Accounts</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => loadSupportAccounts(supportUser.id)}
+                  disabled={isSupportLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isSupportLoading ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+
+              {supportError ? (
+                <p className="mt-3 text-sm text-amber-300">{supportError}</p>
+              ) : isSupportLoading ? (
+                <p className="mt-3 text-sm text-muted-foreground">Loading accounts...</p>
+              ) : supportAccounts.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">No linked accounts found.</p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {supportAccounts.map((account) => {
+                    const isCredential = account.providerId === "credential";
+                    const isUnlinking = unlinkingAccountId === account.id;
+                    return (
+                      <div
+                        key={account.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-slate-100">
+                            {account.providerId}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{account.accountId}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Linked {new Date(account.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleUnlinkAccount(account.id)}
+                          disabled={isCredential || isUnlinking}
+                          title={
+                            isCredential
+                              ? "Credential accounts cannot be unlinked"
+                              : "Unlink this account"
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="ml-2 text-xs">Unlink</span>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </ToastOverlay>
+      ) : null}
     </div>
   );
 }

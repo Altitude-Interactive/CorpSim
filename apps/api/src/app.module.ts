@@ -31,6 +31,8 @@ import { RootController } from "./root.controller";
 import { SchemaReadinessService } from "./schema-readiness/schema-readiness.service";
 import { ShipmentsController } from "./shipments/shipments.controller";
 import { ShipmentsService } from "./shipments/shipments.service";
+import { SupportController } from "./support/support.controller";
+import { SupportService } from "./support/support.service";
 import { WorldController } from "./world/world.controller";
 import { WorldService } from "./world/world.service";
 import { WorkforceController } from "./workforce/workforce.controller";
@@ -63,7 +65,8 @@ import { auth } from "./lib/auth";
     ShipmentsController,
     ProductionController,
     ResearchController,
-    WorkforceController
+    WorkforceController,
+    SupportController
   ],
   providers: [
     PrismaService,
@@ -83,7 +86,8 @@ import { auth } from "./lib/auth";
     ShipmentsService,
     ProductionService,
     ResearchService,
-    WorkforceService
+    WorkforceService,
+    SupportService
   ]
 })
 export class AppModule implements NestModule {

@@ -81,6 +81,13 @@ import {
 export { ApiClientError, HEALTH_POLL_INTERVAL_MS } from "./api-client";
 export type * from "@corpsim/shared";
 
+export type SupportAccountSummary = {
+  id: string;
+  providerId: string;
+  accountId: string;
+  createdAt: string;
+};
+
 const CATALOG_CACHE_TTL_MS = 5 * 60 * 1_000;
 const RESEARCH_CACHE_TTL_MS = 1_000;
 const COMPANY_RECIPES_CACHE_TTL_MS = 2_000;
@@ -120,6 +127,19 @@ function readArrayPayload(value: unknown, field: string): unknown[] {
     throw new Error(`Invalid response payload for "${field}"`);
   }
   return readArray(value[field], field);
+}
+
+function parseSupportAccountSummary(value: unknown): SupportAccountSummary {
+  if (!isRecord(value)) {
+    throw new Error("Invalid support account payload");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    providerId: readString(value.providerId, "providerId"),
+    accountId: readString(value.accountId, "accountId"),
+    createdAt: readString(value.createdAt, "createdAt")
+  };
 }
 
 export async function getWorldHealth(): Promise<WorldHealth> {
@@ -186,6 +206,19 @@ export async function requestCompanyWorkforceCapacityChange(
 
 export async function getMePlayer(): Promise<PlayerIdentity> {
   return fetchJson("/v1/players/me", parsePlayerIdentity);
+}
+
+export async function listSupportUserAccounts(userId: string): Promise<SupportAccountSummary[]> {
+  return fetchJson(`/v1/support/users/${userId}/accounts`, (value) =>
+    readArrayPayload(value, "accounts").map(parseSupportAccountSummary)
+  );
+}
+
+export async function unlinkSupportUserAccount(userId: string, accountId: string): Promise<void> {
+  await fetchJson(`/v1/support/users/${userId}/unlink`, () => undefined, {
+    method: "POST",
+    body: JSON.stringify({ accountId })
+  });
 }
 
 export async function getOnboardingStatus(): Promise<OnboardingStatus> {
