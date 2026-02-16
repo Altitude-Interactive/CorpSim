@@ -14,15 +14,18 @@ import {
   LayoutDashboard,
   LineChart,
   PackageSearch,
+  Shield,
   Truck,
   TrendingUp,
   Users
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { SIDEBAR_PAGE_NAVIGATION } from "@/lib/page-navigation";
+import { SIDEBAR_PAGE_NAVIGATION, APP_PAGE_NAVIGATION } from "@/lib/page-navigation";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
 import { AppVersionBadge } from "./app-version-badge";
+import { authClient } from "@/lib/auth-client";
+import { useMemo } from "react";
 
 const NAV_ICON_BY_ROUTE: Record<string, LucideIcon> = {
   "/overview": LayoutDashboard,
@@ -35,11 +38,40 @@ const NAV_ICON_BY_ROUTE: Record<string, LucideIcon> = {
   "/contracts": ClipboardList,
   "/finance": CircleDollarSign,
   "/analytics": LineChart,
-  "/world": Globe
+  "/world": Globe,
+  "/admin": Shield
 };
+
+function isAdminRole(role: string | null | undefined): boolean {
+  if (!role) {
+    return false;
+  }
+  return role
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .some((entry) => entry === "admin");
+}
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { data: session } = authClient.useSession();
+
+  const navigationItems = useMemo(() => {
+    const isAdmin = isAdminRole(session?.user?.role);
+    
+    // Start with regular sidebar navigation
+    const items = [...SIDEBAR_PAGE_NAVIGATION];
+    
+    // Add admin page if user is admin
+    if (isAdmin) {
+      const adminPage = APP_PAGE_NAVIGATION.find((page) => page.href === "/admin");
+      if (adminPage) {
+        items.push(adminPage);
+      }
+    }
+    
+    return items;
+  }, [session?.user?.role]);
 
   return (
     <aside className="sticky top-0 hidden h-screen w-60 flex-col border-r border-border bg-card/80 p-4 lg:flex">
@@ -53,7 +85,7 @@ export function SidebarNav() {
         </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
-        {SIDEBAR_PAGE_NAVIGATION.map((item) => {
+        {navigationItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = NAV_ICON_BY_ROUTE[item.href];
           if (!Icon) {

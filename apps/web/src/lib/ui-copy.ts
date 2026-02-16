@@ -12,7 +12,8 @@ export const UI_COPY = {
     contracts: "Contracts",
     finance: "Finance",
     analytics: "Analytics",
-    world: "World Status"
+    world: "World Status",
+    admin: "Admin"
   },
   common: {
     noCompanySelected: "No company selected",

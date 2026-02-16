@@ -349,9 +349,16 @@ export function ProfilePanel() {
       describedBy="profile-panel-description"
     >
       <header className="border-b border-border px-4 py-4">
-        <h2 id="profile-panel-title" className="text-lg font-semibold text-slate-100">
-          Profile
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 id="profile-panel-title" className="text-lg font-semibold text-slate-100">
+            Profile
+          </h2>
+          {isAdmin ? (
+            <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
+              Admin
+            </span>
+          ) : null}
+        </div>
         <p id="profile-panel-description" className="mt-1 text-sm text-slate-300">
           Review your account details, manage linked accounts, and sign out.
         </p>

@@ -85,6 +85,12 @@ export const APP_PAGE_NAVIGATION: AppPageNavigationItem[] = [
     label: "Developer Catalog",
     keywords: ["developer", "dev", "catalog"],
     showInSidebar: false
+  },
+  {
+    href: "/admin",
+    label: UI_COPY.modules.admin,
+    keywords: ["admin", "users", "management", "permissions"],
+    showInSidebar: false
   }
 ];
 
