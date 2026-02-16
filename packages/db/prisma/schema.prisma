@@ -557,12 +557,13 @@ model ItemTickCandle {
 }
 
 model MaintenanceState {
-  id        Int      @id @default(1)
-  enabled   Boolean  @default(false)
-  updatedAt DateTime @updatedAt
-  reason    String   @default("Systems are currently being updated.")
+  id        Int       @id @default(1)
+  enabled   Boolean   @default(false)
+  updatedAt DateTime  @updatedAt
+  reason    String    @default("Systems are currently being updated.")
   enabledBy String?
-  scope     String   @default("all")
+  scope     String    @default("all")
+  eta       DateTime?
 }
 
 model WorkforceCapacityDelta {

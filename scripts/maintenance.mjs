@@ -124,6 +124,19 @@ function sanitizeEnabledBy(value) {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function sanitizeEta(value) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    return undefined;
+  }
+
+  return new Date(parsed).toISOString();
+}
+
 function sanitizeUpdatedAt(value, fallback) {
   if (typeof value !== "string") {
     return fallback;
@@ -143,7 +156,8 @@ function sanitizeState(raw, fallback = buildDefaultState()) {
     updatedAt: sanitizeUpdatedAt(raw?.updatedAt, fallback.updatedAt),
     reason: sanitizeReason(raw?.reason, fallback.reason),
     enabledBy: sanitizeEnabledBy(raw?.enabledBy),
-    scope: sanitizeScope(raw?.scope, fallback.scope)
+    scope: sanitizeScope(raw?.scope, fallback.scope),
+    eta: sanitizeEta(raw?.eta)
   };
 }
 
@@ -312,7 +326,8 @@ function parseOptions(args) {
   const options = {
     reason: undefined,
     scope: undefined,
-    force: false
+    force: false,
+    eta: undefined
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -353,6 +368,21 @@ function parseOptions(args) {
       continue;
     }
 
+    if (arg.startsWith("--eta=")) {
+      options.eta = arg.slice("--eta=".length);
+      continue;
+    }
+
+    if (arg === "--eta") {
+      const value = args[index + 1];
+      if (!value) {
+        throw new Error("Missing value for --eta");
+      }
+      options.eta = value;
+      index += 1;
+      continue;
+    }
+
     throw new Error(`Unknown option: ${arg}`);
   }
 
@@ -382,6 +412,9 @@ function printState(state, source) {
   if (state.enabledBy) {
     console.log("Enabled by: [redacted]");
   }
+  if (state.eta) {
+    console.log(`ETA: ${state.eta}`);
+  }
   console.log(`Source: ${source}`);
 }
 
@@ -408,7 +441,8 @@ function buildPayload(command, options, currentState) {
       enabled: true,
       reason: sanitizeReason(options.reason, DEFAULT_MAINTENANCE_REASON),
       scope: sanitizeScope(options.scope, DEFAULT_SCOPE),
-      enabledBy: actor
+      enabledBy: actor,
+      eta: sanitizeEta(options.eta)
     };
   }
 
@@ -416,13 +450,16 @@ function buildPayload(command, options, currentState) {
     enabled: false,
     reason: options.reason ? sanitizeReason(options.reason, currentState.reason) : undefined,
     scope: options.scope ? sanitizeScope(options.scope, currentState.scope) : undefined,
-    enabledBy: actor
+    enabledBy: actor,
+    eta: options.eta ? sanitizeEta(options.eta) : undefined
   };
 }
 
 function usage() {
   console.log("Usage:");
-  console.log("  pnpm maintenance:on [--reason \"...\"] [--scope all|web-only] [--force]");
+  console.log(
+    "  pnpm maintenance:on [--reason \"...\"] [--scope all|web-only] [--eta \"ISO8601-timestamp\"] [--force]"
+  );
   console.log("  pnpm maintenance:off [--force]");
   console.log("  pnpm maintenance:status");
 }

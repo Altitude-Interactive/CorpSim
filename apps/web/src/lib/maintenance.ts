@@ -13,6 +13,53 @@ export interface MaintenanceState {
   reason: string;
   enabledBy?: string;
   scope: MaintenanceScope;
+  eta?: string;
+}
+
+export interface EtaCountdown {
+  text: string;
+  unit: "minutes" | "hours" | "days";
+  value: number;
+}
+
+export function calculateEtaCountdown(eta: string | undefined): EtaCountdown | null {
+  if (!eta) {
+    return null;
+  }
+
+  const etaTime = new Date(eta).getTime();
+  const now = Date.now();
+  const diffMs = etaTime - now;
+
+  if (diffMs <= 0) {
+    return null;
+  }
+
+  const minutes = Math.ceil(diffMs / (1000 * 60));
+  const hours = Math.ceil(diffMs / (1000 * 60 * 60));
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (minutes < 60) {
+    return {
+      text: `${minutes} ${minutes === 1 ? "minute" : "minutes"}`,
+      unit: "minutes",
+      value: minutes
+    };
+  }
+
+  if (hours < 24) {
+    return {
+      text: `${hours} ${hours === 1 ? "hour" : "hours"}`,
+      unit: "hours",
+      value: hours
+    };
+  }
+
+  return {
+    text: `${days} ${days === 1 ? "day" : "days"}`,
+    unit: "days",
+    value: days
+  };
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -62,6 +109,19 @@ function sanitizeScope(value: unknown): MaintenanceScope {
   return value === "web-only" ? "web-only" : "all";
 }
 
+function sanitizeEta(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    return undefined;
+  }
+
+  return new Date(parsed).toISOString();
+}
+
 function parseMaintenanceState(payload: unknown): MaintenanceState {
   if (!isRecord(payload)) {
     throw new Error("Invalid maintenance payload");
@@ -72,7 +132,8 @@ function parseMaintenanceState(payload: unknown): MaintenanceState {
     updatedAt: sanitizeUpdatedAt(payload.updatedAt),
     reason: sanitizeReason(payload.reason),
     enabledBy: sanitizeEnabledBy(payload.enabledBy),
-    scope: sanitizeScope(payload.scope)
+    scope: sanitizeScope(payload.scope),
+    eta: sanitizeEta(payload.eta)
   };
 }
 
