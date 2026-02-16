@@ -27,3 +27,8 @@ export const GITHUB_AUTH_ENABLED =
 // Set NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=false to hide it explicitly.
 export const MICROSOFT_AUTH_ENABLED =
   parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED) ?? true;
+
+// Show Discord auth by default to avoid hidden-login regressions.
+// Set NEXT_PUBLIC_AUTH_DISCORD_ENABLED=false to hide it explicitly.
+export const DISCORD_AUTH_ENABLED =
+  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_DISCORD_ENABLED) ?? true;

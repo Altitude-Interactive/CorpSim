@@ -416,9 +416,23 @@ function resolveMicrosoftProviderOptions() {
   } as const;
 }
 
+function resolveDiscordProviderOptions() {
+  const clientId = parseTrimmedEnv("DISCORD_CLIENT_ID");
+  const clientSecret = parseTrimmedEnv("DISCORD_CLIENT_SECRET");
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  return {
+    clientId,
+    clientSecret
+  } as const;
+}
+
 const googleProviderOptions = resolveGoogleProviderOptions();
 const githubProviderOptions = resolveGitHubProviderOptions();
 const microsoftProviderOptions = resolveMicrosoftProviderOptions();
+const discordProviderOptions = resolveDiscordProviderOptions();
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -432,7 +446,14 @@ export const auth = betterAuth({
   socialProviders: {
     ...(googleProviderOptions ? { google: googleProviderOptions } : {}),
     ...(githubProviderOptions ? { github: githubProviderOptions } : {}),
-    ...(microsoftProviderOptions ? { microsoft: microsoftProviderOptions } : {})
+    ...(microsoftProviderOptions ? { microsoft: microsoftProviderOptions } : {}),
+    ...(discordProviderOptions ? { discord: discordProviderOptions } : {})
+  },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "github", "microsoft", "discord"]
+    }
   },
   emailAndPassword: {
     enabled: true
