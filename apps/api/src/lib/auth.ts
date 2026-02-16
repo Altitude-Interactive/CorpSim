@@ -23,6 +23,7 @@ const DEFAULT_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS = 900;
 const DEFAULT_PASSWORD_RESET_RATE_LIMIT_MAX_REQUESTS = 5;
 const ADMIN_EMAIL = "admin@corpsim.local";
 const ADMIN_NAME = "Admin";
+const PLACEHOLDER_EMAIL_DOMAIN = "@corpsim.local";
 
 type RateLimitStorage = "memory" | "database" | "secondary-storage";
 type Ipv6SubnetPrefix = 128 | 64 | 48 | 32;
@@ -105,6 +106,43 @@ function isMainAdminEmail(email: string | null | undefined): boolean {
     return false;
   }
   return email.trim().toLowerCase() === ADMIN_EMAIL;
+}
+
+function normalizeUsernameForEmail(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function assertPlaceholderEmailAllowed(user: { email?: unknown; username?: unknown }): void {
+  if (typeof user.email !== "string") {
+    return;
+  }
+
+  const normalizedEmail = user.email.trim().toLowerCase();
+  if (normalizedEmail === ADMIN_EMAIL) {
+    return;
+  }
+
+  if (!normalizedEmail.endsWith(PLACEHOLDER_EMAIL_DOMAIN)) {
+    return;
+  }
+
+  const normalizedUsername = normalizeUsernameForEmail(user.username);
+  if (!normalizedUsername) {
+    throw new APIError("BAD_REQUEST", {
+      message: "Username is required for Corpsim placeholder emails."
+    });
+  }
+
+  const expectedEmail = `${normalizedUsername}${PLACEHOLDER_EMAIL_DOMAIN}`;
+  if (normalizedEmail !== expectedEmail) {
+    throw new APIError("BAD_REQUEST", {
+      message: "Username placeholder email must match the username."
+    });
+  }
 }
 
 async function assertAdminNotBanned(
@@ -611,6 +649,9 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        before: async (user) => {
+          assertPlaceholderEmailAllowed(user);
+        },
         after: async (user) => {
           await ensurePlayerExistsForAuthUser(user);
         }
