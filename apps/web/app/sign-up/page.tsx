@@ -1,17 +1,18 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Alert } from "@/components/ui/alert";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast-manager";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { GoogleLogo } from "@/components/auth/google-logo";
 import { GitHubLogo } from "@/components/auth/github-logo";
 import { MicrosoftLogo } from "@/components/auth/microsoft-logo";
 import { DiscordLogo } from "@/components/auth/discord-logo";
 import { authClient } from "@/lib/auth-client";
+import { readBetterAuthErrorFromParams, resolveBetterAuthErrorMessage } from "@/lib/better-auth-errors";
 import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED, GITHUB_AUTH_ENABLED, MICROSOFT_AUTH_ENABLED, DISCORD_AUTH_ENABLED } from "@/lib/auth-flags";
 
@@ -23,7 +24,10 @@ function readErrorMessage(error: unknown): string {
 }
 
 export default function SignUpPage() {
+  const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -33,7 +37,25 @@ export default function SignUpPage() {
   const [isGitHubSubmitting, setGitHubSubmitting] = useState(false);
   const [isMicrosoftSubmitting, setMicrosoftSubmitting] = useState(false);
   const [isDiscordSubmitting, setDiscordSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const authError = readBetterAuthErrorFromParams(searchParams);
+    if (!authError) {
+      return;
+    }
+
+    showToast({
+      title: "Sign-up failed",
+      description: resolveBetterAuthErrorMessage(authError.error, authError.description),
+      variant: "error"
+    });
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("error");
+    params.delete("error_description");
+    const cleanUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(cleanUrl);
+  }, [pathname, router, searchParams, showToast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,7 +68,6 @@ export default function SignUpPage() {
     const trimmedUsername = username.trim();
 
     setSubmitting(true);
-    setError(null);
 
     try {
       const result = await authClient.signUp.email({
@@ -57,14 +78,22 @@ export default function SignUpPage() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Sign-up failed.");
+        showToast({
+          title: "Sign-up failed",
+          description: result.error.message || "Sign-up failed.",
+          variant: "error"
+        });
         return;
       }
 
       router.replace("/onboarding");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Sign-up failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setSubmitting(false);
     }
@@ -76,16 +105,20 @@ export default function SignUpPage() {
     }
 
     setGoogleSubmitting(true);
-    setError(null);
 
     try {
       const result = await authClient.signIn.social({
         provider: "google",
-        callbackURL: resolveAuthCallbackUrl("/onboarding")
+        callbackURL: resolveAuthCallbackUrl("/onboarding"),
+        errorCallbackURL: resolveAuthCallbackUrl("/sign-up")
       });
 
       if (result.error) {
-        setError(result.error.message || "Google sign-up failed.");
+        showToast({
+          title: "Google sign-up failed",
+          description: result.error.message || "Google sign-up failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -102,7 +135,11 @@ export default function SignUpPage() {
       router.replace("/onboarding");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Google sign-up failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setGoogleSubmitting(false);
     }
@@ -114,16 +151,20 @@ export default function SignUpPage() {
     }
 
     setGitHubSubmitting(true);
-    setError(null);
 
     try {
       const result = await authClient.signIn.social({
         provider: "github",
-        callbackURL: resolveAuthCallbackUrl("/onboarding")
+        callbackURL: resolveAuthCallbackUrl("/onboarding"),
+        errorCallbackURL: resolveAuthCallbackUrl("/sign-up")
       });
 
       if (result.error) {
-        setError(result.error.message || "GitHub sign-up failed.");
+        showToast({
+          title: "GitHub sign-up failed",
+          description: result.error.message || "GitHub sign-up failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -140,7 +181,11 @@ export default function SignUpPage() {
       router.replace("/onboarding");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "GitHub sign-up failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setGitHubSubmitting(false);
     }
@@ -152,16 +197,20 @@ export default function SignUpPage() {
     }
 
     setMicrosoftSubmitting(true);
-    setError(null);
 
     try {
       const result = await authClient.signIn.social({
         provider: "microsoft",
-        callbackURL: resolveAuthCallbackUrl("/onboarding")
+        callbackURL: resolveAuthCallbackUrl("/onboarding"),
+        errorCallbackURL: resolveAuthCallbackUrl("/sign-up")
       });
 
       if (result.error) {
-        setError(result.error.message || "Microsoft sign-up failed.");
+        showToast({
+          title: "Microsoft sign-up failed",
+          description: result.error.message || "Microsoft sign-up failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -178,7 +227,11 @@ export default function SignUpPage() {
       router.replace("/onboarding");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Microsoft sign-up failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setMicrosoftSubmitting(false);
     }
@@ -190,16 +243,20 @@ export default function SignUpPage() {
     }
 
     setDiscordSubmitting(true);
-    setError(null);
 
     try {
       const result = await authClient.signIn.social({
         provider: "discord",
-        callbackURL: resolveAuthCallbackUrl("/onboarding")
+        callbackURL: resolveAuthCallbackUrl("/onboarding"),
+        errorCallbackURL: resolveAuthCallbackUrl("/sign-up")
       });
 
       if (result.error) {
-        setError(result.error.message || "Discord sign-up failed.");
+        showToast({
+          title: "Discord sign-up failed",
+          description: result.error.message || "Discord sign-up failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -216,7 +273,11 @@ export default function SignUpPage() {
       router.replace("/onboarding");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Discord sign-up failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setDiscordSubmitting(false);
     }
@@ -355,7 +416,6 @@ export default function SignUpPage() {
             required
           />
         </div>
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
         <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting || isMicrosoftSubmitting || isDiscordSubmitting}>
           {isSubmitting ? "Creating account..." : "Create Account"}
         </Button>

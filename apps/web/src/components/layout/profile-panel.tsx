@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ToastOverlay } from "@/components/ui/toast-manager";
+import { ToastOverlay, useToast } from "@/components/ui/toast-manager";
 import { GoogleLogo } from "@/components/auth/google-logo";
 import { GitHubLogo } from "@/components/auth/github-logo";
 import { MicrosoftLogo } from "@/components/auth/microsoft-logo";
 import { DiscordLogo } from "@/components/auth/discord-logo";
 import { getMePlayer, type PlayerIdentity } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
+import { readBetterAuthErrorFromParams, resolveBetterAuthErrorMessage } from "@/lib/better-auth-errors";
 import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED, GITHUB_AUTH_ENABLED, MICROSOFT_AUTH_ENABLED, DISCORD_AUTH_ENABLED } from "@/lib/auth-flags";
 import { useControlManager } from "./control-manager";
@@ -57,6 +57,7 @@ function readErrorMessage(error: unknown): string {
 export function ProfilePanel() {
   const router = useRouter();
   const pathname = usePathname();
+  const { showToast } = useToast();
   const { isPanelOpen, openPanel, closePanel } = useControlManager();
   const { data: session } = authClient.useSession();
   const open = isPanelOpen(PROFILE_PANEL_ID);
@@ -67,20 +68,22 @@ export function ProfilePanel() {
   const [isSigningOut, setSigningOut] = useState(false);
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null);
   const [unlinkingProvider, setUnlinkingProvider] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const next = await getMePlayer();
       setPlayer(next);
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Profile load failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   const loadAccounts = useCallback(async () => {
     setLoadingAccounts(true);
@@ -92,53 +95,68 @@ export function ProfilePanel() {
       } else if (result.error) {
         console.error("Failed to load accounts:", result.error);
         setLinkedAccounts([]); // Clear on error
+        showToast({
+          title: "Account list failed",
+          description: result.error.message || "Unable to load linked accounts.",
+          variant: "error"
+        });
       }
     } catch (caught) {
       console.error("Failed to load accounts:", caught);
       setLinkedAccounts([]); // Clear on exception
+      showToast({
+        title: "Account list failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setLoadingAccounts(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
     const params = new URLSearchParams(window.location.search);
-    
-    // Check for OAuth errors in URL
-    const oauthError = params.get("error");
-    const errorDescription = params.get("error_description");
-    
-    if (oauthError) {
-      // Map common OAuth errors to user-friendly messages
-      const errorMessages: Record<string, string> = {
-        "email_doesn't_match": "Cannot link account: the email address from this provider doesn't match your current account email.",
-        "account_not_linked": "Cannot link account: account linking is not enabled for this provider.",
-        "account_already_linked": "This account is already linked to your profile.",
-        "linking_failed": "Failed to link account. Please try again."
-      };
-      
-      const friendlyMessage = errorMessages[oauthError] || errorDescription || `Account linking failed: ${oauthError}`;
-      setError(friendlyMessage);
-      
-      // Clean up URL without the error params
+    const authError = readBetterAuthErrorFromParams(params);
+    const hasPanelParam = params.get("panel") === "profile";
+
+    if (authError) {
+      showToast({
+        title: "Account linking failed",
+        description: resolveBetterAuthErrorMessage(authError.error, authError.description),
+        variant: "error"
+      });
+
+      if (!hasPanelParam) {
+        params.set("panel", "profile");
+      }
+
       params.delete("error");
       params.delete("error_description");
       const cleanUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      openPanel(PROFILE_PANEL_ID);
       router.replace(cleanUrl, { scroll: false });
+      return;
     }
-    
-    if (params.get("panel") !== "profile") {
+
+    if (!hasPanelParam) {
       return;
     }
     openPanel(PROFILE_PANEL_ID);
     const cleanUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(cleanUrl, { scroll: false });
-  }, [openPanel, pathname, router]);
+  }, [openPanel, pathname, router, showToast]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("panel") === "profile") {
+      return;
+    }
     closePanel(PROFILE_PANEL_ID);
   }, [closePanel, pathname]);
 
@@ -175,22 +193,29 @@ export function ProfilePanel() {
     }
 
     setSigningOut(true);
-    setError(null);
     try {
       const result = await authClient.signOut();
       if (result.error) {
-        setError(result.error.message || "Sign out failed.");
+        showToast({
+          title: "Sign out failed",
+          description: result.error.message || "Unable to sign out right now.",
+          variant: "error"
+        });
         return;
       }
       closePanel(PROFILE_PANEL_ID);
       router.replace("/sign-in");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Sign out failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setSigningOut(false);
     }
-  }, [closePanel, isSigningOut, router]);
+  }, [closePanel, isSigningOut, router, showToast]);
 
   const handleLinkAccount = useCallback(async (provider: string) => {
     if (linkingProvider || unlinkingProvider) {
@@ -198,7 +223,6 @@ export function ProfilePanel() {
     }
 
     setLinkingProvider(provider);
-    setError(null);
 
     try {
       const currentPath = window.location.pathname;
@@ -210,7 +234,11 @@ export function ProfilePanel() {
       });
 
       if (result.error) {
-        setError(result.error.message || `Failed to link ${provider} account.`);
+        showToast({
+          title: "Account linking failed",
+          description: result.error.message || `Failed to link ${provider} account.`,
+          variant: "error"
+        });
         return;
       }
 
@@ -218,11 +246,15 @@ export function ProfilePanel() {
         window.location.assign(result.data.url);
       }
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Account linking failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setLinkingProvider(null);
     }
-  }, [linkingProvider, unlinkingProvider]);
+  }, [linkingProvider, unlinkingProvider, showToast]);
 
   const handleUnlinkAccount = useCallback(async (provider: string, accountId: string) => {
     if (linkingProvider || unlinkingProvider) {
@@ -232,7 +264,11 @@ export function ProfilePanel() {
     // Check if this is the last account and user has no password
     const hasEmailPassword = linkedAccounts.some(acc => acc.providerId === "credential");
     if (linkedAccounts.length === 1 && !hasEmailPassword) {
-      setError("Cannot unlink your only account. Please link another account or set a password first.");
+      showToast({
+        title: "Cannot unlink account",
+        description: "Please link another account or set a password first.",
+        variant: "warning"
+      });
       return;
     }
 
@@ -241,7 +277,6 @@ export function ProfilePanel() {
     }
 
     setUnlinkingProvider(provider);
-    setError(null);
 
     try {
       const result = await authClient.unlinkAccount({
@@ -250,18 +285,26 @@ export function ProfilePanel() {
       });
 
       if (result.error) {
-        setError(result.error.message || `Failed to unlink ${provider} account.`);
+        showToast({
+          title: "Account unlink failed",
+          description: result.error.message || `Failed to unlink ${provider} account.`,
+          variant: "error"
+        });
         return;
       }
 
       // Refresh the accounts list
       await loadAccounts();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Account unlink failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setUnlinkingProvider(null);
     }
-  }, [linkedAccounts, linkingProvider, unlinkingProvider, loadAccounts]);
+  }, [linkedAccounts, linkingProvider, unlinkingProvider, loadAccounts, showToast]);
 
   if (!open) {
     return null;
@@ -287,7 +330,6 @@ export function ProfilePanel() {
       </header>
 
       <div className="space-y-3 px-4 py-4 text-sm">
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
         <div className="rounded-md border border-border/70 bg-background/40 p-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Account Email</p>
           <p className="mt-1 font-medium">{session?.user?.email ?? "-"}</p>

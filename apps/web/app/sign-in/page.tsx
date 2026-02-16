@@ -1,17 +1,18 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Alert } from "@/components/ui/alert";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast-manager";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { GoogleLogo } from "@/components/auth/google-logo";
 import { GitHubLogo } from "@/components/auth/github-logo";
 import { MicrosoftLogo } from "@/components/auth/microsoft-logo";
 import { DiscordLogo } from "@/components/auth/discord-logo";
 import { authClient } from "@/lib/auth-client";
+import { readBetterAuthErrorFromParams, resolveBetterAuthErrorMessage } from "@/lib/better-auth-errors";
 import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED, GITHUB_AUTH_ENABLED, MICROSOFT_AUTH_ENABLED, DISCORD_AUTH_ENABLED } from "@/lib/auth-flags";
 import { isAuthPage, isOnboardingPage, isTutorialPage } from "@/lib/auth-routes";
@@ -34,8 +35,10 @@ function readErrorMessage(error: unknown): string {
 }
 
 export default function SignInPage() {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const nextPath = useMemo(() => resolveSafeNext(searchParams.get("next")), [searchParams]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,7 +48,25 @@ export default function SignInPage() {
   const [isGitHubSubmitting, setGitHubSubmitting] = useState(false);
   const [isMicrosoftSubmitting, setMicrosoftSubmitting] = useState(false);
   const [isDiscordSubmitting, setDiscordSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const authError = readBetterAuthErrorFromParams(searchParams);
+    if (!authError) {
+      return;
+    }
+
+    showToast({
+      title: "Sign-in failed",
+      description: resolveBetterAuthErrorMessage(authError.error, authError.description),
+      variant: "error"
+    });
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("error");
+    params.delete("error_description");
+    const cleanUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(cleanUrl);
+  }, [pathname, router, searchParams, showToast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,7 +75,6 @@ export default function SignInPage() {
     }
 
     setSubmitting(true);
-    setError(null);
 
     try {
       const result = await authClient.signIn.email({
@@ -65,7 +85,11 @@ export default function SignInPage() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Sign-in failed.");
+        showToast({
+          title: "Sign-in failed",
+          description: result.error.message || "Sign-in failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -82,7 +106,11 @@ export default function SignInPage() {
       router.replace(nextPath ?? "/overview");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Sign-in failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setSubmitting(false);
     }
@@ -94,16 +122,26 @@ export default function SignInPage() {
     }
 
     setGoogleSubmitting(true);
-    setError(null);
 
     try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("error");
+      params.delete("error_description");
+      const errorCallbackUrl = resolveAuthCallbackUrl(
+        `/sign-in${params.toString() ? `?${params.toString()}` : ""}`
+      );
       const result = await authClient.signIn.social({
         provider: "google",
-        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview")
+        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview"),
+        errorCallbackURL: errorCallbackUrl
       });
 
       if (result.error) {
-        setError(result.error.message || "Google sign-in failed.");
+        showToast({
+          title: "Google sign-in failed",
+          description: result.error.message || "Google sign-in failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -120,7 +158,11 @@ export default function SignInPage() {
       router.replace(nextPath ?? "/overview");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Google sign-in failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setGoogleSubmitting(false);
     }
@@ -132,16 +174,26 @@ export default function SignInPage() {
     }
 
     setGitHubSubmitting(true);
-    setError(null);
 
     try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("error");
+      params.delete("error_description");
+      const errorCallbackUrl = resolveAuthCallbackUrl(
+        `/sign-in${params.toString() ? `?${params.toString()}` : ""}`
+      );
       const result = await authClient.signIn.social({
         provider: "github",
-        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview")
+        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview"),
+        errorCallbackURL: errorCallbackUrl
       });
 
       if (result.error) {
-        setError(result.error.message || "GitHub sign-in failed.");
+        showToast({
+          title: "GitHub sign-in failed",
+          description: result.error.message || "GitHub sign-in failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -158,7 +210,11 @@ export default function SignInPage() {
       router.replace(nextPath ?? "/overview");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "GitHub sign-in failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setGitHubSubmitting(false);
     }
@@ -170,16 +226,26 @@ export default function SignInPage() {
     }
 
     setMicrosoftSubmitting(true);
-    setError(null);
 
     try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("error");
+      params.delete("error_description");
+      const errorCallbackUrl = resolveAuthCallbackUrl(
+        `/sign-in${params.toString() ? `?${params.toString()}` : ""}`
+      );
       const result = await authClient.signIn.social({
         provider: "microsoft",
-        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview")
+        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview"),
+        errorCallbackURL: errorCallbackUrl
       });
 
       if (result.error) {
-        setError(result.error.message || "Microsoft sign-in failed.");
+        showToast({
+          title: "Microsoft sign-in failed",
+          description: result.error.message || "Microsoft sign-in failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -196,7 +262,11 @@ export default function SignInPage() {
       router.replace(nextPath ?? "/overview");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Microsoft sign-in failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setMicrosoftSubmitting(false);
     }
@@ -208,16 +278,26 @@ export default function SignInPage() {
     }
 
     setDiscordSubmitting(true);
-    setError(null);
 
     try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("error");
+      params.delete("error_description");
+      const errorCallbackUrl = resolveAuthCallbackUrl(
+        `/sign-in${params.toString() ? `?${params.toString()}` : ""}`
+      );
       const result = await authClient.signIn.social({
         provider: "discord",
-        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview")
+        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview"),
+        errorCallbackURL: errorCallbackUrl
       });
 
       if (result.error) {
-        setError(result.error.message || "Discord sign-in failed.");
+        showToast({
+          title: "Discord sign-in failed",
+          description: result.error.message || "Discord sign-in failed.",
+          variant: "error"
+        });
         return;
       }
 
@@ -234,7 +314,11 @@ export default function SignInPage() {
       router.replace(nextPath ?? "/overview");
       router.refresh();
     } catch (caught) {
-      setError(readErrorMessage(caught));
+      showToast({
+        title: "Discord sign-in failed",
+        description: readErrorMessage(caught),
+        variant: "error"
+      });
     } finally {
       setDiscordSubmitting(false);
     }
@@ -357,7 +441,6 @@ export default function SignInPage() {
           />
           Keep me signed in
         </label>
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
         <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting || isMicrosoftSubmitting || isDiscordSubmitting}>
           {isSubmitting ? "Signing in..." : "Sign In"}
         </Button>
