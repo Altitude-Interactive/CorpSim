@@ -83,15 +83,18 @@ export function ProfilePanel() {
 
   const loadAccounts = useCallback(async () => {
     setLoadingAccounts(true);
+    setLinkedAccounts([]); // Clear existing accounts while loading
     try {
       const result = await authClient.listAccounts();
       if (result.data) {
         setLinkedAccounts(result.data.map(acc => ({ providerId: acc.providerId, accountId: acc.accountId || "" })));
       } else if (result.error) {
         console.error("Failed to load accounts:", result.error);
+        setLinkedAccounts([]); // Clear on error
       }
     } catch (caught) {
       console.error("Failed to load accounts:", caught);
+      setLinkedAccounts([]); // Clear on exception
     } finally {
       setLoadingAccounts(false);
     }
@@ -101,11 +104,37 @@ export function ProfilePanel() {
     if (typeof window === "undefined") {
       return;
     }
-    if (new URLSearchParams(window.location.search).get("panel") !== "profile") {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Check for OAuth errors in URL
+    const oauthError = params.get("error");
+    const errorDescription = params.get("error_description");
+    
+    if (oauthError) {
+      // Map common OAuth errors to user-friendly messages
+      const errorMessages: Record<string, string> = {
+        "email_doesn't_match": "Cannot link account: the email address from this provider doesn't match your current account email.",
+        "account_not_linked": "Cannot link account: account linking is not enabled for this provider.",
+        "account_already_linked": "This account is already linked to your profile.",
+        "linking_failed": "Failed to link account. Please try again."
+      };
+      
+      const friendlyMessage = errorMessages[oauthError] || errorDescription || `Account linking failed: ${oauthError}`;
+      setError(friendlyMessage);
+      
+      // Clean up URL without the error params
+      params.delete("error");
+      params.delete("error_description");
+      const cleanUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(cleanUrl, { scroll: false });
+    }
+    
+    if (params.get("panel") !== "profile") {
       return;
     }
     openPanel(PROFILE_PANEL_ID);
-    router.replace(pathname, { scroll: false });
+    const cleanUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(cleanUrl, { scroll: false });
   }, [openPanel, pathname, router]);
 
   useEffect(() => {
@@ -171,9 +200,11 @@ export function ProfilePanel() {
     setError(null);
 
     try {
+      const currentPath = window.location.pathname;
       const result = await authClient.linkSocial({
         provider,
-        callbackURL: window.location.pathname + "?panel=profile"
+        callbackURL: `${currentPath}?panel=profile`,
+        errorCallbackURL: `${currentPath}?panel=profile`
       });
 
       if (result.error) {

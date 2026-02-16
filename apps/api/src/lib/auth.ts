@@ -452,7 +452,8 @@ export const auth = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
-      trustedProviders: ["google", "github", "microsoft", "discord"]
+      trustedProviders: ["google", "github", "microsoft", "discord"],
+      allowDifferentEmails: true
     }
   },
   emailAndPassword: {
