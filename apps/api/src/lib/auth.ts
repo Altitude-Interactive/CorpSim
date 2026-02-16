@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { createPrismaClient, ensureEnvironmentLoaded } from "@corpsim/db";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-call";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, twoFactor, username } from "better-auth/plugins";
 
@@ -97,6 +98,41 @@ function isAdminRole(role: string | null | undefined): boolean {
     .split(",")
     .map((entry) => entry.trim().toLowerCase())
     .some((entry) => entry === "admin");
+}
+
+async function assertAdminNotBanned(
+  userUpdate: Partial<{ banned?: boolean } & Record<string, unknown>>,
+  context:
+    | {
+        body?: Record<string, unknown>;
+        context?: {
+          internalAdapter?: {
+            findUserById: (userId: string) => Promise<{ role?: string | null } | null>;
+          };
+        };
+      }
+    | null
+): Promise<void> {
+  if (!userUpdate?.banned) {
+    return;
+  }
+
+  const userId = context?.body?.userId;
+  if (typeof userId !== "string") {
+    return;
+  }
+
+  const adapter = context?.context?.internalAdapter;
+  if (!adapter || typeof adapter.findUserById !== "function") {
+    return;
+  }
+
+  const targetUser = await adapter.findUserById(userId);
+  if (targetUser && isAdminRole(targetUser.role)) {
+    throw new APIError("FORBIDDEN", {
+      message: "Admin accounts cannot be banned."
+    });
+  }
 }
 
 function parseGoogleAccessType(name: string): GoogleAccessType | null {
@@ -499,6 +535,11 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           await ensurePlayerExistsForAuthUser(user);
+        }
+      },
+      update: {
+        before: async (user, context) => {
+          await assertAdminNotBanned(user, context);
         }
       }
     },

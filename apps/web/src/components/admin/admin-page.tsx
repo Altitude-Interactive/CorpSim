@@ -306,8 +306,14 @@ export function AdminPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleToggleBan(user.id, user.banned || false)}
-                            disabled={actionLoading !== null}
-                            title={user.banned ? "Unban user" : "Ban user"}
+                            disabled={actionLoading !== null || isAdmin(user.role)}
+                            title={
+                              isAdmin(user.role)
+                                ? "Cannot ban admin users"
+                                : user.banned
+                                  ? "Unban user"
+                                  : "Ban user"
+                            }
                           >
                             <Ban className="h-4 w-4" />
                           </Button>
