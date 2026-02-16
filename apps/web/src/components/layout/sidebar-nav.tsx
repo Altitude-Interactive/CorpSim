@@ -10,11 +10,13 @@ import {
   ExternalLink,
   Factory,
   FlaskConical,
+  Gavel,
   Globe,
   LayoutDashboard,
   LineChart,
   PackageSearch,
   Shield,
+  Wrench,
   Truck,
   TrendingUp,
   Users
@@ -39,7 +41,9 @@ const NAV_ICON_BY_ROUTE: Record<string, LucideIcon> = {
   "/finance": CircleDollarSign,
   "/analytics": LineChart,
   "/world": Globe,
-  "/admin": Shield
+  "/admin": Shield,
+  "/developer": Wrench,
+  "/moderation": Gavel
 };
 
 function isAdminRole(role: string | null | undefined): boolean {
@@ -61,7 +65,13 @@ export function SidebarNav() {
 
     return {
       items: [...SIDEBAR_PAGE_NAVIGATION],
-      adminPage: isAdmin ? APP_PAGE_NAVIGATION.find((page) => page.href === "/admin") ?? null : null
+      adminPage: isAdmin ? APP_PAGE_NAVIGATION.find((page) => page.href === "/admin") ?? null : null,
+      developerPage: isAdmin
+        ? APP_PAGE_NAVIGATION.find((page) => page.href === "/developer") ?? null
+        : null,
+      moderationPage: isAdmin
+        ? APP_PAGE_NAVIGATION.find((page) => page.href === "/moderation") ?? null
+        : null
     };
   }, [session?.user?.role]);
 
@@ -109,6 +119,30 @@ export function SidebarNav() {
           >
             <Shield className="h-4 w-4" />
             <span>{navigationItems.adminPage.label}</span>
+          </Link>
+        ) : null}
+        {navigationItems.developerPage ? (
+          <Link
+            href={navigationItems.developerPage.href}
+            className={cn(
+              "mb-2 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-amber-200 transition-colors hover:bg-amber-500/15 hover:text-amber-100",
+              pathname === navigationItems.developerPage.href && "bg-amber-500/25 text-amber-100"
+            )}
+          >
+            <Wrench className="h-4 w-4" />
+            <span>{navigationItems.developerPage.label}</span>
+          </Link>
+        ) : null}
+        {navigationItems.moderationPage ? (
+          <Link
+            href={navigationItems.moderationPage.href}
+            className={cn(
+              "mb-2 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-sky-200 transition-colors hover:bg-sky-700/30 hover:text-sky-100",
+              pathname === navigationItems.moderationPage.href && "bg-sky-800/40 text-sky-100"
+            )}
+          >
+            <Gavel className="h-4 w-4" />
+            <span>{navigationItems.moderationPage.label}</span>
           </Link>
         ) : null}
         <a

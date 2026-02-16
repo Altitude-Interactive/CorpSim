@@ -81,9 +81,15 @@ export const APP_PAGE_NAVIGATION: AppPageNavigationItem[] = [
     showInSidebar: false
   },
   {
-    href: "/dev/catalog",
-    label: "Developer Catalog",
+    href: "/developer",
+    label: "Developer",
     keywords: ["developer", "dev", "catalog"],
+    showInSidebar: false
+  },
+  {
+    href: "/moderation",
+    label: "Moderation",
+    keywords: ["moderation", "tools", "reports"],
     showInSidebar: false
   },
   {
