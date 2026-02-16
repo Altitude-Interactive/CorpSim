@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import type { UserSession } from "@thallesp/nestjs-better-auth";
 import { PrismaService } from "../prisma/prisma.service";
-import { SupportService } from "./support.service";
+import { SupportService, type SupportCompanyExportPayload } from "./support.service";
 
 interface RequestWithSession {
   session?: UserSession | null;
@@ -117,6 +117,34 @@ export class SupportController {
       sourceCompanyId: result.sourceCompanyId,
       targetCompanyId: result.targetCompanyId
     };
+  }
+
+  @Get("users/:userId/export")
+  async exportCompanyData(
+    @Req() request: RequestWithSession,
+    @Param("userId") userId: string
+  ): Promise<SupportCompanyExportPayload> {
+    this.assertAdminSession(request);
+    await this.assertTargetNotAdmin(userId);
+
+    return this.supportService.exportPlayerCompanyData(userId);
+  }
+
+  @Post("users/:userId/import")
+  async importCompanyData(
+    @Req() request: RequestWithSession,
+    @Param("userId") userId: string,
+    @Body() body: SupportCompanyExportPayload
+  ) {
+    this.assertAdminSession(request);
+    await this.assertTargetNotAdmin(userId);
+
+    await this.supportService.importPlayerCompanyData({
+      targetUserId: userId,
+      payload: body
+    });
+
+    return { success: true };
   }
 
   private assertAdminSession(request: RequestWithSession): void {

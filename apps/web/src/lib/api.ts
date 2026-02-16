@@ -40,7 +40,14 @@ import type {
   WorldHealth,
   WorldTickState
 } from "@corpsim/shared";
-import { fetchJson, isRecord, readArray, readString } from "./api-client";
+import {
+  fetchJson,
+  isRecord,
+  readArray,
+  readNullableString,
+  readNumber,
+  readString
+} from "./api-client";
 import {
   CachedRequestOptions,
   getCachedRequest,
@@ -89,6 +96,44 @@ export type SupportAccountSummary = {
 };
 
 export type SupportTransferModule = "all" | "cash" | "inventory" | "specialization" | "workforce";
+
+export type SupportExportModule = "cash" | "inventory" | "specialization" | "workforce";
+
+export type SupportCompanyExportPayload = {
+  kind: string;
+  schemaVersion: number;
+  exportedAt: string;
+  exportedTick: number;
+  source: {
+    userId: string;
+    companyId: string;
+  };
+  modules: SupportExportModule[];
+  data: {
+    cash?: {
+      cashCents: string;
+      reservedCashCents: string;
+    };
+    specialization?: {
+      specialization: string;
+      specializationChangedAt: string | null;
+    };
+    workforce?: {
+      workforceCapacity: number;
+      workforceAllocationOpsPct: number;
+      workforceAllocationRngPct: number;
+      workforceAllocationLogPct: number;
+      workforceAllocationCorpPct: number;
+      orgEfficiencyBps: number;
+    };
+    inventory?: Array<{
+      itemId: string;
+      regionId: string;
+      quantity: number;
+      reservedQuantity: number;
+    }>;
+  };
+};
 
 const CATALOG_CACHE_TTL_MS = 5 * 60 * 1_000;
 const RESEARCH_CACHE_TTL_MS = 1_000;
@@ -141,6 +186,94 @@ function parseSupportAccountSummary(value: unknown): SupportAccountSummary {
     providerId: readString(value.providerId, "providerId"),
     accountId: readString(value.accountId, "accountId"),
     createdAt: readString(value.createdAt, "createdAt")
+  };
+}
+
+function readOptionalRecord(value: unknown, field: string): Record<string, unknown> | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (!isRecord(value)) {
+    throw new Error(`Invalid response field "${field}" (expected object)`);
+  }
+  return value;
+}
+
+function parseSupportCompanyExportPayload(value: unknown): SupportCompanyExportPayload {
+  if (!isRecord(value)) {
+    throw new Error("Invalid support export payload");
+  }
+
+  const source = readOptionalRecord(value.source, "source") ?? {};
+  const data = readOptionalRecord(value.data, "data") ?? {};
+
+  const cash = readOptionalRecord(data.cash, "cash");
+  const specialization = readOptionalRecord(data.specialization, "specialization");
+  const workforce = readOptionalRecord(data.workforce, "workforce");
+  const inventory = data.inventory === undefined ? null : readArray(data.inventory, "inventory");
+
+  return {
+    kind: readString(value.kind, "kind"),
+    schemaVersion: readNumber(value.schemaVersion, "schemaVersion"),
+    exportedAt: readString(value.exportedAt, "exportedAt"),
+    exportedTick: readNumber(value.exportedTick, "exportedTick"),
+    source: {
+      userId: readString(source.userId, "source.userId"),
+      companyId: readString(source.companyId, "source.companyId")
+    },
+    modules: readArray(value.modules, "modules").map((module) => readString(module, "module")) as SupportExportModule[],
+    data: {
+      cash: cash
+        ? {
+            cashCents: readString(cash.cashCents, "cash.cashCents"),
+            reservedCashCents: readString(cash.reservedCashCents, "cash.reservedCashCents")
+          }
+        : undefined,
+      specialization: specialization
+        ? {
+            specialization: readString(specialization.specialization, "specialization.specialization"),
+            specializationChangedAt: readNullableString(
+              specialization.specializationChangedAt,
+              "specialization.specializationChangedAt"
+            )
+          }
+        : undefined,
+      workforce: workforce
+        ? {
+            workforceCapacity: readNumber(workforce.workforceCapacity, "workforce.workforceCapacity"),
+            workforceAllocationOpsPct: readNumber(
+              workforce.workforceAllocationOpsPct,
+              "workforce.workforceAllocationOpsPct"
+            ),
+            workforceAllocationRngPct: readNumber(
+              workforce.workforceAllocationRngPct,
+              "workforce.workforceAllocationRngPct"
+            ),
+            workforceAllocationLogPct: readNumber(
+              workforce.workforceAllocationLogPct,
+              "workforce.workforceAllocationLogPct"
+            ),
+            workforceAllocationCorpPct: readNumber(
+              workforce.workforceAllocationCorpPct,
+              "workforce.workforceAllocationCorpPct"
+            ),
+            orgEfficiencyBps: readNumber(workforce.orgEfficiencyBps, "workforce.orgEfficiencyBps")
+          }
+        : undefined,
+      inventory: inventory
+        ? inventory.map((row, index) => {
+            if (!isRecord(row)) {
+              throw new Error(`Invalid inventory entry at ${index}`);
+            }
+            return {
+              itemId: readString(row.itemId, `inventory.${index}.itemId`),
+              regionId: readString(row.regionId, `inventory.${index}.regionId`),
+              quantity: readNumber(row.quantity, `inventory.${index}.quantity`),
+              reservedQuantity: readNumber(row.reservedQuantity, `inventory.${index}.reservedQuantity`)
+            };
+          })
+        : undefined
+    }
   };
 }
 
@@ -236,6 +369,20 @@ export async function transferSupportUserData(input: {
       sourceUserId: input.sourceUserId,
       modules: input.modules
     })
+  });
+}
+
+export async function exportSupportUserData(userId: string): Promise<SupportCompanyExportPayload> {
+  return fetchJson(`/v1/support/users/${userId}/export`, parseSupportCompanyExportPayload);
+}
+
+export async function importSupportUserData(input: {
+  targetUserId: string;
+  payload: SupportCompanyExportPayload;
+}): Promise<void> {
+  await fetchJson(`/v1/support/users/${input.targetUserId}/import`, () => undefined, {
+    method: "POST",
+    body: JSON.stringify(input.payload)
   });
 }
 

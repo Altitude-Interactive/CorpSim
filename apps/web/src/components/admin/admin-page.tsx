@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
 import {
+  exportSupportUserData,
+  importSupportUserData,
   listSupportUserAccounts,
-  transferSupportUserData,
   unlinkSupportUserAccount,
-  type SupportTransferModule
+  type SupportCompanyExportPayload
 } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ToastOverlay } from "@/components/ui/toast-manager";
@@ -42,14 +43,6 @@ interface SupportAccount {
 }
 
 const MAIN_ADMIN_EMAIL = "admin@corpsim.local";
-const SUPPORT_TRANSFER_MODULES: Array<{ id: SupportTransferModule; label: string }> = [
-  { id: "all", label: "All data (transfer full company)" },
-  { id: "cash", label: "Cash balance" },
-  { id: "inventory", label: "Inventory" },
-  { id: "specialization", label: "Company specialization" },
-  { id: "workforce", label: "Workforce + efficiency" }
-];
-
 export function AdminPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,9 +54,9 @@ export function AdminPage() {
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string | null>(null);
   const [isSupportStatusLoading, setSupportStatusLoading] = useState(false);
   const [isDeletingSupportUser, setDeletingSupportUser] = useState(false);
-  const [transferSource, setTransferSource] = useState("");
-  const [transferModules, setTransferModules] = useState<SupportTransferModule[]>(["all"]);
-  const [isTransferLoading, setTransferLoading] = useState(false);
+  const [exportingSupportData, setExportingSupportData] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importingSupportData, setImportingSupportData] = useState(false);
   const [isRemovingAdmin, setRemovingAdmin] = useState<string | null>(null);
   const { showToast, confirmPopup } = useToast();
   const { data: session } = authClient.useSession();
@@ -253,8 +246,7 @@ export function AdminPage() {
     setSupportAccounts([]);
     setSupportError(null);
     setUnlinkingAccountId(null);
-    setTransferSource("");
-    setTransferModules(["all"]);
+    setImportFile(null);
   }, []);
 
   const handleUnlinkAccount = useCallback(
@@ -322,41 +314,65 @@ export function AdminPage() {
     }
   }, [loadUsers, showToast, supportUser]);
 
-  const handleTransferModuleToggle = useCallback((moduleId: SupportTransferModule) => {
-    setTransferModules((current) => {
-      if (moduleId === "all") {
-        return ["all"];
-      }
-
-      const filtered = current.filter((id) => id !== "all");
-      if (filtered.includes(moduleId)) {
-        const next = filtered.filter((id) => id !== moduleId);
-        return next.length > 0 ? next : ["all"];
-      }
-      return [...filtered, moduleId];
-    });
-  }, []);
-
-  const handleTransferSupportData = useCallback(async () => {
+  const handleExportSupportData = useCallback(async () => {
     if (!supportUser) {
       return;
     }
 
-    const source = transferSource.trim();
-    if (!source) {
+    setExportingSupportData(true);
+    try {
+      const payload = await exportSupportUserData(supportUser.id);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeEmail = supportUser.email.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+      const fileName = `corpsim-export-${safeEmail || supportUser.id}-${timestamp}.json`;
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json"
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
       showToast({
-        title: "Source required",
-        description: "Enter the source account email or user id.",
+        title: "Export ready",
+        description: `Downloaded ${fileName}.`,
+        variant: "success"
+      });
+    } catch (error) {
+      showToast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Unable to export data.",
+        variant: "error"
+      });
+    } finally {
+      setExportingSupportData(false);
+    }
+  }, [showToast, supportUser]);
+
+  const handleImportSupportData = useCallback(async () => {
+    if (!supportUser) {
+      return;
+    }
+
+    if (!importFile) {
+      showToast({
+        title: "File required",
+        description: "Select a support export file to import.",
         variant: "error"
       });
       return;
     }
 
     const confirmed = await confirmPopup({
-      title: "Transfer data to this account?",
+      title: "Import data to this account?",
       description:
-        "This will overwrite selected data on the target account. Transfers with 'All data' will move the source company.",
-      confirmLabel: "Transfer data",
+        "This overwrites the user's company data with the selected export file. Make sure the file is current.",
+      confirmLabel: "Import data",
       cancelLabel: "Cancel",
       variant: "danger"
     });
@@ -365,31 +381,38 @@ export function AdminPage() {
       return;
     }
 
-    setTransferLoading(true);
+    setImportingSupportData(true);
     try {
-      await transferSupportUserData({
+      let payload: SupportCompanyExportPayload;
+      try {
+        const text = await importFile.text();
+        payload = JSON.parse(text) as SupportCompanyExportPayload;
+      } catch (parseError) {
+        throw new Error("Unable to read the export file. Make sure it is valid JSON.");
+      }
+
+      await importSupportUserData({
         targetUserId: supportUser.id,
-        sourceEmail: source.includes("@") ? source : undefined,
-        sourceUserId: source.includes("@") ? undefined : source,
-        modules: transferModules
+        payload
       });
 
       showToast({
-        title: "Transfer complete",
-        description: "The selected data has been transferred.",
+        title: "Import complete",
+        description: "The export data has been applied.",
         variant: "success"
       });
+      setImportFile(null);
       await loadUsers();
     } catch (error) {
       showToast({
-        title: "Transfer failed",
-        description: error instanceof Error ? error.message : "Unable to transfer data.",
+        title: "Import failed",
+        description: error instanceof Error ? error.message : "Unable to import data.",
         variant: "error"
       });
     } finally {
-      setTransferLoading(false);
+      setImportingSupportData(false);
     }
-  }, [confirmPopup, loadUsers, showToast, supportUser, transferModules, transferSource]);
+  }, [confirmPopup, importFile, loadUsers, showToast, supportUser]);
 
   const handleRemoveAdmin = useCallback(
     async (user: UserData) => {
@@ -786,47 +809,46 @@ export function AdminPage() {
             <div className="rounded-lg border border-border/70 bg-background/40 p-4">
               <p className="text-sm font-semibold text-slate-100">Export / Import Data</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Transfer selected company data from a source account into this account.
+                Export this user's company data to a local file, or import a recent export file
+                back into this account.
               </p>
               <div className="mt-3 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleExportSupportData}
+                    disabled={exportingSupportData}
+                  >
+                    {exportingSupportData ? "Exporting..." : "Export data"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Downloads a JSON file for the selected user.
+                  </span>
+                </div>
                 <div>
                   <label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Source account (email or id)
+                    Import file (JSON)
                   </label>
                   <input
-                    className="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    value={transferSource}
-                    onChange={(event) => setTransferSource(event.target.value)}
-                    placeholder="user@example.com or userId"
+                    type="file"
+                    accept="application/json"
+                    className="mt-2 flex h-9 w-full items-center rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm file:mr-3 file:border-0 file:bg-transparent file:text-xs file:text-slate-200"
+                    onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
                   />
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Modules</p>
-                  <div className="flex flex-wrap gap-3">
-                    {SUPPORT_TRANSFER_MODULES.map((module) => {
-                      const checked = transferModules.includes(module.id);
-                      const isAll = module.id === "all";
-                      return (
-                        <label key={module.id} className="flex items-center gap-2 text-xs text-slate-200">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => handleTransferModuleToggle(module.id)}
-                          />
-                          {module.label}
-                        </label>
-                      );
-                    })}
-                  </div>
+                  {importFile ? (
+                    <p className="mt-2 text-xs text-muted-foreground">Selected: {importFile.name}</p>
+                  ) : null}
                 </div>
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={handleTransferSupportData}
-                  disabled={isTransferLoading}
+                  onClick={handleImportSupportData}
+                  disabled={importingSupportData || !importFile}
                 >
-                  {isTransferLoading ? "Transferring..." : "Transfer data"}
+                  {importingSupportData ? "Importing..." : "Import data"}
                 </Button>
               </div>
             </div>
