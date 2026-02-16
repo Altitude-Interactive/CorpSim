@@ -1,5 +1,6 @@
 const AUTH_PAGES = new Set(["/sign-in", "/sign-up", "/two-factor"]);
 const ALWAYS_PUBLIC_PAGES = new Set(["/unsupported-device"]);
+const ADMIN_TOOL_PAGES = new Set(["/admin", "/developer", "/moderation"]);
 
 export function isAuthPage(pathname: string): boolean {
   return AUTH_PAGES.has(pathname);
@@ -19,6 +20,10 @@ export function isTutorialPage(pathname: string): boolean {
 
 export function isProfilePage(pathname: string): boolean {
   return pathname === "/profile";
+}
+
+export function isAdminToolPage(pathname: string): boolean {
+  return ADMIN_TOOL_PAGES.has(pathname);
 }
 
 export function isProtectedAppPage(pathname: string): boolean {
