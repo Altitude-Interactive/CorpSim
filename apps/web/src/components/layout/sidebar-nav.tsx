@@ -58,19 +58,11 @@ export function SidebarNav() {
 
   const navigationItems = useMemo(() => {
     const isAdmin = isAdminRole(session?.user?.role);
-    
-    // Start with regular sidebar navigation
-    const items = [...SIDEBAR_PAGE_NAVIGATION];
-    
-    // Add admin page if user is admin
-    if (isAdmin) {
-      const adminPage = APP_PAGE_NAVIGATION.find((page) => page.href === "/admin");
-      if (adminPage) {
-        items.push(adminPage);
-      }
-    }
-    
-    return items;
+
+    return {
+      items: [...SIDEBAR_PAGE_NAVIGATION],
+      adminPage: isAdmin ? APP_PAGE_NAVIGATION.find((page) => page.href === "/admin") ?? null : null
+    };
   }, [session?.user?.role]);
 
   return (
@@ -85,7 +77,7 @@ export function SidebarNav() {
         </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
-        {navigationItems.map((item) => {
+        {navigationItems.items.map((item) => {
           const isActive = pathname === item.href;
           const Icon = NAV_ICON_BY_ROUTE[item.href];
           if (!Icon) {
@@ -107,6 +99,18 @@ export function SidebarNav() {
         })}
       </nav>
       <div className="mt-3 border-t border-border/70 pt-3">
+        {navigationItems.adminPage ? (
+          <Link
+            href={navigationItems.adminPage.href}
+            className={cn(
+              "mb-2 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-red-200 transition-colors hover:bg-red-500/15 hover:text-red-100",
+              pathname === navigationItems.adminPage.href && "bg-red-500/20 text-red-100"
+            )}
+          >
+            <Shield className="h-4 w-4" />
+            <span>{navigationItems.adminPage.label}</span>
+          </Link>
+        ) : null}
         <a
           href={getDocumentationUrl()}
           target="_blank"
