@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { AppVersionBadge } from "./app-version-badge";
 import { authClient } from "@/lib/auth-client";
 import { useMemo } from "react";
+import { isAdminRole, isModeratorRole } from "@/lib/roles";
 
 const NAV_ICON_BY_ROUTE: Record<string, LucideIcon> = {
   "/overview": LayoutDashboard,
@@ -46,22 +47,14 @@ const NAV_ICON_BY_ROUTE: Record<string, LucideIcon> = {
   "/moderation": Gavel
 };
 
-function isAdminRole(role: string | null | undefined): boolean {
-  if (!role) {
-    return false;
-  }
-  return role
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .some((entry) => entry === "admin");
-}
-
 export function SidebarNav() {
   const pathname = usePathname();
   const { data: session } = authClient.useSession();
 
   const navigationItems = useMemo(() => {
     const isAdmin = isAdminRole(session?.user?.role);
+    const isModerator = isModeratorRole(session?.user?.role);
+    const canModerate = isAdmin || isModerator;
 
     return {
       items: [...SIDEBAR_PAGE_NAVIGATION],
@@ -69,7 +62,7 @@ export function SidebarNav() {
       developerPage: isAdmin
         ? APP_PAGE_NAVIGATION.find((page) => page.href === "/developer") ?? null
         : null,
-      moderationPage: isAdmin
+      moderationPage: canModerate
         ? APP_PAGE_NAVIGATION.find((page) => page.href === "/moderation") ?? null
         : null
     };

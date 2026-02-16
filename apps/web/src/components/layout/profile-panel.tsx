@@ -14,6 +14,7 @@ import { readBetterAuthErrorFromParams, resolveBetterAuthErrorMessage } from "@/
 import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED, GITHUB_AUTH_ENABLED, MICROSOFT_AUTH_ENABLED, DISCORD_AUTH_ENABLED } from "@/lib/auth-flags";
 import { useControlManager } from "./control-manager";
+import { isAdminRole, isModeratorRole } from "@/lib/roles";
 
 export const PROFILE_PANEL_ID = "profile-panel";
 
@@ -54,16 +55,6 @@ function readErrorMessage(error: unknown): string {
   return "Unable to load profile details right now.";
 }
 
-function isAdminRole(role: string | null | undefined): boolean {
-  if (!role) {
-    return false;
-  }
-  return role
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .some((entry) => entry === "admin");
-}
-
 export function ProfilePanel() {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,6 +63,7 @@ export function ProfilePanel() {
   const { data: session } = authClient.useSession();
   const open = isPanelOpen(PROFILE_PANEL_ID);
   const isAdmin = isAdminRole(session?.user?.role);
+  const isModerator = isModeratorRole(session?.user?.role);
   const [player, setPlayer] = useState<PlayerIdentity | null>(null);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [isLoading, setLoading] = useState(false);
@@ -357,6 +349,10 @@ export function ProfilePanel() {
           {isAdmin ? (
             <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
               Admin
+            </span>
+          ) : isModerator ? (
+            <span className="rounded-full border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-200">
+              Moderator
             </span>
           ) : null}
         </div>

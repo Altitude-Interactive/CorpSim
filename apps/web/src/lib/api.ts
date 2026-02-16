@@ -135,6 +135,12 @@ export type SupportCompanyExportPayload = {
   };
 };
 
+export type ModerationRefundResult = {
+  ledgerEntryId: string;
+  companyId: string;
+  balanceAfterCents: string;
+};
+
 const CATALOG_CACHE_TTL_MS = 5 * 60 * 1_000;
 const RESEARCH_CACHE_TTL_MS = 1_000;
 const COMPANY_RECIPES_CACHE_TTL_MS = 2_000;
@@ -277,6 +283,18 @@ function parseSupportCompanyExportPayload(value: unknown): SupportCompanyExportP
   };
 }
 
+function parseModerationRefundResult(value: unknown): ModerationRefundResult {
+  if (!isRecord(value)) {
+    throw new Error("Invalid moderation refund payload");
+  }
+
+  return {
+    ledgerEntryId: readString(value.ledgerEntryId, "ledgerEntryId"),
+    companyId: readString(value.companyId, "companyId"),
+    balanceAfterCents: readString(value.balanceAfterCents, "balanceAfterCents")
+  };
+}
+
 export async function getWorldHealth(): Promise<WorldHealth> {
   return fetchJson("/v1/world/health", parseWorldHealth);
 }
@@ -383,6 +401,23 @@ export async function importSupportUserData(input: {
   await fetchJson(`/v1/support/users/${input.targetUserId}/import`, () => undefined, {
     method: "POST",
     body: JSON.stringify(input.payload)
+  });
+}
+
+export async function issueModerationRefund(input: {
+  targetUserId: string;
+  amountCents: string;
+  reason: string;
+}): Promise<ModerationRefundResult> {
+  return fetchJson("/v1/moderation/refunds", parseModerationRefundResult, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function cancelModerationOrder(orderId: string): Promise<MarketOrder> {
+  return fetchJson(`/v1/moderation/orders/${orderId}/cancel`, parseMarketOrder, {
+    method: "POST"
   });
 }
 

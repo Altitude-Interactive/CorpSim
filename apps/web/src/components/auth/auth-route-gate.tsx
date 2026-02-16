@@ -6,13 +6,15 @@ import type { OnboardingStatus } from "@corpsim/shared";
 import { getOnboardingStatus } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import {
-  isAdminToolPage,
   isAuthPage,
+  isAdminToolPage,
+  isModerationToolPage,
   isOnboardingPage,
   isProfilePage,
   isProtectedAppPage,
   isTutorialPage
 } from "@/lib/auth-routes";
+import { isAdminRole, isModeratorRole, isStaffRole } from "@/lib/roles";
 
 function resolveSafeNextPath(raw: string | null): string | null {
   if (!raw || !raw.startsWith("/")) {
@@ -30,16 +32,6 @@ function FullscreenMessage({ message }: { message: string }) {
       {message}
     </div>
   );
-}
-
-function isAdminRole(role: string | null | undefined): boolean {
-  if (!role) {
-    return false;
-  }
-  return role
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .some((entry) => entry === "admin");
 }
 
 export function AuthRouteGate({ children }: { children: React.ReactNode }) {
@@ -66,7 +58,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isAdminRole(session.user.role)) {
+    if (isStaffRole(session.user.role)) {
       setOnboardingStatus({
         completed: true,
         tutorialCompleted: true,
@@ -123,11 +115,21 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
     }
 
     if (isAdminRole(session?.user?.role)) {
-      if (isAdminToolPage(pathname) || isProfilePage(pathname)) {
+      if (isAdminToolPage(pathname) || isModerationToolPage(pathname) || isProfilePage(pathname)) {
         return null;
       }
       if (isProtectedAppPage(pathname)) {
         return "/admin";
+      }
+      return null;
+    }
+
+    if (isModeratorRole(session?.user?.role)) {
+      if (isModerationToolPage(pathname) || isProfilePage(pathname)) {
+        return null;
+      }
+      if (isProtectedAppPage(pathname)) {
+        return "/moderation";
       }
       return null;
     }

@@ -15,6 +15,8 @@ import { MarketController } from "./market/market.controller";
 import { MarketService } from "./market/market.service";
 import { MaintenanceService } from "./maintenance/maintenance.service";
 import { MetaController } from "./meta/meta.controller";
+import { ModerationController } from "./moderation/moderation.controller";
+import { ModerationService } from "./moderation/moderation.service";
 import { OpsController } from "./ops/ops.controller";
 import { OnboardingController } from "./onboarding/onboarding.controller";
 import { OnboardingService } from "./onboarding/onboarding.service";
@@ -66,7 +68,8 @@ import { auth } from "./lib/auth";
     ProductionController,
     ResearchController,
     WorkforceController,
-    SupportController
+    SupportController,
+    ModerationController
   ],
   providers: [
     PrismaService,
@@ -87,7 +90,8 @@ import { auth } from "./lib/auth";
     ProductionService,
     ResearchService,
     WorkforceService,
-    SupportService
+    SupportService,
+    ModerationService
   ]
 })
 export class AppModule implements NestModule {

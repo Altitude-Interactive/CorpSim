@@ -22,8 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Shield, ShieldAlert, UserCircle, RefreshCw, Ban, Trash2 } from "lucide-react";
+import { Shield, ShieldAlert, UserCircle, RefreshCw, Ban, Trash2, Gavel } from "lucide-react";
 import { useToast } from "@/components/ui/toast-manager";
+import { isAdminRole, isModeratorRole } from "@/lib/roles";
 
 interface UserData {
   id: string;
@@ -119,6 +120,84 @@ export function AdminPage() {
         showToast({
           title: "Role updated",
           description: "User role set to admin",
+          variant: "success",
+        });
+        await loadUsers();
+      }
+    } catch (error) {
+      showToast({
+        title: "Error updating role",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleMakeModerator = async (userId: string) => {
+    setActionLoading(`role-${userId}`);
+    try {
+      const result = await authClient.admin.setRole({
+        userId,
+        role: "moderator",
+      });
+
+      if (result.error) {
+        showToast({
+          title: "Failed to update role",
+          description: result.error.message || "Unknown error",
+          variant: "error",
+        });
+      } else {
+        showToast({
+          title: "Role updated",
+          description: "User role set to moderator",
+          variant: "success",
+        });
+        await loadUsers();
+      }
+    } catch (error) {
+      showToast({
+        title: "Error updating role",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRemoveModerator = async (userId: string, email: string) => {
+    const confirmed = await confirmPopup({
+      title: "Remove moderator role?",
+      description: `Remove moderator privileges from ${email}?`,
+      confirmLabel: "Remove moderator",
+      cancelLabel: "Cancel",
+      variant: "danger"
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActionLoading(`role-${userId}`);
+    try {
+      const result = await authClient.admin.setRole({
+        userId,
+        role: "user",
+      });
+
+      if (result.error) {
+        showToast({
+          title: "Failed to update role",
+          description: result.error.message || "Unknown error",
+          variant: "error",
+        });
+      } else {
+        showToast({
+          title: "Moderator removed",
+          description: "User is no longer a moderator.",
           variant: "success",
         });
         await loadUsers();
@@ -524,11 +603,6 @@ export function AdminPage() {
     }
   }, [confirmPopup, handleCloseSupport, loadUsers, showToast, supportUser]);
 
-  const isAdmin = (role: string | null) => {
-    if (!role) return false;
-    return role.split(",").some((r) => r.trim().toLowerCase() === "admin");
-  };
-
   return (
     <div className="flex flex-col gap-6 w-full p-6">
       <Card>
@@ -569,10 +643,15 @@ export function AdminPage() {
                       <TableCell className="font-mono text-sm">{user.email}</TableCell>
                       <TableCell>{user.name}</TableCell>
                       <TableCell>
-                        {isAdmin(user.role) ? (
+                        {isAdminRole(user.role) ? (
                           <Badge variant="default" className="gap-1">
                             <Shield className="h-3 w-3" />
                             Admin
+                          </Badge>
+                        ) : isModeratorRole(user.role) ? (
+                          <Badge variant="info" className="gap-1">
+                            <Gavel className="h-3 w-3" />
+                            Moderator
                           </Badge>
                         ) : (
                           <Badge variant="muted">User</Badge>
@@ -603,9 +682,9 @@ export function AdminPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleOpenSupport(user)}
-                            disabled={actionLoading !== null || isAdmin(user.role)}
+                            disabled={actionLoading !== null || isAdminRole(user.role)}
                             title={
-                              isAdmin(user.role)
+                              isAdminRole(user.role)
                                 ? "Cannot support admin users"
                                 : "Open support overlay"
                             }
@@ -626,9 +705,9 @@ export function AdminPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleToggleBan(user.id, user.banned || false)}
-                            disabled={actionLoading !== null || isAdmin(user.role)}
+                            disabled={actionLoading !== null || isAdminRole(user.role)}
                             title={
-                              isAdmin(user.role)
+                              isAdminRole(user.role)
                                 ? "Cannot ban admin users"
                                 : user.banned
                                   ? "Unban user"
@@ -637,7 +716,29 @@ export function AdminPage() {
                           >
                             <Ban className="h-4 w-4" />
                           </Button>
-                          {!isAdmin(user.role) && (
+                          {!isAdminRole(user.role) && !isModeratorRole(user.role) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleMakeModerator(user.id)}
+                              disabled={actionLoading !== null}
+                              title="Make moderator"
+                            >
+                              <Gavel className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {isModeratorRole(user.role) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveModerator(user.id, user.email)}
+                              disabled={actionLoading !== null}
+                              title="Remove moderator"
+                            >
+                              <Gavel className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {!isAdminRole(user.role) && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -648,7 +749,7 @@ export function AdminPage() {
                               <Shield className="h-4 w-4" />
                             </Button>
                           )}
-                          {isMainAdmin && isAdmin(user.role) && user.email !== MAIN_ADMIN_EMAIL && (
+                          {isMainAdmin && isAdminRole(user.role) && user.email !== MAIN_ADMIN_EMAIL && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -675,14 +776,22 @@ export function AdminPage() {
           <CardHeader>
             <CardTitle>Statistics</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Total Users</div>
               <div className="text-2xl font-bold">{users.length}</div>
             </div>
             <div className="border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Admins</div>
-              <div className="text-2xl font-bold">{users.filter((u) => isAdmin(u.role)).length}</div>
+              <div className="text-2xl font-bold">
+                {users.filter((u) => isAdminRole(u.role)).length}
+              </div>
+            </div>
+            <div className="border rounded-lg p-4">
+              <div className="text-sm text-muted-foreground">Moderators</div>
+              <div className="text-2xl font-bold">
+                {users.filter((u) => isModeratorRole(u.role)).length}
+              </div>
             </div>
             <div className="border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Verified</div>

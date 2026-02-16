@@ -165,6 +165,11 @@ export class MarketService {
     return mapOrderToDto(order);
   }
 
+  async cancelOrderAsModerator(orderId: string): Promise<MarketOrder> {
+    const order = await cancelMarketOrder(this.prisma, { orderId });
+    return mapOrderToDto(order);
+  }
+
   async listTrades(filters: MarketTradeFilters): Promise<MarketTrade[]> {
     const trades = await listMarketTrades(this.prisma, filters);
     return trades.map(mapTradeToDto);
