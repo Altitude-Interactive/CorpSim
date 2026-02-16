@@ -11,6 +11,16 @@ import {
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 
+function isAdminRole(role: string | string[] | null | undefined): boolean {
+  if (!role) {
+    return false;
+  }
+  const roleValues = Array.isArray(role) ? role : role.split(",");
+  return roleValues
+    .map((entry) => entry.trim().toLowerCase())
+    .some((entry) => entry === "admin");
+}
+
 @Injectable()
 export class PlayersService {
   private readonly prisma: PrismaService;
@@ -47,7 +57,9 @@ export class PlayersService {
   }
 
   async listPlayerRegistry(): Promise<PlayerRegistryEntry[]> {
+    const adminUserIds = await this.listAdminUserIds();
     const players = await this.prisma.player.findMany({
+      where: adminUserIds.size > 0 ? { id: { notIn: Array.from(adminUserIds) } } : undefined,
       orderBy: { handle: "asc" },
       select: {
         id: true,
@@ -146,6 +158,22 @@ export class PlayersService {
         };
       })
     }));
+  }
+
+  private async listAdminUserIds(): Promise<Set<string>> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        role: {
+          not: null
+        }
+      },
+      select: {
+        id: true,
+        role: true
+      }
+    });
+
+    return new Set(users.filter((user) => isAdminRole(user.role)).map((user) => user.id));
   }
 }
 
