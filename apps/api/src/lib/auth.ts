@@ -403,8 +403,22 @@ function resolveGitHubProviderOptions() {
   } as const;
 }
 
+function resolveMicrosoftProviderOptions() {
+  const clientId = parseTrimmedEnv("MICROSOFT_CLIENT_ID");
+  const clientSecret = parseTrimmedEnv("MICROSOFT_CLIENT_SECRET");
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  return {
+    clientId,
+    clientSecret
+  } as const;
+}
+
 const googleProviderOptions = resolveGoogleProviderOptions();
 const githubProviderOptions = resolveGitHubProviderOptions();
+const microsoftProviderOptions = resolveMicrosoftProviderOptions();
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -417,7 +431,8 @@ export const auth = betterAuth({
   advanced: resolveAuthAdvancedOptions(),
   socialProviders: {
     ...(googleProviderOptions ? { google: googleProviderOptions } : {}),
-    ...(githubProviderOptions ? { github: githubProviderOptions } : {})
+    ...(githubProviderOptions ? { github: githubProviderOptions } : {}),
+    ...(microsoftProviderOptions ? { microsoft: microsoftProviderOptions } : {})
   },
   emailAndPassword: {
     enabled: true
