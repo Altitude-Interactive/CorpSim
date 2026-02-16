@@ -9,19 +9,45 @@ import {
   HttpCode,
   HttpStatus
 } from "@nestjs/common";
+import { IsString, IsOptional, IsInt, Min, Max } from "class-validator";
+import { Type } from "class-transformer";
 import { DiagnosticsService } from "./diagnostics.service";
 
 class LogMissingItemDto {
+  @IsString()
+  @IsOptional()
   itemCode?: string;
+
+  @IsString()
   itemName!: string;
+
+  @IsString()
   context!: string;
+
+  @IsString()
   source!: string;
+
+  @IsString()
+  @IsOptional()
   metadata?: string;
 }
 
 class GetMissingItemLogsQueryDto {
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  @Type(() => Number)
+  @IsOptional()
   limit?: number;
+
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  @IsOptional()
   offset?: number;
+
+  @IsString()
+  @IsOptional()
   source?: string;
 }
 
@@ -45,8 +71,8 @@ export class DiagnosticsController {
 
   @Get("missing-items")
   async getMissingItemLogs(@Query() query: GetMissingItemLogsQueryDto) {
-    const limit = query.limit ? Math.min(Math.max(1, Number(query.limit)), 500) : 100;
-    const offset = query.offset ? Math.max(0, Number(query.offset)) : 0;
+    const limit = query.limit ?? 100;
+    const offset = query.offset ?? 0;
 
     const result = await this.diagnosticsService.getMissingItemLogs(
       limit,

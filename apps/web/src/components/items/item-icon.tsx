@@ -25,7 +25,7 @@ async function logMissingItemToApi(itemCode: string | null, itemName: string, co
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        itemCode: itemCode || undefined,
+        itemCode,
         itemName,
         context,
         source: "web-ui",
