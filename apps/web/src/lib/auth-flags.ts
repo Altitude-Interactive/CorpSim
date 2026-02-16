@@ -17,3 +17,8 @@ function parseOptionalBooleanEnv(value: string | undefined): boolean | null {
 // Set NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=false to hide it explicitly.
 export const GOOGLE_AUTH_ENABLED =
   parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED) ?? true;
+
+// Show GitHub auth by default to avoid hidden-login regressions.
+// Set NEXT_PUBLIC_AUTH_GITHUB_ENABLED=false to hide it explicitly.
+export const GITHUB_AUTH_ENABLED =
+  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_GITHUB_ENABLED) ?? true;

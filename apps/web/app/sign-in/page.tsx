@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { GoogleLogo } from "@/components/auth/google-logo";
+import { GitHubLogo } from "@/components/auth/github-logo";
 import { authClient } from "@/lib/auth-client";
 import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
-import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
+import { GOOGLE_AUTH_ENABLED, GITHUB_AUTH_ENABLED } from "@/lib/auth-flags";
 import { isAuthPage, isOnboardingPage, isTutorialPage } from "@/lib/auth-routes";
 
 function resolveSafeNext(raw: string | null): string | null {
@@ -39,6 +40,7 @@ export default function SignInPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setSubmitting] = useState(false);
   const [isGoogleSubmitting, setGoogleSubmitting] = useState(false);
+  const [isGitHubSubmitting, setGitHubSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -83,7 +85,7 @@ export default function SignInPage() {
   }
 
   async function handleGoogleSignIn() {
-    if (isSubmitting || isGoogleSubmitting) {
+    if (isSubmitting || isGoogleSubmitting || isGitHubSubmitting) {
       return;
     }
 
@@ -120,6 +122,44 @@ export default function SignInPage() {
     }
   }
 
+  async function handleGitHubSignIn() {
+    if (isSubmitting || isGoogleSubmitting || isGitHubSubmitting) {
+      return;
+    }
+
+    setGitHubSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await authClient.signIn.social({
+        provider: "github",
+        callbackURL: resolveAuthCallbackUrl(nextPath ?? "/overview")
+      });
+
+      if (result.error) {
+        setError(result.error.message || "GitHub sign-in failed.");
+        return;
+      }
+
+      const redirectUrl =
+        result.data && typeof result.data === "object" && "url" in result.data && typeof result.data.url === "string"
+          ? result.data.url
+          : null;
+
+      if (redirectUrl && redirectUrl.length > 0) {
+        window.location.assign(redirectUrl);
+        return;
+      }
+
+      router.replace(nextPath ?? "/overview");
+      router.refresh();
+    } catch (caught) {
+      setError(readErrorMessage(caught));
+    } finally {
+      setGitHubSubmitting(false);
+    }
+  }
+
   return (
     <AuthPageShell
       title="Sign In"
@@ -141,15 +181,33 @@ export default function SignInPage() {
               variant="outline"
               className="w-full"
               onClick={() => void handleGoogleSignIn()}
-              disabled={isSubmitting || isGoogleSubmitting}
+              disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting}
             >
               <span className="inline-flex items-center gap-2">
                 <GoogleLogo className="size-4 shrink-0" />
                 {isGoogleSubmitting ? "Redirecting to Google..." : "Continue with Google"}
               </span>
             </Button>
-            <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or continue with email</p>
           </>
+        ) : null}
+        {GITHUB_AUTH_ENABLED ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => void handleGitHubSignIn()}
+              disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting}
+            >
+              <span className="inline-flex items-center gap-2">
+                <GitHubLogo className="size-4 shrink-0" />
+                {isGitHubSubmitting ? "Redirecting to GitHub..." : "Continue with GitHub"}
+              </span>
+            </Button>
+          </>
+        ) : null}
+        {GOOGLE_AUTH_ENABLED || GITHUB_AUTH_ENABLED ? (
+          <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or continue with email</p>
         ) : null}
       <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
         <div className="space-y-1.5">
@@ -188,7 +246,7 @@ export default function SignInPage() {
           Keep me signed in
         </label>
         {error ? <Alert variant="destructive">{error}</Alert> : null}
-        <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting}>
+        <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting}>
           {isSubmitting ? "Signing in..." : "Sign In"}
         </Button>
       </form>

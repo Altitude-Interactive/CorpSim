@@ -390,7 +390,21 @@ function resolveGoogleProviderOptions() {
   } as const;
 }
 
+function resolveGitHubProviderOptions() {
+  const clientId = parseTrimmedEnv("GITHUB_CLIENT_ID");
+  const clientSecret = parseTrimmedEnv("GITHUB_CLIENT_SECRET");
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  return {
+    clientId,
+    clientSecret
+  } as const;
+}
+
 const googleProviderOptions = resolveGoogleProviderOptions();
+const githubProviderOptions = resolveGitHubProviderOptions();
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -401,11 +415,10 @@ export const auth = betterAuth({
   trustedOrigins: resolveTrustedOrigins(),
   rateLimit: resolveAuthRateLimit(),
   advanced: resolveAuthAdvancedOptions(),
-  socialProviders: googleProviderOptions
-    ? {
-        google: googleProviderOptions
-      }
-    : undefined,
+  socialProviders: {
+    ...(googleProviderOptions ? { google: googleProviderOptions } : {}),
+    ...(githubProviderOptions ? { github: githubProviderOptions } : {})
+  },
   emailAndPassword: {
     enabled: true
   },
