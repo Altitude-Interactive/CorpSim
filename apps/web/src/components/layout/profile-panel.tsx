@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ToastOverlay, useToast } from "@/components/ui/toast-manager";
@@ -68,6 +68,7 @@ export function ProfilePanel() {
   const [isSigningOut, setSigningOut] = useState(false);
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null);
   const [unlinkingProvider, setUnlinkingProvider] = useState<string | null>(null);
+  const lastAuthErrorRef = useRef<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -123,6 +124,11 @@ export function ProfilePanel() {
     const hasPanelParam = params.get("panel") === "profile";
 
     if (authError) {
+      const signature = `${authError.error}:${authError.description ?? ""}`;
+      if (lastAuthErrorRef.current === signature) {
+        return;
+      }
+      lastAuthErrorRef.current = signature;
       showToast({
         title: "Account linking failed",
         description: resolveBetterAuthErrorMessage(authError.error, authError.description),
@@ -140,6 +146,8 @@ export function ProfilePanel() {
       router.replace(cleanUrl, { scroll: false });
       return;
     }
+
+    lastAuthErrorRef.current = null;
 
     if (!hasPanelParam) {
       return;
