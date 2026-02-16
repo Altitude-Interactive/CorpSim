@@ -151,9 +151,7 @@ async function assertAdminNotBanned(
     | {
         body?: Record<string, unknown>;
         context?: {
-          internalAdapter?: {
-            findUserById: (userId: string) => Promise<{ role?: string | null } | null>;
-          };
+          session?: { user?: { email?: string | null } } | null;
         };
       }
     | null
@@ -167,12 +165,10 @@ async function assertAdminNotBanned(
     return;
   }
 
-  const adapter = context?.context?.internalAdapter;
-  if (!adapter || typeof adapter.findUserById !== "function") {
-    return;
-  }
-
-  const targetUser = await adapter.findUserById(userId);
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  });
   if (targetUser && isAdminRole(targetUser.role)) {
     throw new APIError("FORBIDDEN", {
       message: "Admin accounts cannot be banned."
@@ -187,9 +183,6 @@ async function assertAdminRoleChangeAllowed(
         body?: Record<string, unknown>;
         context?: {
           session?: { user?: { email?: string | null } } | null;
-          internalAdapter?: {
-            findUserById: (userId: string) => Promise<{ role?: string | null; email?: string | null } | null>;
-          };
         };
       }
     | null
@@ -203,12 +196,10 @@ async function assertAdminRoleChangeAllowed(
     return;
   }
 
-  const adapter = context?.context?.internalAdapter;
-  if (!adapter || typeof adapter.findUserById !== "function") {
-    return;
-  }
-
-  const targetUser = await adapter.findUserById(userId);
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true }
+  });
   if (!targetUser) {
     return;
   }
@@ -684,21 +675,31 @@ async function ensureAdminAccount() {
     includeAccounts: true
   });
 
-  let adminUser = existingUser?.user ?? null;
-  if (!adminUser) {
-    adminUser = await ctx.internalAdapter.createUser({
+  const existingUserId = existingUser?.user?.id ?? null;
+  const existingRole = existingUserId
+    ? (await prisma.user.findUnique({
+        where: { id: existingUserId },
+        select: { role: true }
+      }))?.role ?? null
+    : null;
+
+  let adminUserId = existingUserId;
+  if (!adminUserId) {
+    const createdUser = await ctx.internalAdapter.createUser({
       email: ADMIN_EMAIL,
-      name: ADMIN_NAME,
-      role: "admin"
+      name: ADMIN_NAME
     });
-  } else if (!isAdminRole(adminUser.role)) {
-    adminUser = await ctx.internalAdapter.updateUser(adminUser.id, {
-      role: "admin"
-    });
+    adminUserId = createdUser?.id ?? null;
   }
 
-  if (!adminUser) {
+  if (!adminUserId) {
     throw new Error("Unable to create admin user.");
+  }
+
+  if (!isAdminRole(existingRole)) {
+    await ctx.internalAdapter.updateUser(adminUserId, {
+      role: "admin"
+    });
   }
 
   const hashedPassword = await ctx.password.hash(adminPassword);
@@ -708,13 +709,13 @@ async function ensureAdminAccount() {
 
   if (!hasCredentialAccount) {
     await ctx.internalAdapter.linkAccount({
-      userId: adminUser.id,
+      userId: adminUserId,
       providerId: "credential",
-      accountId: adminUser.id,
+      accountId: adminUserId,
       password: hashedPassword
     });
   } else {
-    await ctx.internalAdapter.updatePassword(adminUser.id, hashedPassword);
+    await ctx.internalAdapter.updatePassword(adminUserId, hashedPassword);
   }
 }
 
