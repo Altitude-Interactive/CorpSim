@@ -11,6 +11,7 @@ import { MicrosoftLogo } from "@/components/auth/microsoft-logo";
 import { DiscordLogo } from "@/components/auth/discord-logo";
 import { getMePlayer, type PlayerIdentity } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
+import { resolveAuthCallbackUrl } from "@/lib/auth-redirects";
 import { GOOGLE_AUTH_ENABLED, GITHUB_AUTH_ENABLED, MICROSOFT_AUTH_ENABLED, DISCORD_AUTH_ENABLED } from "@/lib/auth-flags";
 import { useControlManager } from "./control-manager";
 
@@ -201,10 +202,11 @@ export function ProfilePanel() {
 
     try {
       const currentPath = window.location.pathname;
+      const callbackPath = `${currentPath}?panel=profile`;
       const result = await authClient.linkSocial({
         provider,
-        callbackURL: `${currentPath}?panel=profile`,
-        errorCallbackURL: `${currentPath}?panel=profile`
+        callbackURL: resolveAuthCallbackUrl(callbackPath),
+        errorCallbackURL: resolveAuthCallbackUrl(callbackPath)
       });
 
       if (result.error) {
