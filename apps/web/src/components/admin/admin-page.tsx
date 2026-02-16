@@ -848,7 +848,7 @@ export function AdminPage() {
                   <input
                     type="file"
                     accept="application/json"
-                    className="mt-2 flex h-9 w-full items-center rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm file:mr-3 file:border-0 file:bg-transparent file:text-xs file:text-slate-200"
+                    className="mt-2 flex h-9 w-full items-center rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground shadow-sm file:mr-3 file:shrink-0 file:rounded-md file:border file:border-slate-700/70 file:bg-slate-900/70 file:px-3 file:py-1 file:text-xs file:text-slate-100 file:shadow-sm file:transition-colors hover:file:bg-slate-800/70"
                     onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
                   />
                   {importFile ? (
