@@ -28,7 +28,6 @@ export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -63,18 +62,26 @@ export default function SignUpPage() {
       return;
     }
 
-    const trimmedEmail = email.trim();
     const trimmedName = displayName.trim();
     const trimmedUsername = username.trim();
+
+    if (!trimmedUsername) {
+      showToast({
+        title: "Sign-up failed",
+        description: "Please choose a username to continue.",
+        variant: "error"
+      });
+      return;
+    }
 
     setSubmitting(true);
 
     try {
       const result = await authClient.signUp.email({
-        email: trimmedEmail,
+        email: `${trimmedUsername.toLowerCase()}@corpsim.local`,
         password,
-        name: trimmedName.length > 0 ? trimmedName : trimmedEmail.split("@")[0] || "Player",
-        username: trimmedUsername.length > 0 ? trimmedUsername : undefined
+        name: trimmedName.length > 0 ? trimmedName : trimmedUsername,
+        username: trimmedUsername
       });
 
       if (result.error) {
@@ -286,7 +293,7 @@ export default function SignUpPage() {
   return (
     <AuthPageShell
       title="Create Account"
-      description="Set up your login before creating your first company."
+      description="Set up a username and password before creating your first company."
       footer={
         <p className="text-muted-foreground">
           Already have an account?{" "}
@@ -362,23 +369,9 @@ export default function SignUpPage() {
           </>
         ) : null}
         {GOOGLE_AUTH_ENABLED || GITHUB_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED || DISCORD_AUTH_ENABLED ? (
-          <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or create with email</p>
+          <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or create with credentials</p>
         ) : null}
       <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
-        <div className="space-y-1.5">
-          <label htmlFor="sign-up-email" className="text-sm text-muted-foreground">
-            Email
-          </label>
-          <Input
-            id="sign-up-email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@company.com"
-            required
-          />
-        </div>
         <div className="space-y-1.5">
           <label htmlFor="sign-up-name" className="text-sm text-muted-foreground">
             Display name
@@ -393,7 +386,7 @@ export default function SignUpPage() {
         </div>
         <div className="space-y-1.5">
           <label htmlFor="sign-up-username" className="text-sm text-muted-foreground">
-            Username (optional)
+            Username
           </label>
           <Input
             id="sign-up-username"
@@ -401,6 +394,7 @@ export default function SignUpPage() {
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             placeholder="Used to generate your player handle"
+            required
           />
         </div>
         <div className="space-y-1.5">

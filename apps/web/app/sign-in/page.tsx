@@ -41,6 +41,7 @@ export default function SignInPage() {
   const { showToast } = useToast();
   const nextPath = useMemo(() => resolveSafeNext(searchParams.get("next")), [searchParams]);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -48,6 +49,7 @@ export default function SignInPage() {
   const [isGitHubSubmitting, setGitHubSubmitting] = useState(false);
   const [isMicrosoftSubmitting, setMicrosoftSubmitting] = useState(false);
   const [isDiscordSubmitting, setDiscordSubmitting] = useState(false);
+  const [signInMethod, setSignInMethod] = useState<"username" | "email">("username");
 
   useEffect(() => {
     const authError = readBetterAuthErrorFromParams(searchParams);
@@ -77,12 +79,20 @@ export default function SignInPage() {
     setSubmitting(true);
 
     try {
-      const result = await authClient.signIn.email({
-        email: email.trim(),
-        password,
-        rememberMe,
-        callbackURL: nextPath ?? undefined
-      });
+      const result =
+        signInMethod === "username"
+          ? await authClient.signIn.username({
+              username: username.trim(),
+              password,
+              rememberMe,
+              callbackURL: nextPath ?? undefined
+            })
+          : await authClient.signIn.email({
+              email: email.trim(),
+              password,
+              rememberMe,
+              callbackURL: nextPath ?? undefined
+            });
 
       if (result.error) {
         showToast({
@@ -403,48 +413,87 @@ export default function SignInPage() {
           </>
         ) : null}
         {GOOGLE_AUTH_ENABLED || GITHUB_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED || DISCORD_AUTH_ENABLED ? (
-          <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or continue with email</p>
+          <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or continue with credentials</p>
         ) : null}
-      <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
-        <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={signInMethod === "username" ? "secondary" : "outline"}
+            aria-pressed={signInMethod === "username"}
+            onClick={() => setSignInMethod("username")}
+          >
+            Username
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={signInMethod === "email" ? "secondary" : "outline"}
+            aria-pressed={signInMethod === "email"}
+            onClick={() => setSignInMethod("email")}
+          >
             Email
-          </label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@company.com"
-            required
-          />
+          </Button>
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm text-muted-foreground">
-            Password
+        <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
+          <div className="space-y-1.5">
+            <label
+              htmlFor={signInMethod === "username" ? "sign-in-username" : "sign-in-email"}
+              className="text-sm text-muted-foreground"
+            >
+              {signInMethod === "username" ? "Username" : "Email"}
+            </label>
+            {signInMethod === "username" ? (
+              <Input
+                id="sign-in-username"
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="player.handle"
+                required
+              />
+            ) : (
+              <Input
+                id="sign-in-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@company.com"
+                required
+              />
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="text-sm text-muted-foreground">
+              Password
+            </label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+            />
+            Keep me signed in
           </label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(event) => setRememberMe(event.target.checked)}
-          />
-          Keep me signed in
-        </label>
-        <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting || isMicrosoftSubmitting || isDiscordSubmitting}>
-          {isSubmitting ? "Signing in..." : "Sign In"}
-        </Button>
-      </form>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting || isMicrosoftSubmitting || isDiscordSubmitting}
+          >
+            {isSubmitting ? "Signing in..." : "Sign In"}
+          </Button>
+        </form>
       </div>
     </AuthPageShell>
   );

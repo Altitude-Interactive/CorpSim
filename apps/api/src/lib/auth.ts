@@ -265,6 +265,18 @@ function resolveAuthRateLimit() {
           { min: 1 }
         )
       },
+      "/sign-in/username": {
+        window: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_SIGN_IN_WINDOW_SECONDS",
+          DEFAULT_SIGN_IN_RATE_LIMIT_WINDOW_SECONDS,
+          { min: 1 }
+        ),
+        max: parseIntegerEnv(
+          "AUTH_RATE_LIMIT_SIGN_IN_MAX_REQUESTS",
+          DEFAULT_SIGN_IN_RATE_LIMIT_MAX_REQUESTS,
+          { min: 1 }
+        )
+      },
       "/sign-up/email": {
         window: parseIntegerEnv(
           "AUTH_RATE_LIMIT_SIGN_UP_WINDOW_SECONDS",
