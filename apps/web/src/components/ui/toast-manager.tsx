@@ -255,10 +255,11 @@ export function ToastManagerProvider({ children }: { children: React.ReactNode }
         }
       }
 
+      const timeoutMs = variant === "error" ? 7_000 : 3_500;
       setToasts((prev) => [...prev, next]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((toast) => toast.id !== id));
-      }, 3_500);
+      }, timeoutMs);
     },
     [play]
   );
