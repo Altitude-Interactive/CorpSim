@@ -67,10 +67,10 @@ export default function SignUpPage() {
     const trimmedName = displayName.trim();
     const trimmedUsername = username.trim();
 
-    if (trimmedEmail.length === 0) {
+    if (trimmedEmail.length === 0 && trimmedUsername.length === 0) {
       showToast({
         title: "Sign-up failed",
-        description: "Please enter your email address.",
+        description: "Please provide an email or username to continue.",
         variant: "error"
       });
       return;
@@ -88,10 +88,13 @@ export default function SignUpPage() {
     setSubmitting(true);
 
     try {
+      const resolvedEmail =
+        trimmedEmail.length > 0 ? trimmedEmail : `${trimmedUsername.toLowerCase()}@corpsim.local`;
+      const fallbackNameSeed = trimmedUsername || resolvedEmail.split("@")[0] || "Player";
       const result = await authClient.signUp.email({
-        email: trimmedEmail,
+        email: resolvedEmail,
         password,
-        name: trimmedName.length > 0 ? trimmedName : trimmedEmail.split("@")[0] || "Player",
+        name: trimmedName.length > 0 ? trimmedName : fallbackNameSeed,
         username: trimmedUsername.length > 0 ? trimmedUsername : undefined
       });
 
@@ -304,7 +307,7 @@ export default function SignUpPage() {
   return (
     <AuthPageShell
       title="Create Account"
-      description="Set up your email and password before creating your first company."
+      description="Use an email, a username, or both before creating your first company."
       footer={
         <p className="text-muted-foreground">
           Already have an account?{" "}
@@ -385,7 +388,7 @@ export default function SignUpPage() {
         <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
           <div className="space-y-1.5">
             <label htmlFor="sign-up-email" className="text-sm text-muted-foreground">
-              Email
+              Email (optional if you use a username)
             </label>
             <Input
               id="sign-up-email"
@@ -394,7 +397,6 @@ export default function SignUpPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@company.com"
-              required
             />
           </div>
           <div className="space-y-1.5">
