@@ -28,6 +28,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -62,13 +63,23 @@ export default function SignUpPage() {
       return;
     }
 
+    const trimmedEmail = email.trim();
     const trimmedName = displayName.trim();
     const trimmedUsername = username.trim();
 
-    if (!trimmedUsername) {
+    if (trimmedEmail.length === 0) {
       showToast({
         title: "Sign-up failed",
-        description: "Please choose a username to continue.",
+        description: "Please enter your email address.",
+        variant: "error"
+      });
+      return;
+    }
+
+    if (trimmedEmail.toLowerCase().endsWith("@corpsim.local")) {
+      showToast({
+        title: "Sign-up failed",
+        description: "The @corpsim.local email domain is reserved.",
         variant: "error"
       });
       return;
@@ -78,10 +89,10 @@ export default function SignUpPage() {
 
     try {
       const result = await authClient.signUp.email({
-        email: `${trimmedUsername.toLowerCase()}@corpsim.local`,
+        email: trimmedEmail,
         password,
-        name: trimmedName.length > 0 ? trimmedName : trimmedUsername,
-        username: trimmedUsername
+        name: trimmedName.length > 0 ? trimmedName : trimmedEmail.split("@")[0] || "Player",
+        username: trimmedUsername.length > 0 ? trimmedUsername : undefined
       });
 
       if (result.error) {
@@ -293,7 +304,7 @@ export default function SignUpPage() {
   return (
     <AuthPageShell
       title="Create Account"
-      description="Set up a username and password before creating your first company."
+      description="Set up your email and password before creating your first company."
       footer={
         <p className="text-muted-foreground">
           Already have an account?{" "}
@@ -371,49 +382,66 @@ export default function SignUpPage() {
         {GOOGLE_AUTH_ENABLED || GITHUB_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED || DISCORD_AUTH_ENABLED ? (
           <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">Or create with credentials</p>
         ) : null}
-      <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
-        <div className="space-y-1.5">
-          <label htmlFor="sign-up-name" className="text-sm text-muted-foreground">
-            Display name
-          </label>
-          <Input
-            id="sign-up-name"
-            autoComplete="name"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            placeholder="How you appear in your profile"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="sign-up-username" className="text-sm text-muted-foreground">
-            Username
-          </label>
-          <Input
-            id="sign-up-username"
-            autoComplete="username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder="Used to generate your player handle"
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="sign-up-password" className="text-sm text-muted-foreground">
-            Password
-          </label>
-          <Input
-            id="sign-up-password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </div>
-        <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting || isMicrosoftSubmitting || isDiscordSubmitting}>
-          {isSubmitting ? "Creating account..." : "Create Account"}
-        </Button>
-      </form>
+        <form className="space-y-3" onSubmit={(event) => void handleSubmit(event)}>
+          <div className="space-y-1.5">
+            <label htmlFor="sign-up-email" className="text-sm text-muted-foreground">
+              Email
+            </label>
+            <Input
+              id="sign-up-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@company.com"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="sign-up-name" className="text-sm text-muted-foreground">
+              Display name
+            </label>
+            <Input
+              id="sign-up-name"
+              autoComplete="name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder="How you appear in your profile"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="sign-up-username" className="text-sm text-muted-foreground">
+              Username (optional)
+            </label>
+            <Input
+              id="sign-up-username"
+              autoComplete="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Used to generate your player handle"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="sign-up-password" className="text-sm text-muted-foreground">
+              Password
+            </label>
+            <Input
+              id="sign-up-password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting || isGoogleSubmitting || isGitHubSubmitting || isMicrosoftSubmitting || isDiscordSubmitting}
+          >
+            {isSubmitting ? "Creating account..." : "Create Account"}
+          </Button>
+        </form>
       </div>
     </AuthPageShell>
   );
