@@ -1,13 +1,32 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { ToastOverlay } from "@/components/ui/toast-manager";
-import { DEFAULT_MAINTENANCE_REASON, MaintenanceState } from "@/lib/maintenance";
+import {
+  calculateEtaCountdown,
+  DEFAULT_MAINTENANCE_REASON,
+  MaintenanceState
+} from "@/lib/maintenance";
 
 export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
   const { play } = useUiSfx();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [countdown, setCountdown] = useState(() => calculateEtaCountdown(state.eta));
+
+  useEffect(() => {
+    if (!state.eta) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      setCountdown(calculateEtaCountdown(state.eta));
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [state.eta]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -69,7 +88,9 @@ export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
         <h1 id="maintenance-title" className="mt-3 text-2xl font-semibold">
           CorpSim is under maintenance
         </h1>
-        <p className="mt-3 text-sm text-slate-200">No ETA</p>
+        <p className="mt-3 text-sm text-slate-200">
+          {countdown ? `ETA: ${countdown.text}` : "No ETA"}
+        </p>
         <p id="maintenance-description" className="mt-4 text-sm leading-6 text-slate-300">
           {message}
         </p>
