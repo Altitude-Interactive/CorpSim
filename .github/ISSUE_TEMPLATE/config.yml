@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: mailto:security@altitude-interactive.com
+    about: Please report security vulnerabilities privately.
+  - name: Documentation
+    url: https://docs.altitude-interactive.com/corpsim
+    about: Review ERP documentation and runbooks.

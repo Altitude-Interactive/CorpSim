@@ -1,0 +1,9 @@
+# Default owners
+* @BENZOOgataga
+
+# Application areas
+/apps/api/ @BENZOOgataga
+/apps/web/ @BENZOOgataga
+/apps/worker/ @BENZOOgataga
+/packages/ @BENZOOgataga
+/docs/ @BENZOOgataga
