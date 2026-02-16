@@ -21,7 +21,7 @@ export class PlayersController {
   }
 
   @Get("registry")
-  async registry() {
-    return this.playersService.listPlayerRegistry();
+  async registry(@CurrentPlayerId() playerId: string) {
+    return this.playersService.listPlayerRegistry(playerId);
   }
 }

@@ -56,7 +56,17 @@ export class PlayersService {
     }));
   }
 
-  async listPlayerRegistry(): Promise<PlayerRegistryEntry[]> {
+  async listPlayerRegistry(requestingPlayerId: string): Promise<PlayerRegistryEntry[]> {
+    // Verify the requesting player exists and has completed tutorial
+    const requester = await this.prisma.player.findUnique({
+      where: { id: requestingPlayerId },
+      select: { tutorialCompletedAt: true }
+    });
+    
+    if (!requester) {
+      throw new Error('Player not found');
+    }
+    
     const adminUserIds = await this.listAdminUserIds();
     const players = await this.prisma.player.findMany({
       where: adminUserIds.size > 0 ? { id: { notIn: Array.from(adminUserIds) } } : undefined,
@@ -104,60 +114,66 @@ export class PlayersService {
       }
     });
 
-    return players.map((player) => ({
-      id: player.id,
-      handle: player.handle,
-      createdAt: player.createdAt.toISOString(),
-      updatedAt: player.updatedAt.toISOString(),
-      companies: player.companies.map((company) => {
-        const holdingsByItemId = new Map<
-          string,
-          {
-            itemId: string;
-            itemCode: string;
-            itemName: string;
-            quantity: number;
-            reservedQuantity: number;
+    return players.map((player) => {
+      const isOwnPlayer = player.id === requestingPlayerId;
+      
+      return {
+        id: player.id,
+        handle: player.handle,
+        createdAt: player.createdAt.toISOString(),
+        updatedAt: player.updatedAt.toISOString(),
+        companies: player.companies.map((company) => {
+          const holdingsByItemId = new Map<
+            string,
+            {
+              itemId: string;
+              itemCode: string;
+              itemName: string;
+              quantity: number;
+              reservedQuantity: number;
+            }
+          >();
+
+          for (const inventoryRow of company.inventories) {
+            const existing = holdingsByItemId.get(inventoryRow.itemId);
+            if (!existing) {
+              holdingsByItemId.set(inventoryRow.itemId, {
+                itemId: inventoryRow.itemId,
+                itemCode: inventoryRow.item.code,
+                itemName: inventoryRow.item.name,
+                quantity: inventoryRow.quantity,
+                reservedQuantity: inventoryRow.reservedQuantity
+              });
+              continue;
+            }
+
+            existing.quantity += inventoryRow.quantity;
+            existing.reservedQuantity += inventoryRow.reservedQuantity;
           }
-        >();
 
-        for (const inventoryRow of company.inventories) {
-          const existing = holdingsByItemId.get(inventoryRow.itemId);
-          if (!existing) {
-            holdingsByItemId.set(inventoryRow.itemId, {
-              itemId: inventoryRow.itemId,
-              itemCode: inventoryRow.item.code,
-              itemName: inventoryRow.item.name,
-              quantity: inventoryRow.quantity,
-              reservedQuantity: inventoryRow.reservedQuantity
-            });
-            continue;
-          }
+          const itemHoldings = Array.from(holdingsByItemId.values()).sort((left, right) => {
+            if (left.quantity !== right.quantity) {
+              return right.quantity - left.quantity;
+            }
+            return left.itemCode.localeCompare(right.itemCode);
+          });
 
-          existing.quantity += inventoryRow.quantity;
-          existing.reservedQuantity += inventoryRow.reservedQuantity;
-        }
-
-        const itemHoldings = Array.from(holdingsByItemId.values()).sort((left, right) => {
-          if (left.quantity !== right.quantity) {
-            return right.quantity - left.quantity;
-          }
-          return left.itemCode.localeCompare(right.itemCode);
-        });
-
-        return {
-          id: company.id,
-          code: company.code,
-          name: company.name,
-          isBot: !company.isPlayer,
-          cashCents: company.cashCents.toString(),
-          regionId: company.region.id,
-          regionCode: company.region.code,
-          regionName: company.region.name,
-          itemHoldings
-        };
-      })
-    }));
+          return {
+            id: company.id,
+            code: company.code,
+            name: company.name,
+            isBot: !company.isPlayer,
+            // Only show cash for own player's companies
+            cashCents: isOwnPlayer ? company.cashCents.toString() : undefined,
+            regionId: company.region.id,
+            regionCode: company.region.code,
+            regionName: company.region.name,
+            // Only show inventory holdings for own player's companies
+            itemHoldings: isOwnPlayer ? itemHoldings : []
+          };
+        })
+      };
+    });
   }
 
   private async listAdminUserIds(): Promise<Set<string>> {

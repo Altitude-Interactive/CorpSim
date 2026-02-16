@@ -11,6 +11,7 @@ import { AllowAnonymous } from "@thallesp/nestjs-better-auth";
 import { UpdateMaintenanceDto } from "../maintenance/dto/update-maintenance.dto";
 import { MaintenanceService } from "../maintenance/maintenance.service";
 import { WorldService } from "../world/world.service";
+import { timingSafeCompare } from "../common/utils/timing-safe-compare";
 
 function readBearerToken(headerValue: string | undefined): string | undefined {
   if (!headerValue) {
@@ -66,7 +67,7 @@ export class OpsController {
     }
 
     const providedToken = readBearerToken(authorizationHeader);
-    if (!providedToken || providedToken !== configuredToken) {
+    if (!providedToken || !timingSafeCompare(providedToken, configuredToken)) {
       throw new UnauthorizedException("Invalid operator token");
     }
   }
