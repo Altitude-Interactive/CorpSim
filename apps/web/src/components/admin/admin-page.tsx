@@ -63,6 +63,8 @@ export function AdminPage() {
   const [isRemovingAdmin, setRemovingAdmin] = useState<string | null>(null);
   const { showToast, confirmPopup } = useToast();
   const { data: session } = authClient.useSession();
+  type AdminRoleValue = Parameters<typeof authClient.admin.setRole>[0]["role"];
+  const toAuthRoleValue = (role: string): AdminRoleValue => role as AdminRoleValue;
 
   const isSupportOpen = useMemo(() => Boolean(supportUser), [supportUser]);
   const isMainAdmin = session?.user?.email?.toLowerCase() === MAIN_ADMIN_EMAIL;
@@ -140,7 +142,7 @@ export function AdminPage() {
     try {
       const result = await authClient.admin.setRole({
         userId,
-        role: "moderator",
+        role: toAuthRoleValue("moderator"),
       });
 
       if (result.error) {
