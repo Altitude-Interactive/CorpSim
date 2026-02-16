@@ -8,6 +8,7 @@ export interface MaintenanceState {
   reason: string;
   enabledBy?: string;
   scope: MaintenanceScope;
+  eta?: string;
 }
 
 export interface MaintenanceStateUpdate {
@@ -15,6 +16,7 @@ export interface MaintenanceStateUpdate {
   reason?: string;
   enabledBy?: string;
   scope?: MaintenanceScope;
+  eta?: string;
 }
 
 export const DEFAULT_MAINTENANCE_REASON = "Systems are currently being updated.";

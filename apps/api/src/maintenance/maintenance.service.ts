@@ -16,6 +16,7 @@ interface MaintenanceRow {
   reason: string;
   enabledBy: string | null;
   scope: string;
+  eta: Date | null;
 }
 
 interface ErrorWithCode {
@@ -67,6 +68,20 @@ function normalizeEnabledBy(value: unknown): string | undefined {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeEta(value: unknown): string | undefined {
+  if (typeof value !== "string" && !(value instanceof Date)) {
+    return undefined;
+  }
+
+  const dateValue = typeof value === "string" ? value : value.toISOString();
+  const parsed = Date.parse(dateValue);
+  if (Number.isNaN(parsed)) {
+    return undefined;
+  }
+
+  return new Date(parsed).toISOString();
 }
 
 function buildDefaultMaintenanceState(now = new Date()): MaintenanceState {
@@ -130,7 +145,8 @@ export class MaintenanceService {
         updatedAt: new Date().toISOString(),
         reason: update.reason ?? current.reason,
         enabledBy: update.enabledBy ?? current.enabledBy,
-        scope: nextScope
+        scope: nextScope,
+        eta: update.eta ?? current.eta
       },
       current
     );
@@ -152,6 +168,7 @@ export class MaintenanceService {
       reason?: unknown;
       enabledBy?: unknown;
       scope?: unknown;
+      eta?: unknown;
     },
     fallback = buildDefaultMaintenanceState()
   ): MaintenanceState {
@@ -159,26 +176,28 @@ export class MaintenanceService {
     const reason = normalizeReason(raw.reason, fallback.reason);
     const scope = normalizeScope(raw.scope, fallback.scope);
     const enabledBy = normalizeEnabledBy(raw.enabledBy);
+    const eta = normalizeEta(raw.eta);
 
     return {
       enabled,
       updatedAt: normalizeUpdatedAt(raw.updatedAt, fallback.updatedAt),
       reason,
       enabledBy,
-      scope
+      scope,
+      eta
     };
   }
 
   private async readFromDatabase(): Promise<MaintenanceState | null> {
     try {
       await this.prisma.$executeRaw`
-        INSERT INTO "MaintenanceState" ("id", "enabled", "updatedAt", "reason", "enabledBy", "scope")
-        VALUES (1, false, NOW(), ${DEFAULT_MAINTENANCE_REASON}, NULL, 'all')
+        INSERT INTO "MaintenanceState" ("id", "enabled", "updatedAt", "reason", "enabledBy", "scope", "eta")
+        VALUES (1, false, NOW(), ${DEFAULT_MAINTENANCE_REASON}, NULL, 'all', NULL)
         ON CONFLICT ("id") DO NOTHING
       `;
 
       const rows = await this.prisma.$queryRaw<MaintenanceRow[]>`
-        SELECT "enabled", "updatedAt", "reason", "enabledBy", "scope"
+        SELECT "enabled", "updatedAt", "reason", "enabledBy", "scope", "eta"
         FROM "MaintenanceState"
         WHERE "id" = 1
         LIMIT 1
@@ -194,7 +213,8 @@ export class MaintenanceService {
           updatedAt: row.updatedAt.toISOString(),
           reason: row.reason,
           enabledBy: row.enabledBy ?? undefined,
-          scope: row.scope
+          scope: row.scope,
+          eta: row.eta ?? undefined
         },
         buildDefaultMaintenanceState(row.updatedAt)
       );
@@ -210,14 +230,15 @@ export class MaintenanceService {
   private async writeToDatabase(state: MaintenanceState): Promise<boolean> {
     try {
       await this.prisma.$executeRaw`
-        INSERT INTO "MaintenanceState" ("id", "enabled", "updatedAt", "reason", "enabledBy", "scope")
+        INSERT INTO "MaintenanceState" ("id", "enabled", "updatedAt", "reason", "enabledBy", "scope", "eta")
         VALUES (
           1,
           ${state.enabled},
           ${new Date(state.updatedAt)},
           ${state.reason},
           ${state.enabledBy ?? null},
-          ${state.scope}
+          ${state.scope},
+          ${state.eta ? new Date(state.eta) : null}
         )
         ON CONFLICT ("id")
         DO UPDATE SET
@@ -225,7 +246,8 @@ export class MaintenanceService {
           "updatedAt" = EXCLUDED."updatedAt",
           "reason" = EXCLUDED."reason",
           "enabledBy" = EXCLUDED."enabledBy",
-          "scope" = EXCLUDED."scope"
+          "scope" = EXCLUDED."scope",
+          "eta" = EXCLUDED."eta"
       `;
       return true;
     } catch (error) {
