@@ -231,6 +231,7 @@ function resolveAuthAdvancedOptions() {
   const ipAddressHeaders = parseCsvEnv("AUTH_IP_ADDRESS_HEADERS");
   return {
     useSecureCookies: process.env.NODE_ENV === "production",
+    disableErrorPage: true,
     ipAddress: {
       ipAddressHeaders:
         ipAddressHeaders.length > 0
