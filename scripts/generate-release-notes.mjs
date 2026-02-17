@@ -130,7 +130,7 @@ function escapeMarkdown(text) {
   // Remove newlines and escape Markdown control characters
   return text
     .replace(/[\r\n]+/g, " ")
-    .replace(/[\\`*_{}[\]()#+\-.!|]/g, "\\$&")
+    .replace(/[\\`*_{}[\]()#+.!|\-]/g, "\\$&")
     .trim();
 }
 
