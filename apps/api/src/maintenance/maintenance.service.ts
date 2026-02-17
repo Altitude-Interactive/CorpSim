@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   DEFAULT_MAINTENANCE_REASON,
@@ -142,13 +142,17 @@ export class MaintenanceService {
 
   async setState(update: MaintenanceStateUpdate): Promise<MaintenanceState> {
     const current = await this.getState();
+    const normalizedEta = update.eta === undefined ? undefined : normalizeEta(update.eta);
+    if (update.eta !== undefined && normalizedEta === undefined) {
+      throw new BadRequestException("Invalid ETA timestamp");
+    }
     const nextScope = update.enabled ? (update.scope ?? "all") : (update.scope ?? current.scope);
     const nextEta = update.enabled
-      ? update.eta !== undefined
-        ? update.eta
+      ? normalizedEta !== undefined
+        ? normalizedEta
         : current.eta
-      : update.eta !== undefined
-        ? update.eta
+      : normalizedEta !== undefined
+        ? normalizedEta
         : null;
     const next = this.normalizeState(
       {
