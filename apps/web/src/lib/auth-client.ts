@@ -2,7 +2,7 @@
 
 import { createAuthClient } from "better-auth/react";
 import { adminClient, twoFactorClient, usernameClient } from "better-auth/client/plugins";
-import { isLocalhostHostname, isLocalhostUrl } from "./utils";
+import { isLocalhostHostname, isLocalhostUrl } from "./localhost-utils";
 
 function resolveAuthBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
@@ -45,9 +45,7 @@ function validateAuthConfiguration(): void {
 }
 
 // Run validation once when the module loads (client-side only)
-if (typeof window !== "undefined") {
-  validateAuthConfiguration();
-}
+validateAuthConfiguration();
 
 export const authClient = createAuthClient({
   baseURL: resolveAuthBaseUrl(),

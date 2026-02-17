@@ -1,4 +1,4 @@
-import { isLocalhostHostname, isLocalhostUrl } from "./utils";
+import { isLocalhostHostname, isLocalhostUrl } from "./localhost-utils";
 
 export const HEALTH_POLL_INTERVAL_MS = 3_000;
 
@@ -8,7 +8,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
 if (typeof window !== "undefined") {
   const currentHost = window.location.hostname;
   const isProduction = !isLocalhostHostname(currentHost);
-  
+
   if (isProduction && !API_BASE_URL) {
     console.warn(
       "[CorpSim API Client] NEXT_PUBLIC_API_URL is not set. API requests may fail. " +
