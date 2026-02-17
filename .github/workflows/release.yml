@@ -126,14 +126,15 @@ jobs:
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          awk -v version="$VERSION" '
-            $0 ~ "^## " version " - " {print; keep=1; next}
-            keep && /^## / {exit}
-            keep {print}
-          ' CHANGELOG.md > RELEASE_NOTES.md
+          PREVIOUS_VERSION="${{ steps.version.outputs.previous_version }}"
+          
+          node scripts/generate-release-notes.mjs \
+            --version "$VERSION" \
+            --previous-version "$PREVIOUS_VERSION" \
+            > RELEASE_NOTES.md
 
           if [ ! -s RELEASE_NOTES.md ]; then
-            echo "Failed to derive release notes for version $VERSION from CHANGELOG.md"
+            echo "Failed to generate release notes for version $VERSION"
             exit 1
           fi
 

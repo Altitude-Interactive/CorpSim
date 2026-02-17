@@ -4,10 +4,9 @@ All notable changes to CorpSim are documented in this file.
 
 ## 0.1.0 - 2026-02-12
 
-### Minor
-- [api,web,ops,ci] Add tag-driven app version surfacing, release-cut tooling, and CI release-discipline gates.
+### What's Changed
 
-### Patch
+- [api,web,ops,ci] Add tag-driven app version surfacing, release-cut tooling, and CI release-discipline gates.
 - [web] Apply ERP-themed styling to the unsupported device screen
 - [web] Replace unsupported-device technical wording with player-facing copy
 - [web] Align version badge placement with ERP navigation layout
@@ -17,28 +16,27 @@ All notable changes to CorpSim are documented in this file.
 
 ## 0.2.0 - 2026-02-12
 
-### Minor
-- [ci] Publish GHCR app images automatically during release workflow
+### What's Changed
 
-### Patch
+- [ci] Publish GHCR app images automatically during release workflow
 - [ci] Set git identity before creating release tags in CI
 - [ci] Allow CI to publish existing version when release tag is missing
 - [ops] Use tag-first image variables in preview compose deployment
 
 ## 0.2.1 - 2026-02-13
 
-### Patch
+### What's Changed
+
 - [ops] Remove local build fallback from preview compose services
 - [web] Fix production proxy response decoding and maintenance/version endpoint fallbacks
 
 ## 0.3.0 - 2026-02-13
 
-### Minor
+### What's Changed
+
 - [worker] Migrate worker runtime to BullMQ scheduler/processor architecture with typed Redis queue config
 - [sim] Add deterministic baseline demand sink consumption to create persistent market pull
 - [sim] Add deterministic organizational capacity workforce system with allocation, delayed hiring, salary ledgering, and API/UI management.
-
-### Patch
 - [ci] Add release smoke checks for web version, maintenance, and world health endpoints
 - [api] Consolidate API/web contracts and workspace package boundaries for simulation services
 - [db] Stabilize Prisma client generation during install and dev startup
@@ -50,22 +48,22 @@ All notable changes to CorpSim are documented in this file.
 
 ## 0.3.1 - 2026-02-13
 
-### Patch
+### What's Changed
+
 - [ci] Fix verify workflow worker integration test command to use pnpm --dir with exec.
 - [web] Force patched glob versions to mitigate CVE-2025-64756 in transitive tooling.
 - [web] Upgrade Next.js to a patched version for CVE-2026-23864 deserialization DoS.
 
 ## 0.4.0 - 2026-02-14
 
-### Minor
+### What's Changed
+
 - [web] Add item icons across ERP screens and align seeded item/recipe naming with a coherent component-manufacturing theme.
 - [sim] Add cyberpunk-themed components and implant production chain with coherent icon mappings and market seeding.
 - [web] Add a development-only dynamic catalog page for inspecting live items, recipes, research, and consistency.
 - [sim] Integrate all cyberpunk icon-pack items into economy with generated recipes, pricing, and dynamic icon resolution.
 - [web] Add centralized UI sound feedback with unlock-safe playback, settings, and event/action cues.
 - [web] Scale player pages for large economies with paginated market tables and unlocked-item-only selectors.
-
-### Patch
 - [ci] Ignore generated Next.js next-env typings in root ESLint to unblock verify pipeline.
 - [web] Add item search, filters, and page-size pagination controls to the development catalog.
 - [web] Optimize dev catalog performance with pagination for heavy tables and on-demand consistency checks.
@@ -89,29 +87,31 @@ All notable changes to CorpSim are documented in this file.
 
 ## 0.5.0 - 2026-02-14
 
-### Minor
+### What's Changed
+
 - [web] Add hidden public player registry page with company holdings and item codes
 
 ## 0.5.1 - 2026-02-14
 
-### Patch
+### What's Changed
+
 - [api] Fix player registry endpoint payload shape for catalog
 
 ## 0.5.2 - 2026-02-14
 
-### Patch
+### What's Changed
+
 - [web] Fix player registry badge variant for web typecheck
 
 ## 0.6.0 - 2026-02-14
 
-### Minor
+### What's Changed
+
 - [web] Add toast manager with top-right notifications and popup overlays
 - [sim] Add player item tier locker to hide and block locked-tier production items
 - [sim] Enforce item tier locker on market and shipment write actions
 - [sim] Add company focus specialization with item category gating across production and selling flows
 - [api] Add database schema readiness checks that block game loading until updates are applied
-
-### Patch
 - [web] Stabilize page width to prevent route flicker and resize
 - [web] Move remaining overlays and notices to toast manager primitives
 - [web] Add submit interaction sounds to market order form
@@ -136,16 +136,16 @@ All notable changes to CorpSim are documented in this file.
 
 ## 0.6.1 - 2026-02-14
 
-### Minor
-- [web] Add Ctrl+K page search with extensible keyboard control manager
+### What's Changed
 
-### Patch
+- [web] Add Ctrl+K page search with extensible keyboard control manager
 - [web] Add Ctrl+I inventory preview overlay for quick stock checks
 - [web] Fix production readiness proxy and reduce AudioContext unlock warnings
 
 ## 0.7.0 - 2026-02-14
 
-### Minor
+### What's Changed
+
 - [web] Add Ctrl+/ shortcuts help panel and enforce one active shortcut overlay
 - [web] Add editable keyboard shortcuts with saved local bindings
 - [api, web, auth] Introduce Better Auth authentication with email/password, username support, 2FA, and remove header-based identity
@@ -154,8 +154,6 @@ All notable changes to CorpSim are documented in this file.
 - [api, web, auth] Require onboarding account details after Google sign-up with sensible prefill
 - [api, web, db] Add a required first-time tutorial after onboarding company setup
 - [api, db] Harden production multiplayer baseline by locking world mutation routes and production seeding behavior
-
-### Patch
 - [ci] Add repository security policy and vulnerability reporting guidance
 - [web] Fix Ctrl+/ shortcut detection on non-US keyboard layouts
 - [web] Remap shortcut help trigger to character slash across layouts
@@ -181,12 +179,14 @@ All notable changes to CorpSim are documented in this file.
 
 ## 0.7.1 - 2026-02-15
 
-### Patch
+### What's Changed
+
 - [api] Allow anonymous access to v1/world/health so public health probes work without session auth.
 
 ## 0.8.0 - 2026-02-17
 
-### Minor
+### What's Changed
+
 - [api] Comprehensive security audit and critical vulnerability fixes
 - [web] Add account linking management to profile panel
 - [api] Add admin auth account bootstrap and prevent external linking
@@ -200,8 +200,6 @@ All notable changes to CorpSim are documented in this file.
 - [api] Add moderator refunds and order cancellation tools
 - [sim] Fix agriculture recipe inputs and add missing item tracking system
 - [api,web] Add GitHub, Microsoft, and Discord OAuth authentication support alongside existing Google auth using Better Auth.
-
-### Patch
 - [ci] Fix lodash CVE-2025-13465 prototype pollution vulnerability
 - [web] Handle Better Auth errors with toast manager
 - [web] Raise toast z-index above profile overlay
@@ -235,11 +233,13 @@ All notable changes to CorpSim are documented in this file.
 
 ## 0.8.1 - 2026-02-17
 
-### Patch
+### What's Changed
+
 - [ci] Publish latest release image tag
 
 ## 0.8.2 - 2026-02-17
 
-### Patch
+### What's Changed
+
 - [api] Reject invalid maintenance ETA
 - [api] Disable schema readiness in api tests
