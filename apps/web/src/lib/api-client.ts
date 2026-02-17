@@ -1,24 +1,8 @@
+import { isLocalhostHostname, isLocalhostUrl } from "./utils";
+
 export const HEALTH_POLL_INTERVAL_MS = 3_000;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
-
-function isLocalhostHostname(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
-
-function isLocalhostUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return isLocalhostHostname(parsed.hostname);
-  } catch {
-    // Fallback for non-absolute URLs or invalid URLs
-    return (
-      url.includes("localhost") ||
-      url.includes("127.0.0.1") ||
-      url.includes("::1")
-    );
-  }
-}
 
 // Warn if API URL appears misconfigured (client-side only, production only)
 if (typeof window !== "undefined") {
