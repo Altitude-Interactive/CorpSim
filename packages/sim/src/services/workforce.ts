@@ -1,3 +1,74 @@
+/**
+ * Workforce Management Service
+ *
+ * @module workforce
+ *
+ * ## Purpose
+ * Manages company workforce capacity, allocation, and salary economics. Provides a sophisticated
+ * system for allocating workforce across organizational functions (Operations, Research, Logistics,
+ * Corporate) with corresponding speed bonuses and efficiency mechanics.
+ *
+ * ## Key Operations
+ * - **Allocate workforce** across Operations (production), Research, Logistics, Corporate functions
+ * - **Request workforce capacity changes** (hiring/layoffs) with recruitment costs and arrival delays
+ * - **Apply pending hiring arrivals** when ready (after hiringDelayTicks)
+ * - **Calculate salary burn** and apply efficiency penalties/recovery per tick
+ * - **Resolve runtime modifiers** for production speed, research speed, logistics travel reduction
+ *
+ * ## Workforce Functions
+ * 1. **Operations**: Speeds up production job completion (higher allocation = faster production)
+ * 2. **Research**: Speeds up research job completion (higher allocation = faster research)
+ * 3. **Logistics**: Reduces shipment travel time (higher allocation = faster delivery)
+ * 4. **Corporate**: Maintains organizational efficiency (low allocation → efficiency penalties)
+ *
+ * ## Allocation Mechanics
+ * - Each function gets 0-100% allocation
+ * - Total allocation must sum to exactly 100%
+ * - Allocation affects duration multipliers for time-based operations
+ * - Higher allocation → better performance (lower duration multiplier)
+ *
+ * ## Organizational Efficiency System
+ * Companies track `orgEfficiencyBps` (0-10000 basis points):
+ * - **Penalties** (reduce efficiency):
+ *   - Layoffs: Immediate penalty (configurable bps per capacity reduced)
+ *   - Hiring shock: Gradual penalty over time as new employees onboard
+ *   - Low corporate allocation: Penalty when corporate < threshold
+ *   - Salary shortfall: Penalty when unable to pay full salaries
+ * - **Recovery** (increase efficiency):
+ *   - Natural recovery over time with 100% corporate allocation
+ *   - Recovery rate: `corporateRecoveryPerTickAt100PctBps` per tick
+ *
+ * ## Salary and Hiring Economics
+ * - **Salary**: `baseSalaryPerCapacity * capacity * regionModifier` per tick
+ * - **Recruitment**: Upfront cost of `recruitmentCostPerCapacity * deltaCapacity`
+ * - **Hiring Delay**: New capacity arrives after `hiringDelayTicks` ticks
+ * - **Constraints**:
+ *   - Max absolute delta per request (prevents sudden workforce swings)
+ *   - Max relative delta percentage (prevents proportionally large changes)
+ *
+ * ## Simulation Impact
+ * Critical for gameplay - affects:
+ * - Production/research speed bonuses (via duration multipliers)
+ * - Logistics travel time reduction
+ * - Salary cash burn (major operational expense)
+ * - Organizational efficiency through penalties and recovery
+ *
+ * ## Determinism Guarantees
+ * - Fully deterministic - all calculations use integer arithmetic
+ * - Fixed config parameters ensure reproducible results
+ * - Tick-based state progression (no time-of-day dependencies)
+ * - Consistent duration multiplier calculations
+ *
+ * ## Transaction Boundaries
+ * - All workforce operations are transactional
+ * - Salary deduction, efficiency updates, and hiring arrivals atomic
+ * - Uses optimistic locking for concurrent safety
+ *
+ * ## Error Handling
+ * - NotFoundError: Company doesn't exist
+ * - DomainInvariantError: Invalid allocation percentages, capacity constraints violated,
+ *   insufficient cash for hiring/salaries
+ */
 import { LedgerEntryType, Prisma, PrismaClient } from "@prisma/client";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
 

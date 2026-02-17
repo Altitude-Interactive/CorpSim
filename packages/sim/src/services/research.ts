@@ -1,3 +1,58 @@
+/**
+ * Research Progression Service
+ *
+ * @module research
+ *
+ * ## Purpose
+ * Manages tech tree progression for player-owned companies through research node trees
+ * with prerequisites and recipe unlocks. Enables companies to expand their production
+ * capabilities by investing in time and cash to unlock new recipes.
+ *
+ * ## Key Operations
+ * - **listResearchForCompany**: Displays all research nodes with status
+ *   (locked/available/researching/completed)
+ * - **startResearch**: Deducts cash upfront, creates running research job, applies workforce
+ *   duration modifiers
+ * - **cancelResearch**: Stops running job, reverts company_research status based on prerequisites
+ * - **completeDueResearchJobs**: Batch-completes jobs at tick boundaries, unlocks recipes
+ *
+ * ## Research Lifecycle
+ * 1. **Discovery**: Player views tech tree via `listResearchForCompany()`
+ * 2. **Start**: Player starts research via `startResearch()` - validates prerequisites,
+ *    deducts cash, creates job
+ * 3. **In Progress**: Research job runs for configured duration (adjusted by workforce)
+ * 4. **Completion**: At dueTick, `completeDueResearchJobs()` marks node completed and unlocks recipes
+ * 5. **Cancellation** (optional): Player can cancel in-progress research via `cancelResearch()`
+ *
+ * ## Invariants Enforced
+ * - Only player-owned companies can research (NPC companies do not research)
+ * - Prerequisites must be completed before starting a node
+ * - Cannot start already-running or completed nodes
+ * - Cash deducted upfront at research start (no refund on cancellation)
+ * - Recipe unlocks are atomic with job completion
+ *
+ * ## Side Effects and Transaction Boundaries
+ * Each operation is atomic (prisma.$transaction):
+ * - **startResearch**: Decrements cash, creates job + company_research record, logs ledger entry
+ * - **completeDueResearchJobs**: Updates job status, marks company_research completed,
+ *   upserts recipe unlocks
+ * - **cancelResearch**: Deletes job, reverts company_research status
+ *
+ * ## Determinism Guarantees
+ * - Duration calculation: `applyDurationMultiplierTicks()` uses workforce allocation percentages
+ * - Job completion orders by `tickCompletes asc, createdAt asc` (fully deterministic)
+ * - No randomness in prerequisite resolution or unlock logic
+ *
+ * ## Workforce Integration
+ * Research duration affected by workforce allocation to Research function:
+ * - Higher research allocation → faster completion (duration multiplier < 1.0)
+ * - Lower research allocation → slower completion (duration multiplier > 1.0)
+ *
+ * ## Error Handling
+ * - NotFoundError: Company, node, or job doesn't exist
+ * - DomainInvariantError: Prerequisites not met, node already researching/completed,
+ *   insufficient cash
+ */
 import {
   CompanyResearchStatus,
   LedgerEntryType,

@@ -1,3 +1,64 @@
+/**
+ * Contract Lifecycle Service
+ *
+ * @module contracts
+ *
+ * ## Purpose
+ * Manages buy/sell contracts between player companies and NPC buyers. Handles the complete
+ * contract lifecycle: generation → acceptance → fulfillment → expiration. Contracts provide
+ * a stable trading alternative to the open market with predetermined prices and quantities.
+ *
+ * ## Key Operations
+ * - **listContractsForPlayer**: Shows open contracts + player's accepted contracts
+ * - **acceptContract**: Locks contract to seller (with optimistic concurrency check)
+ * - **fulfillContract**: Transfers inventory/cash, creates fulfillment record, updates contract status
+ * - **generateContractsForTick**: Creates contracts for NPC buyers using deterministic pricing
+ * - **runContractLifecycleForTick**: Expires old contracts, generates new ones
+ *
+ * ## Contract Lifecycle
+ * 1. **Generation**: System creates contracts from NPC buyers at each tick
+ * 2. **Open**: Contract available for any player to accept
+ * 3. **Accepted**: Player locks contract by accepting it
+ * 4. **Fulfillment**: Player delivers inventory, receives payment
+ * 5. **Completion/Expiration**: Contract marked completed or expires after ttlTicks
+ *
+ * ## Invariants Enforced
+ * - NPC companies only as buyers (player companies are sellers)
+ * - Contracts expire after `ttlTicks` without fulfillment
+ * - Fulfillment quantity ≤ remaining quantity on contract
+ * - Seller must have available inventory; buyer must have available cash
+ * - Unit price determined by fallback tables + recent trade averages
+ * - Contract can only be accepted once (optimistic lock prevents double-acceptance)
+ *
+ * ## Side Effects and Transaction Boundaries
+ * All operations are atomic (prisma.$transaction):
+ * - **acceptContract**: Updates contract seller with optimistic lock check
+ * - **fulfillContract**: Moves inventory/cash between companies, creates ledger entries for both,
+ *   logs fulfillment record, uses three-way optimistic locks (inventory, seller company,
+ *   buyer company, contract)
+ * - **generateContractsForTick**: Batch-creates contract records
+ * - **runContractLifecycleForTick**: Marks expired contracts, generates new ones
+ *
+ * ## Deterministic Pricing
+ * Contract prices calculated deterministically:
+ * - **Base Price**: From fallback price table by item code
+ * - **Direction**: Alternates per tick: `(tick + sequence) % 2` (0 = lower, 1 = higher)
+ * - **Variance**: `basePrice ± (basePrice * priceBandBps / 10000) * direction`
+ * - **Quantity**: `baseQuantity + ((tick + sequence) % 3)` for variety
+ *
+ * This ensures same tick → same contract prices (reproducible simulation).
+ *
+ * ## Transaction Safety
+ * Uses optimistic locking to prevent race conditions:
+ * - Contract acceptance checks `acceptedBySellerId == null`
+ * - Fulfillment validates inventory, cash, and contract state
+ * - Multiple concurrent fulfillments prevented by optimistic lock on contract
+ *
+ * ## Error Handling
+ * - NotFoundError: Contract, company, or item doesn't exist
+ * - DomainInvariantError: Insufficient inventory/cash, quantity validation failures
+ * - OptimisticLockConflictError: Concurrent modification detected (retry required)
+ */
 import {
   ContractStatus,
   LedgerEntryType,

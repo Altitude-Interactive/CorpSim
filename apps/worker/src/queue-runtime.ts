@@ -1,3 +1,87 @@
+/**
+ * Queue Runtime - BullMQ-Based Distributed Simulation Scheduler
+ *
+ * @module worker/queue-runtime
+ *
+ * ## Purpose
+ * Sets up distributed queue infrastructure for tick scheduling and processing.
+ * Enables horizontal scaling of simulation workers with lease-based role assignment
+ * (scheduler vs. processor), invariant monitoring, and control policy enforcement.
+ *
+ * ## Architecture Role
+ * Scheduling layer that:
+ * - Distributes tick jobs across worker instances
+ * - Enables horizontal scaling (multiple workers process queue concurrently)
+ * - Provides reliable job scheduling with retry/backoff (via BullMQ)
+ * - Monitors simulation health (invariant violations)
+ * - Enforces control policies (pause bots, stop processing)
+ *
+ * ## Lease-Based Role Assignment
+ * ### Scheduler Role (Single Instance)
+ * - Acquires `simulation.tick.scheduler` lease
+ * - Responsible for:
+ *   - Adding repeatable tick jobs to queue
+ *   - Renewing scheduler heartbeat (prevents takeover)
+ * - If lease lost, another worker takes over scheduling
+ * - Prevents duplicate job scheduling
+ *
+ * ### Processor Role (Multiple Instances)
+ * - All workers (including scheduler) process jobs from queue
+ * - Lease: `simulation.tick.processor` (per worker instance)
+ * - Concurrent processing safe via optimistic locking in tick engine
+ * - Handles job execution, retry on conflicts
+ *
+ * ## Job Processing Flow
+ * 1. BullMQ schedules repeatable tick job (via scheduler)
+ * 2. Worker picks up job from queue
+ * 3. Checks control state (botsPaused, processingStopped)
+ * 4. Executes `runWorkerIteration()` with idempotency key
+ * 5. Runs invariant scan after successful tick
+ * 6. Enforces policy if violations detected (pause bots or stop)
+ * 7. Acknowledges job completion
+ *
+ * ## Invariant Monitoring
+ * After each successful tick batch:
+ * - Scans database for constraint violations
+ * - Checks companies (cash, reservations, workforce)
+ * - Checks inventory (quantities, reservations)
+ * - On violations:
+ *   - **pauseBotsOnInvariantViolation**: Disables bot execution (prevents cascade)
+ *   - **stopOnInvariantViolation**: Stops all processing (critical failure)
+ *
+ * ## Control Policy Enforcement
+ * - `botsPaused`: Bots don't execute, but other subsystems continue
+ * - `processingStopped`: All tick processing halts (maintenance/emergency)
+ * - Policies checked before each job execution
+ * - Policies persisted in database (survives worker restarts)
+ *
+ * ## Configuration
+ * - `queueName`: BullMQ queue identifier
+ * - `schedulerIntervalMs`: How often to schedule tick jobs
+ * - `schedulerLeaseRenewMs`: Heartbeat interval for scheduler lease
+ * - `pauseBotsOnInvariantViolation`: Pause bots on violations (safety)
+ * - `stopOnInvariantViolation`: Stop processing on violations (critical)
+ * - `redis`: Connection settings (host, port, credentials)
+ * - `bullmq`: Job options (attempts, backoff, removeOnComplete)
+ *
+ * ## Graceful Shutdown
+ * - `stop()` closes queue and worker
+ * - Waits for active jobs to complete
+ * - Releases scheduler lease
+ * - Allows safe deployment updates
+ *
+ * ## Error Handling
+ * - Lease conflicts handled gracefully (falls back to processor-only)
+ * - Job failures logged and retried per BullMQ config
+ * - Scheduler heartbeat errors caught and logged
+ * - Control state upsert is idempotent
+ *
+ * ## Use Cases
+ * - Production: Continuous processing with multiple workers
+ * - High availability: Scheduler failover via lease takeover
+ * - Safety: Automatic pause/stop on invariant violations
+ * - Scaling: Add/remove workers dynamically
+ */
 import { PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";

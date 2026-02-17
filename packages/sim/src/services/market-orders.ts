@@ -1,3 +1,45 @@
+/**
+ * Market Orders Service
+ *
+ * @module market-orders
+ *
+ * ## Purpose
+ * Creates and cancels buy/sell market orders with resource reservation management.
+ * Enforces specialization and research tier constraints for player companies.
+ *
+ * ## Key Operations
+ * - **placeMarketOrder**: Creates order with appropriate cash/inventory reservation
+ *   - BUY orders: Reserves cash upfront
+ *   - SELL orders: Reserves inventory upfront
+ * - **cancelMarketOrder**: Releases reserved resources, marks order cancelled
+ *
+ * ## Invariants Enforced
+ * - Company must own the regionId (can't trade outside owned regions)
+ * - BUY orders: Reserved cash ≤ available cash
+ * - SELL orders: Reserved quantity ≤ available inventory (quantity - reserved)
+ * - Player items locked by research tier and specialization (checked at order placement)
+ * - NPC items unrestricted (no research/specialization checks)
+ * - Order price and quantity must be positive
+ *
+ * ## Resource Reservation
+ * Uses the reservation system to prevent double-booking:
+ * - BUY: Reserves `quantity * unitPrice` cash until order fills or cancels
+ * - SELL: Reserves `quantity` inventory until order fills or cancels
+ * - Reservations released atomically on cancellation
+ * - Reservations consumed atomically on trade settlement
+ *
+ * ## Transaction Boundaries
+ * - Each order placement is a separate transaction
+ * - Each cancellation is a separate transaction
+ * - Uses optimistic locking for concurrent safety
+ *
+ * ## Error Handling
+ * - NotFoundError: Company, item, or region doesn't exist
+ * - ForbiddenError: Player attempting to trade in unowned region
+ * - DomainInvariantError: Validation failures (locked items, insufficient resources)
+ * - InsufficientFundsError: Not enough available cash for buy order
+ * - InsufficientInventoryError: Not enough available inventory for sell order
+ */
 import {
   LedgerEntryType,
   OrderSide,

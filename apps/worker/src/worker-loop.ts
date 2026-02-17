@@ -1,3 +1,72 @@
+/**
+ * Worker Loop - Simulation Tick Processor
+ *
+ * @module worker/worker-loop
+ *
+ * ## Purpose
+ * Core simulation advancement engine that executes one or more simulation ticks with
+ * retry logic, maintenance pause handling, and lease-based concurrency control.
+ *
+ * ## Architecture Role
+ * The workhorse of simulation processing:
+ * - Processes individual ticks from queue or direct invocation
+ * - Handles optimistic lock conflicts with exponential backoff
+ * - Enforces maintenance windows (pauses between ticks if maintenance mode active)
+ * - Cleans up old execution records for idempotency tracking
+ *
+ * ## Key Operations
+ * ### Tick Processing
+ * 1. Acquire simulation lease (prevents concurrent worker conflicts)
+ * 2. Determine tick batch size (respects config and override)
+ * 3. Execute ticks sequentially with retry logic
+ * 4. Check maintenance status between ticks
+ * 5. Release lease on completion or error
+ * 6. Cleanup old execution records (retention policy)
+ *
+ * ### Retry Logic for Optimistic Lock Conflicts
+ * - Catches `OptimisticLockConflictError` (concurrent modification detected)
+ * - Exponential backoff: 50ms, 100ms, 200ms, 400ms (configurable)
+ * - Default max retries: 4 attempts
+ * - Throws on non-recoverable errors
+ * - Tracks total retry count across batch
+ *
+ * ### Maintenance Pause Handling
+ * - Checks maintenance status between each tick (configurable interval)
+ * - If maintenance active, stops processing mid-batch (graceful pause)
+ * - Returns partial progress (ticks advanced so far)
+ * - Allows safe deployments without tick corruption
+ *
+ * ### Execution Row Cleanup
+ * - Idempotency tracking uses `SimulationTickExecution` records
+ * - Cleanup based on retention policy (e.g., keep last 1000 ticks)
+ * - Runs conditionally (e.g., every 50 ticks) to reduce DB load
+ * - Prevents unbounded table growth
+ *
+ * ## Configuration Options
+ * - `ticksOverride`: Override default tick count for batch
+ * - `maxConflictRetries`: Maximum retry attempts (default: 4)
+ * - `initialBackoffMs`: Initial backoff delay (default: 50ms)
+ * - `runBots`: Enable/disable bot execution for this batch
+ * - `executionKey`: Optional idempotency key
+ * - `leaseName/leaseOwnerId/leaseTtlMs`: Lease configuration
+ *
+ * ## Error Handling
+ * - Exponential backoff on `OptimisticLockConflictError`
+ * - Lease cleanup in finally block (always released)
+ * - Maintenance checks prevent processing during service windows
+ * - Non-recoverable errors propagate immediately
+ *
+ * ## Performance Considerations
+ * - Batch size configurable (balance latency vs. throughput)
+ * - Cleanup interval tunable (reduce DB overhead)
+ * - Maintenance checks have configurable frequency
+ * - Backoff prevents tight retry loops
+ *
+ * ## Use Cases
+ * - Queue processor: Invoked by BullMQ for each scheduled job
+ * - Once mode: Direct invocation for manual testing
+ * - CI/Testing: Controlled tick advancement with known batch sizes
+ */
 import { PrismaClient } from "@prisma/client";
 import {
   OptimisticLockConflictError,

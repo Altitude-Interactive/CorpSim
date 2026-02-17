@@ -1,3 +1,58 @@
+/**
+ * Market Matching and Settlement Service
+ *
+ * @module market-matching
+ *
+ * ## Purpose
+ * Executes deterministic order matching and settlement for market trading.
+ * Matches buy and sell orders within the same region/item pair, executes trades
+ * at calculated prices, and atomically transfers inventory and cash between companies
+ * while maintaining strict ledger records.
+ *
+ * ## Matching Algorithm
+ * - **Price-time priority**: Buy orders sorted by highest price first, then timestamp/ID;
+ *   sell orders by lowest price first, then timestamp/ID
+ * - **Execution Price**: "Resting order" rule - uses the older order's price (by tickPlaced, createdAt, id)
+ * - **Matching Condition**: Buy price ≥ Sell price; quantity limited to min(buyRemaining, sellRemaining)
+ * - **Regional Constraint**: Only matches orders in the same region; cross-region trades are skipped
+ *
+ * ## Invariants Enforced
+ * ### Pre-settlement checks:
+ * - Both orders remain OPEN and exist
+ * - Order sides are correct (buy/sell), items/regions match
+ * - Matched quantity ≤ remaining quantities on both orders
+ * - Buyer has reserved cash ≥ order price × quantity
+ * - Seller has reserved quantity ≥ matched quantity and actual inventory
+ * - Buyer company has total cash ≥ trade notional
+ *
+ * ### Post-settlement invariants:
+ * - reservedCash ≥ 0
+ * - cash ≥ 0
+ * - reservedCash ≤ cash
+ *
+ * ## Side Effects
+ * All settlement occurs within a single Prisma transaction (atomic):
+ * - Updates: 2 company cash records, 1-2 inventory records (seller decrease, buyer upsert)
+ * - Updates: 2 market order records (reduce remaining quantities)
+ * - Creates: 1 trade record + 2 ledger entries (buy/sell settlement)
+ * - **Self-trade handling**: If buyer == seller, net cash cancels; reserved reduction still applied
+ *
+ * ## Transaction Boundaries
+ * - Each settlement is a separate transaction
+ * - No partial settlements (all-or-nothing)
+ * - Rollback on any validation failure or constraint violation
+ *
+ * ## Determinism
+ * - Fixed sort order ensures reproducible matching
+ * - Same market state + tick → identical trade sequence
+ * - No randomness or non-deterministic behavior
+ *
+ * ## Error Handling
+ * - DomainInvariantError: Structural violations (order mismatch, negative balances, inventory shortage)
+ * - NotFoundError: Orders or companies deleted concurrently
+ * - Early return: If either order already filled (non-OPEN status), skip settlement silently (idempotent)
+ * - No explicit retry logic; failures propagate to transaction rollback
+ */
 import {
   LedgerEntryType,
   OrderSide,
@@ -7,6 +62,9 @@ import {
 } from "@prisma/client";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
 
+/**
+ * Order representation for matching purposes.
+ */
 export interface MatchableOrder {
   id: string;
   itemId: string;
@@ -19,6 +77,9 @@ export interface MatchableOrder {
   createdAt: Date;
 }
 
+/**
+ * Planned match between a buy and sell order.
+ */
 export interface MatchPlan {
   itemId: string;
   regionId: string;
@@ -28,6 +89,10 @@ export interface MatchPlan {
   unitPriceCents: bigint;
 }
 
+/**
+ * Compares orders by time priority (tickPlaced, then createdAt, then id).
+ * Used for price-time priority matching (when prices are equal).
+ */
 function compareByTimeThenId(
   left: Pick<MatchableOrder, "tickPlaced" | "createdAt" | "id">,
   right: Pick<MatchableOrder, "tickPlaced" | "createdAt" | "id">

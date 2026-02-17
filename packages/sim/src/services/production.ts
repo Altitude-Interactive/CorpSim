@@ -1,3 +1,61 @@
+/**
+ * Production Lifecycle Service
+ *
+ * @module production
+ *
+ * ## Purpose
+ * Manages the complete lifecycle of production jobs in a manufacturing simulation.
+ * Handles creation, cancellation, and completion of manufacturing operations that
+ * transform input items into outputs. Enforces recipe unlocking, specialization
+ * constraints, and workforce modifiers.
+ *
+ * ## Production Job Lifecycle
+ * 1. **Start**: `createProductionJob()` validates inputs, reserves inventory, checks recipe/specialization
+ *    unlocks, calculates workforce-adjusted duration, creates IN_PROGRESS job
+ * 2. **Completion**: `completeDueProductionJobs()` processes jobs when `currentTick >= dueTick`,
+ *    consumes reserved inputs, produces outputs, marks status COMPLETED
+ * 3. **Cancellation**: `cancelProductionJob()` releases reserved inputs, updates status to
+ *    CANCELLED before execution
+ * 4. **Profitable**: `startProfitableProductionForCompanyWithTx()` auto-starts recipes meeting
+ *    profit thresholds
+ *
+ * ## Invariants Enforced
+ * - **Input Atomicity**: Inventory reserved at job start; consumed only on completion (no partial execution)
+ * - **Output Atomicity**: Output generated immediately upon job completion in single transaction
+ * - **No Partial Completions**: Either entire job completes or fails; impossible to partially consume/produce
+ * - **Reservation Consistency**: Reserved quantities tracked separately; available = quantity - reserved
+ * - **Status Transitions**: Only IN_PROGRESS jobs can be cancelled/completed; prevents double-processing
+ *
+ * ## Resource Validation and Consumption
+ * - **Availability Check**: `reserveInventoryForProduction()` validates sufficient free (non-reserved) inventory exists
+ * - **Scaling**: `calculateRecipeInputRequirements()` multiplies recipe inputs by run count before reservation
+ * - **Consumption Flow**: Reserve → (validate at completion) → Consume (decrement both quantity & reserved)
+ * - **Output Upsert**: Creates or increments output inventory atomically
+ *
+ * ## Side Effects
+ * All operations are transactional:
+ * - Job creation: Reserves inventory, creates job record
+ * - Job completion: Consumes inputs (decrements quantity and reservedQuantity), creates outputs,
+ *   updates job status, creates ledger entries
+ * - Job cancellation: Releases reserved inventory, updates job status
+ *
+ * ## Transaction Boundaries
+ * - Each operation (start, complete, cancel) is a separate transaction
+ * - Batch completion processes multiple jobs within the same transaction for efficiency
+ * - Rollback on any validation failure or constraint violation
+ *
+ * ## Determinism
+ * - Jobs complete at exact tick (dueTick)
+ * - Completion order deterministic (sorted by dueTick, then id)
+ * - Workforce modifiers applied consistently
+ *
+ * ## Error Handling
+ * - NotFoundError: Entity (company, recipe, job) doesn't exist
+ * - DomainInvariantError: Validation failures (insufficient inventory, locked recipes, negative values)
+ * - Graceful fallback: `startProfitableProductionForCompanyWithTx()` skips unprofitable/unavailable
+ *   recipes via try-catch
+ * - All state changes are transactional; failures leave no partial state
+ */
 import {
   LedgerEntryType,
   Prisma,
