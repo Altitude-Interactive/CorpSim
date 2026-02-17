@@ -97,6 +97,143 @@ describe("maintenance mode integration", () => {
     });
   });
 
+  it("handles past eta timestamps gracefully", async () => {
+    const pastEta = new Date(Date.now() - 3600000).toISOString(); // 1 hour ago
+
+    const enableResponse = await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Backdated maintenance window",
+        scope: "all",
+        enabledBy: "integration-test",
+        eta: pastEta
+      })
+      .expect(201);
+
+    expect(enableResponse.body).toMatchObject({
+      enabled: true,
+      reason: "Backdated maintenance window",
+      scope: "all",
+      eta: pastEta
+    });
+
+    const stateResponse = await request(app.getHttpServer())
+      .get("/health/maintenance")
+      .expect(200);
+
+    expect(stateResponse.body).toMatchObject({
+      enabled: true,
+      eta: pastEta
+    });
+  });
+
+  it("rejects invalid eta strings", async () => {
+    const invalidEta = "not-a-valid-timestamp";
+
+    await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Invalid ETA test",
+        scope: "all",
+        enabledBy: "integration-test",
+        eta: invalidEta
+      })
+      .expect(400);
+  });
+
+  it("supports updating maintenance without changing existing eta", async () => {
+    const futureEta = new Date(Date.now() + 7200000).toISOString(); // 2 hours from now
+
+    const firstResponse = await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Initial maintenance with ETA",
+        scope: "all",
+        enabledBy: "integration-test",
+        eta: futureEta
+      })
+      .expect(201);
+
+    expect(firstResponse.body).toMatchObject({
+      enabled: true,
+      eta: futureEta
+    });
+
+    const secondResponse = await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Updated maintenance without ETA",
+        scope: "all",
+        enabledBy: "integration-test"
+      })
+      .expect(201);
+
+    expect(secondResponse.body).toMatchObject({
+      enabled: true,
+      reason: "Updated maintenance without ETA",
+      eta: futureEta
+    });
+
+    const stateResponse = await request(app.getHttpServer())
+      .get("/health/maintenance")
+      .expect(200);
+
+    expect(stateResponse.body).toMatchObject({
+      enabled: true,
+      eta: futureEta
+    });
+  });
+
+  it("allows clearing eta by setting it to null", async () => {
+    const futureEta = new Date(Date.now() + 3600000).toISOString(); // 1 hour from now
+
+    const firstResponse = await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Maintenance with ETA to clear",
+        scope: "all",
+        enabledBy: "integration-test",
+        eta: futureEta
+      })
+      .expect(201);
+
+    expect(firstResponse.body).toMatchObject({
+      enabled: true,
+      eta: futureEta
+    });
+
+    const clearResponse = await request(app.getHttpServer())
+      .post("/ops/maintenance")
+      .send({
+        enabled: true,
+        reason: "Maintenance with cleared ETA",
+        scope: "all",
+        enabledBy: "integration-test",
+        eta: null
+      })
+      .expect(201);
+
+    expect(clearResponse.body).toMatchObject({
+      enabled: true,
+      reason: "Maintenance with cleared ETA",
+      eta: null
+    });
+
+    const stateResponse = await request(app.getHttpServer())
+      .get("/health/maintenance")
+      .expect(200);
+
+    expect(stateResponse.body).toMatchObject({
+      enabled: true,
+      eta: null
+    });
+  });
+
   it("blocks write requests with 503 when maintenance scope is all", async () => {
     const enableResponse = await request(app.getHttpServer())
       .post("/ops/maintenance")

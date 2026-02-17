@@ -1,4 +1,12 @@
-import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import {
+  IsBoolean,
+  IsIn,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength
+} from "class-validator";
 import { MAINTENANCE_SCOPES } from "../maintenance.types";
 import type { MaintenanceScope } from "../maintenance.types";
 
@@ -21,4 +29,8 @@ export class UpdateMaintenanceDto {
   @IsOptional()
   @IsIn(MAINTENANCE_SCOPES)
   scope?: MaintenanceScope;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  eta?: string | null;
 }

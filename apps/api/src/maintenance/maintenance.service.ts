@@ -70,7 +70,11 @@ function normalizeEnabledBy(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function normalizeEta(value: unknown): string | undefined {
+function normalizeEta(value: unknown): string | null | undefined {
+  if (value === null) {
+    return null;
+  }
+
   if (typeof value !== "string" && !(value instanceof Date)) {
     return undefined;
   }
@@ -139,6 +143,13 @@ export class MaintenanceService {
   async setState(update: MaintenanceStateUpdate): Promise<MaintenanceState> {
     const current = await this.getState();
     const nextScope = update.enabled ? (update.scope ?? "all") : (update.scope ?? current.scope);
+    const nextEta = update.enabled
+      ? update.eta !== undefined
+        ? update.eta
+        : current.eta
+      : update.eta !== undefined
+        ? update.eta
+        : null;
     const next = this.normalizeState(
       {
         enabled: update.enabled,
@@ -146,7 +157,7 @@ export class MaintenanceService {
         reason: update.reason ?? current.reason,
         enabledBy: update.enabledBy ?? current.enabledBy,
         scope: nextScope,
-        eta: update.eta ?? current.eta
+        eta: nextEta
       },
       current
     );
@@ -214,7 +225,7 @@ export class MaintenanceService {
           reason: row.reason,
           enabledBy: row.enabledBy ?? undefined,
           scope: row.scope,
-          eta: row.eta ?? undefined
+          eta: row.eta ?? null
         },
         buildDefaultMaintenanceState(row.updatedAt)
       );

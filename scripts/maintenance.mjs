@@ -125,6 +125,10 @@ function sanitizeEnabledBy(value) {
 }
 
 function sanitizeEta(value) {
+  if (value === null) {
+    return null;
+  }
+
   if (typeof value !== "string") {
     return undefined;
   }
@@ -451,7 +455,7 @@ function buildPayload(command, options, currentState) {
     reason: options.reason ? sanitizeReason(options.reason, currentState.reason) : undefined,
     scope: options.scope ? sanitizeScope(options.scope, currentState.scope) : undefined,
     enabledBy: actor,
-    eta: options.eta ? sanitizeEta(options.eta) : undefined
+    eta: options.eta ? sanitizeEta(options.eta) : null
   };
 }
 
@@ -517,7 +521,8 @@ async function run() {
       updatedAt: new Date().toISOString(),
       reason: payload.reason ?? currentState.reason,
       enabledBy: payload.enabledBy,
-      scope: payload.scope ?? currentState.scope
+      scope: payload.scope ?? currentState.scope,
+      eta: payload.eta !== undefined ? payload.eta : currentState.eta
     },
     currentState
   );

@@ -13,7 +13,7 @@ export interface MaintenanceState {
   reason: string;
   enabledBy?: string;
   scope: MaintenanceScope;
-  eta?: string;
+  eta?: string | null;
 }
 
 export interface EtaCountdown {
@@ -22,12 +22,17 @@ export interface EtaCountdown {
   value: number;
 }
 
-export function calculateEtaCountdown(eta: string | undefined): EtaCountdown | null {
+export function calculateEtaCountdown(
+  eta: string | null | undefined
+): EtaCountdown | null {
   if (!eta) {
     return null;
   }
 
-  const etaTime = new Date(eta).getTime();
+  const etaTime = Date.parse(eta);
+  if (Number.isNaN(etaTime)) {
+    return null;
+  }
   const now = Date.now();
   const diffMs = etaTime - now;
 
@@ -109,7 +114,11 @@ function sanitizeScope(value: unknown): MaintenanceScope {
   return value === "web-only" ? "web-only" : "all";
 }
 
-function sanitizeEta(value: unknown): string | undefined {
+function sanitizeEta(value: unknown): string | null | undefined {
+  if (value === null) {
+    return null;
+  }
+
   if (typeof value !== "string") {
     return undefined;
   }

@@ -16,15 +16,30 @@ export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
 
   useEffect(() => {
     if (!state.eta) {
+      setCountdown(null);
       return;
     }
 
-    const intervalId = setInterval(() => {
-      setCountdown(calculateEtaCountdown(state.eta));
-    }, 1000);
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleNextUpdate = () => {
+      const nextCountdown = calculateEtaCountdown(state.eta);
+      setCountdown(nextCountdown);
+
+      if (!nextCountdown) {
+        return;
+      }
+
+      const delay = nextCountdown.unit === "minutes" ? 1000 : 60000;
+      timeoutId = setTimeout(scheduleNextUpdate, delay);
+    };
+
+    scheduleNextUpdate();
 
     return () => {
-      clearInterval(intervalId);
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [state.eta]);
 
