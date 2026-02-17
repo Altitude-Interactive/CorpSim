@@ -32,6 +32,7 @@ function getRepoInfo() {
   try {
     const remoteUrl = execFileSync("git", ["config", "--get", "remote.origin.url"], {
       encoding: "utf8",
+      stdio: ["inherit", "pipe", "ignore"], // Suppress stderr
     }).trim();
     
     // Parse GitHub URL (https://github.com/owner/repo.git or git@github.com:owner/repo.git)
@@ -53,7 +54,7 @@ function getRepoInfo() {
 function getCommitsSinceTag(previousTag) {
   try {
     const range = previousTag ? `${previousTag}..HEAD` : "HEAD";
-    const output = execFileSync("git", ["log", range, "--format=%H|||%s|||%an|||%ae"], {
+    const output = execFileSync("git", ["log", range, "--format=%H%x00%s%x00%an%x00%ae"], {
       encoding: "utf8",
       stdio: ["inherit", "pipe", "ignore"], // Suppress stderr
     }).trim();
@@ -63,17 +64,18 @@ function getCommitsSinceTag(previousTag) {
     }
     
     return output.split("\n").map((line) => {
-      const [hash, subject, authorName, authorEmail] = line.split("|||");
+      const parts = line.split("\0");
+      const [hash, subject, authorName, authorEmail] = parts;
       
       // Extract PR number from subject (e.g., "Fix bug (#123)")
-      const prMatch = subject.match(/\(#(\d+)\)/);
+      const prMatch = subject?.match(/\(#(\d+)\)/);
       const prNumber = prMatch ? prMatch[1] : null;
       
       return {
-        hash,
-        subject,
-        authorName,
-        authorEmail,
+        hash: hash || "",
+        subject: subject || "",
+        authorName: authorName || "",
+        authorEmail: authorEmail || "",
         prNumber,
       };
     });
@@ -113,8 +115,8 @@ function extractUsername(email) {
     return githubMatch[1];
   }
   
-  // Fallback to email prefix
-  return email.split("@")[0];
+  // Fallback to email prefix with safety check
+  return email.split("@")[0] ?? email;
 }
 
 async function parseChangelogSection(changelogPath, version) {
@@ -130,7 +132,7 @@ async function parseChangelogSection(changelogPath, version) {
   
   for (const line of lines) {
     // Start of version section
-    if (line.match(new RegExp(`^## ${version.replace(/\./g, "\\.")} - `))) {
+    if (line.startsWith(`## ${version} - `)) {
       inVersionSection = true;
       continue;
     }
@@ -188,7 +190,9 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
   } else if (changelogEntries.length > 0) {
     // No commits with PR numbers - fall back to CHANGELOG.md
     for (const entry of changelogEntries) {
-      lines.push(`* ${entry}`);
+      // Strip the [area] prefix for consistency with Dokploy-style format
+      const cleanEntry = entry.replace(/^\[[^\]]+\]\s*/, "");
+      lines.push(`* ${cleanEntry}`);
     }
   } else {
     // No commits and no changelog entries
@@ -203,12 +207,16 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
   
   for (const commit of commits) {
     if (!previousContributors.has(commit.authorEmail)) {
-      if (!currentContributors.has(commit.authorEmail)) {
+      const existing = currentContributors.get(commit.authorEmail);
+      if (!existing) {
         currentContributors.set(commit.authorEmail, {
           name: commit.authorName,
           email: commit.authorEmail,
-          prNumber: commit.prNumber,
+          prNumber: commit.prNumber || null,
         });
+      } else if (!existing.prNumber && commit.prNumber) {
+        // Update contributor to include a PR number from a later commit
+        existing.prNumber = commit.prNumber;
       }
     }
   }
@@ -255,13 +263,18 @@ async function run() {
     throw new Error("Missing required --version argument");
   }
   
+  // Validate version format
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    throw new Error(`Invalid version format "${version}". Expected semantic version (e.g., 1.0.0)`);
+  }
+  
   const repoInfo = getRepoInfo();
-  const previousTag = previousVersion ? `v${previousVersion}` : null;
+  const previousTag = (previousVersion && previousVersion !== "0.0.0") ? `v${previousVersion}` : null;
   const commits = getCommitsSinceTag(previousTag);
   const changelogEntries = await parseChangelogSection(changelogPath, version);
   
   if (commits.length === 0 && changelogEntries.length === 0) {
-    console.log("No commits or changelog entries found for release notes");
+    console.log("## What's Changed\n\n* No changes");
     return;
   }
   

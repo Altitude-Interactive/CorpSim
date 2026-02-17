@@ -99,7 +99,7 @@ function buildSection(nextVersion, entries) {
   // Sort entries: major, then minor, then patch
   const sorted = [...entries].sort((a, b) => {
     const priority = { major: 0, minor: 1, patch: 2 };
-    return priority[a.type] - priority[b.type];
+    return (priority[a.type] ?? 999) - (priority[b.type] ?? 999);
   });
   
   for (const entry of sorted) {
