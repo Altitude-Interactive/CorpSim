@@ -55,7 +55,7 @@ function getCommitsSinceTag(previousTag) {
     const range = previousTag ? `${previousTag}..HEAD` : "HEAD";
     const output = execFileSync("git", ["log", range, "--format=%H|||%s|||%an|||%ae"], {
       encoding: "utf8",
-      stdio: ["inherit", "pipe", "pipe"], // Suppress stderr
+      stdio: ["inherit", "pipe", "ignore"], // Suppress stderr
     }).trim();
     
     if (!output) {
@@ -91,7 +91,7 @@ function getContributorsBeforeTag(tag) {
   try {
     const output = execFileSync("git", ["log", tag, "--format=%ae"], {
       encoding: "utf8",
-      stdio: ["inherit", "pipe", "pipe"], // Suppress stderr
+      stdio: ["inherit", "pipe", "ignore"], // Suppress stderr
     }).trim();
     
     if (!output) {
