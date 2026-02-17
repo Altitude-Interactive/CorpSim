@@ -14,8 +14,8 @@ export class CompaniesController {
   }
 
   @Get()
-  async list() {
-    return this.companiesService.listCompanies();
+  async list(@CurrentPlayerId() playerId: string) {
+    return this.companiesService.listCompanies(playerId);
   }
 
   @Get("specializations")
