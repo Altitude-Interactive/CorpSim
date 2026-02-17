@@ -1,4 +1,9 @@
 x-app-image: &app_image ${APP_IMAGE_REPO:-corpsim-preview-app}:${APP_IMAGE_TAG:-latest}
+x-app-build: &app_build
+  context: .
+  dockerfile: docker/app.Dockerfile
+  args:
+    NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
 
 services:
   postgres:
@@ -38,6 +43,7 @@ services:
 
   backend:
     image: *app_image
+    build: *app_build
     restart: unless-stopped
     command:
       [
@@ -80,6 +86,7 @@ services:
 
   migrate:
     image: *app_image
+    build: *app_build
     command:
       [
         "sh",
@@ -95,6 +102,7 @@ services:
 
   seed:
     image: *app_image
+    build: *app_build
     command:
       [
         "sh",
@@ -110,6 +118,7 @@ services:
 
   worker:
     image: *app_image
+    build: *app_build
     restart: unless-stopped
     command:
       [
@@ -151,6 +160,7 @@ services:
 
   frontend:
     image: *app_image
+    build: *app_build
     restart: unless-stopped
     command: ["pnpm", "--filter", "@corpsim/web", "start"]
     environment:
