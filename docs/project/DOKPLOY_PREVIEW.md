@@ -32,7 +32,7 @@ You can use local `.env.preview` as the canonical template for these values.
    - `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250`
    - `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15`
 
-If Dokploy doesn't have a separate Build Arguments UI, ensure these variables are set in the Environment section **before** triggering a build/deploy.
+If Dokploy doesn't have a separate Build Arguments UI, note that variables set only in the **Environment** section are runtime variables and are **not** automatically available at build time. In that case, you must manually edit your `docker-compose.preview.yml` and add these as Docker build arguments (under the `args:` section of `x-app-build` or the relevant `build:` configuration for the `web` service) so that the `NEXT_PUBLIC_*` values are passed into the Next.js build.
 
 ### Minimum required environment variables:
 

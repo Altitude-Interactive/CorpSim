@@ -11,6 +11,24 @@ function resolveAuthBaseUrl(): string {
   return raw.endsWith("/") ? raw.slice(0, -1) : raw;
 }
 
+function isLocalhostHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function isLocalhostUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return isLocalhostHostname(parsed.hostname);
+  } catch {
+    // Fallback for non-absolute URLs or invalid URLs
+    return (
+      url.includes("localhost") ||
+      url.includes("127.0.0.1") ||
+      url.includes("::1")
+    );
+  }
+}
+
 function validateAuthConfiguration(): void {
   if (typeof window === "undefined") {
     return;
@@ -20,7 +38,7 @@ function validateAuthConfiguration(): void {
   const currentHost = window.location.hostname;
 
   // Skip validation in development
-  if (currentHost === "localhost" || currentHost === "127.0.0.1") {
+  if (isLocalhostHostname(currentHost)) {
     return;
   }
 
@@ -33,7 +51,7 @@ function validateAuthConfiguration(): void {
     return;
   }
 
-  if (apiUrl.includes("localhost") || apiUrl.includes("127.0.0.1")) {
+  if (isLocalhostUrl(apiUrl)) {
     console.warn(
       `[CorpSim Auth] NEXT_PUBLIC_API_URL is set to "${apiUrl}" but you're accessing the site from "${currentHost}". ` +
       "This likely means the environment variable was not set as a build argument. " +
