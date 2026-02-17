@@ -51,6 +51,7 @@ Release image settings (tag-first):
 
 - `APP_IMAGE_REPO=ghcr.io/<org-or-user>/corpsim`
 - `APP_IMAGE_TAG=v0.1.0` (use release tags like `v0.1.1`, avoid commit SHAs)
+- `APP_IMAGE_BYPASS_TAG=true` (optional; bypasses `APP_IMAGE_TAG` and forces Docker Compose to build from the latest checked-out commit)
 - Release CI also publishes a plain semver tag (`0.1.0`) for compatibility.
 
 Recommended worker settings:
