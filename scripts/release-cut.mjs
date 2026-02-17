@@ -91,27 +91,23 @@ function ensureTagIsFree(nextVersion, skipRemoteCheck) {
   }
 }
 
+const PRIORITY = { major: 0, minor: 1, patch: 2 };
+
 function buildSection(nextVersion, entries) {
   const date = new Date().toISOString().slice(0, 10);
-  const sections = [
-    ["major", "Major"],
-    ["minor", "Minor"],
-    ["patch", "Patch"]
-  ];
 
-  const lines = [`## ${nextVersion} - ${date}`, ""];
-  for (const [type, label] of sections) {
-    const bucket = entries.filter((entry) => entry.type === type);
-    if (bucket.length === 0) {
-      continue;
-    }
-
-    lines.push(`### ${label}`);
-    for (const entry of bucket) {
-      lines.push(`- [${entry.area}] ${entry.summary}`);
-    }
-    lines.push("");
+  const lines = [`## ${nextVersion} - ${date}`, "", "### What's Changed", ""];
+  
+  // Sort entries: major, then minor, then patch
+  const sorted = [...entries].sort((a, b) => {
+    return (PRIORITY[a.type] ?? 999) - (PRIORITY[b.type] ?? 999);
+  });
+  
+  for (const entry of sorted) {
+    lines.push(`- [${entry.area}] ${entry.summary}`);
   }
+  
+  lines.push("");
 
   return lines.join("\n").trimEnd();
 }
