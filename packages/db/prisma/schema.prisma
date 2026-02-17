@@ -607,3 +607,17 @@ model SimulationControlState {
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 }
+
+model MissingItemLog {
+  id          String   @id @default(cuid())
+  itemCode    String?
+  itemName    String
+  context     String
+  source      String
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  @@index([source, createdAt])
+  @@index([itemCode])
+  @@index([createdAt])
+}

@@ -99,7 +99,10 @@ const BASE_ITEM_DEFINITIONS: ItemDefinition[] = [
   { key: "ocularImplant", code: "OCULAR_IMPLANT", name: "Ocular Implant" },
   { key: "cyberArmature", code: "CYBER_ARMATURE", name: "Cyber Armature" },
   { key: "spinalLink", code: "SPINAL_LINK", name: "Spinal Link" },
-  { key: "cyberneticSuite", code: "CYBERNETIC_SUITE", name: "Cybernetic Suite" }
+  { key: "cyberneticSuite", code: "CYBERNETIC_SUITE", name: "Cybernetic Suite" },
+  { key: "water", code: "WATER", name: "Water" },
+  { key: "fertilizer", code: "FERTILIZER", name: "Fertilizer" },
+  { key: "bioSubstrate", code: "BIO_SUBSTRATE", name: "Bio Substrate" }
 ];
 
 const BASE_RECIPE_DEFINITIONS: RecipeDefinition[] = [
@@ -505,11 +508,19 @@ function buildIconRecipeDefinitions(iconItems: ItemDefinition[]): RecipeDefiniti
       const inputs: Array<{ itemKey: string; quantity: number }> = [];
 
       if (tier === 1) {
-        inputs.push({ itemKey: "ironOre", quantity: 1 + ((item.index ?? 1) % 2) });
-        inputs.push({
-          itemKey: (item.index ?? 1) % 3 === 0 ? "copperOre" : "coal",
-          quantity: 1
-        });
+        if (item.series === 35) {
+          inputs.push({ itemKey: "water", quantity: 1 + ((item.index ?? 1) % 2) });
+          inputs.push({ itemKey: "fertilizer", quantity: 1 });
+        } else if (item.series === 34) {
+          inputs.push({ itemKey: "water", quantity: 1 });
+          inputs.push({ itemKey: "bioSubstrate", quantity: 1 + ((item.index ?? 1) % 2) });
+        } else {
+          inputs.push({ itemKey: "ironOre", quantity: 1 + ((item.index ?? 1) % 2) });
+          inputs.push({
+            itemKey: (item.index ?? 1) % 3 === 0 ? "copperOre" : "coal",
+            quantity: 1
+          });
+        }
       } else if (tier === 2 && previous) {
         inputs.push({ itemKey: previous.key, quantity: 1 });
         inputs.push({
@@ -681,6 +692,9 @@ export async function seedWorld(
     { companyId: botMiner.id, itemKey: "ironOre", quantity: 700 },
     { companyId: botMiner.id, itemKey: "coal", quantity: 650 },
     { companyId: botMiner.id, itemKey: "copperOre", quantity: 520 },
+    { companyId: botMiner.id, itemKey: "water", quantity: 850 },
+    { companyId: botMiner.id, itemKey: "fertilizer", quantity: 620 },
+    { companyId: botMiner.id, itemKey: "bioSubstrate", quantity: 580 },
 
     { companyId: botSmelter.id, itemKey: "ironIngot", quantity: 320 },
     { companyId: botSmelter.id, itemKey: "copperIngot", quantity: 220 },
@@ -710,6 +724,9 @@ export async function seedWorld(
       { companyId: playerCompany.id, itemKey: "ironOre", quantity: 240 },
       { companyId: playerCompany.id, itemKey: "coal", quantity: 140 },
       { companyId: playerCompany.id, itemKey: "copperOre", quantity: 180 },
+      { companyId: playerCompany.id, itemKey: "water", quantity: 200 },
+      { companyId: playerCompany.id, itemKey: "fertilizer", quantity: 150 },
+      { companyId: playerCompany.id, itemKey: "bioSubstrate", quantity: 160 },
       { companyId: playerCompany.id, itemKey: "ironIngot", quantity: 12 },
       { companyId: playerCompany.id, itemKey: "copperIngot", quantity: 6 }
     );
@@ -849,6 +866,27 @@ export async function seedWorld(
       side: OrderSide.SELL,
       quantity: 120,
       unitPriceCents: 95n
+    },
+    {
+      companyId: botMiner.id,
+      itemKey: "water",
+      side: OrderSide.SELL,
+      quantity: 220,
+      unitPriceCents: 15n
+    },
+    {
+      companyId: botMiner.id,
+      itemKey: "fertilizer",
+      side: OrderSide.SELL,
+      quantity: 160,
+      unitPriceCents: 35n
+    },
+    {
+      companyId: botMiner.id,
+      itemKey: "bioSubstrate",
+      side: OrderSide.SELL,
+      quantity: 150,
+      unitPriceCents: 40n
     },
     {
       companyId: botSmelter.id,
