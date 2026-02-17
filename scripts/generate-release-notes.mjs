@@ -52,8 +52,14 @@ function getRepoInfo() {
 }
 
 function getCommitsSinceTag(previousTag) {
+  // If no previous tag, don't process git history
+  // This prevents scanning the entire repository history
+  if (!previousTag) {
+    return [];
+  }
+  
   try {
-    const range = previousTag ? `${previousTag}..HEAD` : "HEAD";
+    const range = `${previousTag}..HEAD`;
     const output = execFileSync("git", ["log", range, "--format=%H%x00%s%x00%an%x00%ae"], {
       encoding: "utf8",
       stdio: ["inherit", "pipe", "ignore"], // Suppress stderr
@@ -274,7 +280,8 @@ async function run() {
   const changelogEntries = await parseChangelogSection(changelogPath, version);
   
   if (commits.length === 0 && changelogEntries.length === 0) {
-    console.log("## What's Changed\n\n* No changes");
+    console.error("No commits or changelog entries found for release notes");
+    process.exitCode = 1;
     return;
   }
   
