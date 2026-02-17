@@ -232,3 +232,8 @@ All notable changes to CorpSim are documented in this file.
 - [ci] Add an always-on Verify Gate job so branch protection can require a single status check.
 - [api] Improve error handling with structured logging and better type safety in tests
 - [docs] Add CONTRIBUTING.md with local dev, PR, testing, maintenance mode, and release entry guidelines.
+
+## 0.8.1 - 2026-02-17
+
+### Patch
+- [ci] Publish latest release image tag
