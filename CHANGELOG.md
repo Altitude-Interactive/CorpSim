@@ -254,3 +254,10 @@ All notable changes to CorpSim are documented in this file.
 - [ci] Generate Prisma client before typecheck
 - [web] Add runtime warnings for misconfigured NEXT_PUBLIC_API_URL and improve Dokploy deployment docs
 - [ops] Add preview build args for NEXT_PUBLIC_API_URL
+
+## 0.9.1 - 2026-02-17
+
+### What's Changed
+
+- [ops] Add APP_IMAGE_BYPASS_TAG flag to force preview image builds from latest commit
+- [ops] Fix SSO authentication in production by wiring backend runtime env vars and frontend build-time visibility flags
