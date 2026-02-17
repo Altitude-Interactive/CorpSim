@@ -1,3 +1,60 @@
+/**
+ * Worker Entry Point - Bootstrap and Orchestration
+ *
+ * @module worker/main
+ *
+ * ## Purpose
+ * Entry point for the worker process that initializes the simulation execution runtime
+ * and routes between different execution modes (one-shot vs. continuous queue processing).
+ *
+ * ## Execution Modes
+ * ### Once Mode (`--once`)
+ * - Single iteration execution (one-shot)
+ * - Useful for:
+ *   - Manual tick advancement
+ *   - Testing and debugging
+ *   - Cron-based scheduling (alternative to BullMQ)
+ * - Optional `--ticks=N` or `-t N` to override default tick count
+ * - Exits after completing the iteration
+ *
+ * ### Queue Mode (default)
+ * - Continuous runtime via BullMQ queue
+ * - Production mode for:
+ *   - Always-on simulation processing
+ *   - Horizontal scaling (multiple worker instances)
+ *   - Reliable job scheduling with retry/backoff
+ * - Runs until SIGINT/SIGTERM received
+ * - Graceful shutdown with resource cleanup
+ *
+ * ## Architecture Role
+ * Top-level orchestrator that:
+ * - Loads configuration from environment
+ * - Initializes database connection
+ * - Runs preflight checks (schema validation)
+ * - Delegates to appropriate runtime (once or queue)
+ * - Handles graceful shutdown (signal handling)
+ *
+ * ## CLI Arguments
+ * - `--once`: Run single iteration and exit
+ * - `--ticks=N` or `-t N`: Override default tick count (only with --once)
+ *
+ * ## Error Handling
+ * - Try-finally blocks ensure DB disconnect even on errors
+ * - Top-level catch logs error and exits with code 1
+ * - Graceful shutdown on SIGINT/SIGTERM (stops queue, disconnects DB)
+ * - Prevents duplicate shutdown via `shuttingDown` flag
+ *
+ * ## Signal Handling
+ * - SIGINT (Ctrl+C): Graceful shutdown
+ * - SIGTERM (docker stop, k8s): Graceful shutdown
+ * - Shutdown sequence: Stop queue → Disconnect DB → Exit
+ *
+ * ## Use Cases
+ * - Production: Run without arguments for continuous processing
+ * - Development: Use `--once` for manual testing
+ * - CI/Testing: Use `--once --ticks=10` for predictable test runs
+ * - Maintenance: Send SIGTERM for graceful stop
+ */
 import "dotenv/config";
 import { createPrismaClient } from "@corpsim/db";
 import { loadWorkerConfig } from "./config";

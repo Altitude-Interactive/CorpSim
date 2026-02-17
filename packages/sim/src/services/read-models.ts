@@ -1,3 +1,34 @@
+/**
+ * Read Models Service - Simulation Query Layer
+ *
+ * @module read-models
+ *
+ * ## Purpose
+ * Comprehensive query service for accessing simulation read-models including companies,
+ * market data (orders, trades, candles), inventory, production jobs, and financial analytics.
+ * Provides the primary read interface for the API layer with complex filtering and pagination.
+ *
+ * ## Key Capabilities
+ * - Company queries with specialization and research status
+ * - Market data (orders, trades, candles) with filtering by item/region/company
+ * - Inventory queries with availability calculations (quantity - reserved)
+ * - Production job history and status tracking
+ * - Ledger entries with cursor-based pagination
+ * - Simulation health monitoring (invariant violations)
+ *
+ * ## Business Rules Applied
+ * - Specialization-based item locking for player companies
+ * - Research-tier based item/recipe locking
+ * - Available quantity calculations (respecting reservations)
+ * - Company ownership validation
+ *
+ * ## Design Pattern
+ * This is a **query-only service** (no mutations):
+ * - Optimized for read performance
+ * - Complex joins and aggregations
+ * - Used by API controllers for GET endpoints
+ * - Separate from command services (production, market-orders, etc.)
+ */
 import {
   LedgerEntryType,
   OrderStatus,

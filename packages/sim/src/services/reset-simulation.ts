@@ -1,3 +1,51 @@
+/**
+ * Simulation Reset Service
+ *
+ * @module reset-simulation
+ *
+ * ## Purpose
+ * Database cleanup utility that resets all simulation data by deleting entities
+ * in dependency order and reinitializing core world state. Used for development,
+ * testing, and demo resets.
+ *
+ * ## Reset Scope
+ * Deletes all simulation data including:
+ * - Tick execution history
+ * - Simulation leases and control state
+ * - Research jobs and progress
+ * - Contracts and fulfillments
+ * - Shipments
+ * - Market orders and trades
+ * - Production jobs
+ * - Workforce deltas
+ * - Ledger entries
+ * - Market candles
+ * - Inventory
+ * - Company regions
+ * - Companies (except system companies)
+ * - Players
+ *
+ * ## Preserves
+ * - Items catalog
+ * - Recipes
+ * - Research node definitions
+ * - Region definitions
+ * - System/seed companies
+ *
+ * ## Transaction Safety
+ * - Executes as single transaction for atomicity
+ * - Maintains referential integrity through dependency-order deletion
+ * - Reinitializes world tick state (tick=0, lockVersion=0)
+ * - Reinitializes control state
+ *
+ * ## Use Cases
+ * - Development environment resets
+ * - Integration test setup
+ * - Demo environment refresh
+ * - Recovery from corrupted state
+ *
+ * **WARNING**: This is a destructive operation. All game progress is lost.
+ */
 import { PrismaClient } from "@prisma/client";
 
 export async function resetSimulationData(prisma: PrismaClient): Promise<void> {

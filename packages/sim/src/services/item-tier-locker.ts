@@ -1,3 +1,49 @@
+/**
+ * Item Tier Locker - Research-Based Access Control
+ *
+ * @module item-tier-locker
+ *
+ * ## Purpose
+ * Implements tier-based access control for items and recipes based on player research
+ * milestones. Enforces progression gates so players must research technologies before
+ * accessing higher-tier content.
+ *
+ * ## Icon Tier System
+ * Items categorized into 4 tiers:
+ * - **Tier 1**: Basic items (always available)
+ * - **Tier 2**: Unlocked by POWER_SYSTEMS research
+ * - **Tier 3**: Unlocked by AUTOMATION_LINES research
+ * - **Tier 4**: Unlocked by HEAVY_INDUSTRY research
+ *
+ * ## Key Operations
+ * - **resolvePlayerUnlockedIconTierFromResearchCodes**: Determines highest unlocked tier
+ *   from completed research codes
+ * - **isItemCodeLockedByIconTier**: Checks if item is locked for player
+ * - **isRecipeLockedByIconTier**: Checks if recipe is locked for player
+ * - **isRecipeLockedBySpecialization**: Checks if recipe requires specific company specialization
+ *
+ * ## Validation Flow
+ * 1. Query player's completed research codes
+ * 2. Resolve highest unlocked tier (1-4)
+ * 3. Check item/recipe tier requirement
+ * 4. Also check specialization constraints
+ * 5. Return locked status
+ *
+ * ## Integration Points
+ * Used by:
+ * - Production service (validate recipe access before job creation)
+ * - Market orders (validate item access before order placement)
+ * - Shipments (validate item access before shipment creation)
+ * - Read models (filter available items/recipes for players)
+ *
+ * ## NPC Companies
+ * NPC companies are not subject to tier locks (they can access all tiers).
+ * Locks only apply to player-owned companies.
+ *
+ * ## Determinism
+ * Tier unlocking is deterministic based on research codes.
+ * Same research progress → same tier access.
+ */
 import {
   CompanySpecialization,
   getIconCatalogItemByCode,
