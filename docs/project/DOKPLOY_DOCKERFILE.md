@@ -16,8 +16,6 @@ Entrypoint: `scripts/start-container.sh`
 
 In Dokploy, you MUST configure these as **build arguments**:
 - `NEXT_PUBLIC_API_URL=https://<your-api-domain>`
-- `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250`
-- `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15`
 
 Setting these only as runtime environment variables will NOT work for client-side code. The browser will get the values that were present during `docker build`, not the ones set at runtime.
 
@@ -51,8 +49,6 @@ Create separate Dokploy apps from the same repository and Dockerfile:
    - expose/public port `4311`
    - ⚠️ **BUILD ARGUMENTS (set before building the image):**
      - `NEXT_PUBLIC_API_URL=https://corpsim-api.altitude-interactive.com`
-     - `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250`
-     - `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15`
    - **RUNTIME ENVIRONMENT VARIABLES:**
      - `NEXT_PUBLIC_API_URL=https://corpsim-api.altitude-interactive.com`
      - `API_URL=http://corpsim-api:4310` (or internal Docker network address)
@@ -69,8 +65,6 @@ If you insist on one container, set:
 
 **Build Arguments (must be set before building):**
 - `NEXT_PUBLIC_API_URL=https://corpsim-api.altitude-interactive.com`
-- `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250`
-- `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15`
 
 **Runtime Environment Variables:**
 - `APP_ROLE=all`
