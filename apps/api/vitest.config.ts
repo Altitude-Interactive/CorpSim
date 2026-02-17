@@ -10,6 +10,7 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
     environment: "node",
-    fileParallelism: false
+    fileParallelism: false,
+    setupFiles: ["test/setup.ts"]
   }
 });
