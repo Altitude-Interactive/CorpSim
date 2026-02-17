@@ -118,6 +118,7 @@ pnpm sim:seed
 ### How to verify build-time values are correct
 
 1. Open your web app in a browser
-2. Open Developer Tools → Console
-3. Run: `console.log(process.env.NEXT_PUBLIC_API_URL)`
-4. If it shows `localhost` or `undefined`, the build arguments weren't set correctly
+2. Open Developer Tools → Network tab
+3. Trigger an API request (e.g., try to sign in)
+4. Check the request URL - it should point to your production API domain, not localhost
+5. Alternatively, check the Console tab for any warnings from CorpSim about misconfigured URLs
