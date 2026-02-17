@@ -237,3 +237,9 @@ All notable changes to CorpSim are documented in this file.
 
 ### Patch
 - [ci] Publish latest release image tag
+
+## 0.8.2 - 2026-02-17
+
+### Patch
+- [api] Reject invalid maintenance ETA
+- [api] Disable schema readiness in api tests
