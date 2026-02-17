@@ -26,6 +26,7 @@ export function FinanceReconciliationPanel({
   const mismatch =
     company !== null &&
     latestBalance !== null &&
+    company.cashCents !== undefined &&
     BigInt(company.cashCents) !== BigInt(latestBalance);
 
   return (

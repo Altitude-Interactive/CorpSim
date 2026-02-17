@@ -11,6 +11,7 @@ import {
   UnauthorizedException
 } from "@nestjs/common";
 import { AllowAnonymous } from "@thallesp/nestjs-better-auth";
+import { timingSafeCompare } from "../common/utils/timing-safe-compare";
 import { AdvanceWorldDto } from "./dto/advance-world.dto";
 import { ResetWorldBodyDto, ResetWorldQueryDto } from "./dto/reset-world.dto";
 import { WorldService } from "./world.service";
@@ -40,7 +41,7 @@ function assertOperatorTokenInProduction(authorizationHeader?: string): void {
   }
 
   const providedToken = readBearerToken(authorizationHeader);
-  if (!providedToken || providedToken !== configuredToken) {
+  if (!providedToken || !timingSafeCompare(providedToken, configuredToken)) {
     throw new UnauthorizedException("Invalid operator token");
   }
 }

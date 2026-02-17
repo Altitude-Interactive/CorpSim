@@ -56,11 +56,16 @@ export class PlayersService {
     }));
   }
 
-  async listPlayerRegistry(): Promise<PlayerRegistryEntry[]> {
+  async listPlayerRegistry(requestingPlayerId: string): Promise<PlayerRegistryEntry[]> {
+    // Verify the requesting player exists (throws if not found)
+    await resolvePlayerById(this.prisma, requestingPlayerId);
+    
     const adminUserIds = await this.listAdminUserIds();
-    const players = await this.prisma.player.findMany({
-      where: adminUserIds.size > 0 ? { id: { notIn: Array.from(adminUserIds) } } : undefined,
-      orderBy: { handle: "asc" },
+    const excludedIds = Array.from(adminUserIds);
+    
+    // Fetch requesting player with full details (cash + inventory)
+    const requestingPlayerData = await this.prisma.player.findUnique({
+      where: { id: requestingPlayerId },
       select: {
         id: true,
         handle: true,
@@ -103,13 +108,44 @@ export class PlayersService {
         }
       }
     });
+    
+    // Fetch other players without sensitive data (no cash, no inventory)
+    const otherPlayers = await this.prisma.player.findMany({
+      where: {
+        id: { notIn: [...excludedIds, requestingPlayerId] }
+      },
+      orderBy: { handle: "asc" },
+      select: {
+        id: true,
+        handle: true,
+        createdAt: true,
+        updatedAt: true,
+        companies: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            isPlayer: true,
+            region: {
+              select: {
+                id: true,
+                code: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
 
-    return players.map((player) => ({
-      id: player.id,
-      handle: player.handle,
-      createdAt: player.createdAt.toISOString(),
-      updatedAt: player.updatedAt.toISOString(),
-      companies: player.companies.map((company) => {
+    // Process requesting player's data with full details
+    const processedRequestingPlayer = requestingPlayerData ? [{
+      id: requestingPlayerData.id,
+      handle: requestingPlayerData.handle,
+      createdAt: requestingPlayerData.createdAt.toISOString(),
+      updatedAt: requestingPlayerData.updatedAt.toISOString(),
+      companies: requestingPlayerData.companies.map((company) => {
         const holdingsByItemId = new Map<
           string,
           {
@@ -157,7 +193,31 @@ export class PlayersService {
           itemHoldings
         };
       })
+    }] : [];
+
+    // Process other players' data without sensitive details
+    const processedOtherPlayers = otherPlayers.map((player) => ({
+      id: player.id,
+      handle: player.handle,
+      createdAt: player.createdAt.toISOString(),
+      updatedAt: player.updatedAt.toISOString(),
+      companies: player.companies.map((company) => ({
+        id: company.id,
+        code: company.code,
+        name: company.name,
+        isBot: !company.isPlayer,
+        cashCents: undefined,
+        regionId: company.region.id,
+        regionCode: company.region.code,
+        regionName: company.region.name,
+        itemHoldings: []
+      }))
     }));
+
+    // Combine and sort all players by handle
+    return [...processedRequestingPlayer, ...processedOtherPlayers].sort((a, b) => 
+      a.handle.localeCompare(b.handle)
+    );
   }
 
   private async listAdminUserIds(): Promise<Set<string>> {

@@ -27,20 +27,25 @@ export class CompaniesService {
     this.prisma = prisma;
   }
 
-  async listCompanies(): Promise<CompanySummary[]> {
+  async listCompanies(playerId: string): Promise<CompanySummary[]> {
     const companies = await listCompanies(this.prisma);
 
-    return companies.map((company) => ({
-      id: company.id,
-      code: company.code,
-      name: company.name,
-      isBot: company.isBot,
-      specialization: normalizeCompanySpecialization(company.specialization),
-      cashCents: company.cashCents.toString(),
-      regionId: company.regionId,
-      regionCode: company.regionCode,
-      regionName: company.regionName
-    }));
+    return companies.map((company) => {
+      const isOwned = company.ownerPlayerId === playerId;
+      
+      return {
+        id: company.id,
+        code: company.code,
+        name: company.name,
+        isBot: company.isBot,
+        specialization: normalizeCompanySpecialization(company.specialization),
+        // Only show cash for owned companies
+        cashCents: isOwned ? company.cashCents.toString() : undefined,
+        regionId: company.regionId,
+        regionCode: company.regionCode,
+        regionName: company.regionName
+      };
+    });
   }
 
   async listMyCompanies(playerId: string): Promise<CompanySummary[]> {
