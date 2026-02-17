@@ -130,7 +130,22 @@ function escapeMarkdown(text) {
   // Remove newlines and escape Markdown control characters
   return text
     .replace(/[\r\n]+/g, " ")
-    .replace(/[\\`*_{}[\]()#+.!|\-]/g, "\\$&")
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\*/g, "\\*")
+    .replace(/_/g, "\\_")
+    .replace(/\{/g, "\\{")
+    .replace(/\}/g, "\\}")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/#/g, "\\#")
+    .replace(/\+/g, "\\+")
+    .replace(/\-/g, "\\-")
+    .replace(/\./g, "\\.")
+    .replace(/!/g, "\\!")
+    .replace(/\|/g, "\\|")
     .trim();
 }
 
