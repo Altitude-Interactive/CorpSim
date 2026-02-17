@@ -243,3 +243,14 @@ All notable changes to CorpSim are documented in this file.
 
 - [api] Reject invalid maintenance ETA
 - [api] Disable schema readiness in api tests
+
+## 0.9.0 - 2026-02-17
+
+### What's Changed
+
+- [ci] Enhanced GitHub releases with Dokploy-style changelog format including PR links and new contributors section
+- [api] Avoid NODE_ENV assignment in api test setup
+- [ci] Enable vitest thread pool for package tests
+- [ci] Generate Prisma client before typecheck
+- [web] Add runtime warnings for misconfigured NEXT_PUBLIC_API_URL and improve Dokploy deployment docs
+- [ops] Add preview build args for NEXT_PUBLIC_API_URL
