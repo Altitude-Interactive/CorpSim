@@ -188,12 +188,13 @@ describe("security: authentication and data redaction", () => {
     });
 
     it("does not include admin players in registry", async () => {
-      // Create an admin user
+      // Create an admin user with unique ID
+      const adminUserId = `admin_test_${Date.now()}`;
       await prisma.user.create({
         data: {
-          id: "admin_test",
+          id: adminUserId,
           name: "Admin Test",
-          email: "admin-test@corpsim.local",
+          email: `admin-test-${Date.now()}@corpsim.local`,
           role: "admin"
         }
       });
@@ -206,7 +207,7 @@ describe("security: authentication and data redaction", () => {
       const players = response.body as PlayerRegistryEntry[];
       
       // Verify no player with admin user ID is in the registry
-      const adminPlayer = players.find((p) => p.id === "admin_test");
+      const adminPlayer = players.find((p) => p.id === adminUserId);
       expect(adminPlayer).toBeUndefined();
     });
   });
