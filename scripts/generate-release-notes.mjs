@@ -157,55 +157,20 @@ async function parseChangelogSection(changelogPath, version) {
 function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersion, repoInfo) {
   const lines = ["## What's Changed", ""];
   
-  // Build a map of PR numbers to commit info
-  const prMap = new Map();
-  for (const commit of commits) {
-    if (commit.prNumber) {
-      if (!prMap.has(commit.prNumber)) {
-        prMap.set(commit.prNumber, commit);
-      }
-    }
-  }
+  // Filter commits with PR numbers
+  const prCommits = commits.filter((c) => c.prNumber);
   
-  // Process changelog entries and enhance them with PR/author info
-  if (changelogEntries.length > 0) {
-    for (const entry of changelogEntries) {
-      // Try to match entry with a commit by looking for similar text
-      let matchedCommit = null;
-      const entryLower = entry.toLowerCase();
-      
-      for (const commit of commits) {
-        const subjectLower = commit.subject.toLowerCase();
-        // Simple matching - if entry text is in subject or vice versa
-        if (subjectLower.includes(entryLower.substring(0, 30)) || 
-            entryLower.includes(subjectLower.substring(0, 30))) {
-          matchedCommit = commit;
-          break;
-        }
-      }
-      
-      if (matchedCommit && matchedCommit.prNumber) {
-        const username = extractUsername(matchedCommit.authorEmail);
-        lines.push(
-          `* ${entry} by @${username} in [#${matchedCommit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${matchedCommit.prNumber})`
-        );
-      } else {
-        // No matching commit found, use the entry as-is
-        lines.push(`* ${entry}`);
-      }
-    }
-  } else {
-    // Fallback to commit-based listing if no changelog entries
+  if (prCommits.length > 0) {
+    // We have commits with PR numbers - use them
     const seen = new Set();
     
     for (const commit of commits) {
       if (commit.prNumber && !seen.has(commit.prNumber)) {
         seen.add(commit.prNumber);
         
-        // Clean up the subject - remove PR number and common prefixes
+        // Clean up the subject - remove PR number
         let cleanSubject = commit.subject.replace(/\s*\(#\d+\)\s*$/, "").trim();
         
-        // Add bullet point with PR link
         const username = extractUsername(commit.authorEmail);
         lines.push(
           `* ${cleanSubject} by @${username} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
@@ -220,6 +185,14 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
         lines.push(`* ${commit.subject} by @${username}`);
       }
     }
+  } else if (changelogEntries.length > 0) {
+    // No commits with PR numbers - fall back to CHANGELOG.md
+    for (const entry of changelogEntries) {
+      lines.push(`* ${entry}`);
+    }
+  } else {
+    // No commits and no changelog entries
+    lines.push("* No changes");
   }
   
   lines.push("");
