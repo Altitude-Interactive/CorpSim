@@ -1,6 +1,27 @@
+import { isLocalhostHostname, isLocalhostUrl } from "./localhost-utils";
+
 export const HEALTH_POLL_INTERVAL_MS = 3_000;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+
+// Warn if API URL appears misconfigured (client-side only, production only)
+if (typeof window !== "undefined") {
+  const currentHost = window.location.hostname;
+  const isProduction = !isLocalhostHostname(currentHost);
+
+  if (isProduction && !API_BASE_URL) {
+    console.warn(
+      "[CorpSim API Client] NEXT_PUBLIC_API_URL is not set. API requests may fail. " +
+      "Ensure NEXT_PUBLIC_API_URL is set as a build argument when building the Docker image."
+    );
+  } else if (isProduction && isLocalhostUrl(API_BASE_URL)) {
+    console.warn(
+      `[CorpSim API Client] NEXT_PUBLIC_API_URL is set to "${API_BASE_URL}" but you're accessing from "${currentHost}". ` +
+      "This likely means the environment variable was not set as a build argument. " +
+      "Set NEXT_PUBLIC_API_URL as a build argument in your deployment platform and rebuild."
+    );
+  }
+}
 
 type JsonRecord = Record<string, unknown>;
 
