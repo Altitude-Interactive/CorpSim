@@ -13,22 +13,22 @@ function parseOptionalBooleanEnv(value: string | undefined): boolean | null {
   return null;
 }
 
-// Show Google auth by default to avoid hidden-login regressions.
-// Set NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=false to hide it explicitly.
+// Hide Google auth by default unless explicitly enabled.
+// Set NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true to show it.
 export const GOOGLE_AUTH_ENABLED =
-  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED) ?? true;
+  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED) ?? false;
 
-// Show GitHub auth by default to avoid hidden-login regressions.
-// Set NEXT_PUBLIC_AUTH_GITHUB_ENABLED=false to hide it explicitly.
+// Hide GitHub auth by default unless explicitly enabled.
+// Set NEXT_PUBLIC_AUTH_GITHUB_ENABLED=true to show it.
 export const GITHUB_AUTH_ENABLED =
-  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_GITHUB_ENABLED) ?? true;
+  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_GITHUB_ENABLED) ?? false;
 
-// Show Microsoft auth by default to avoid hidden-login regressions.
-// Set NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=false to hide it explicitly.
+// Hide Microsoft auth by default unless explicitly enabled.
+// Set NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true to show it.
 export const MICROSOFT_AUTH_ENABLED =
-  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED) ?? true;
+  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED) ?? false;
 
-// Show Discord auth by default to avoid hidden-login regressions.
-// Set NEXT_PUBLIC_AUTH_DISCORD_ENABLED=false to hide it explicitly.
+// Hide Discord auth by default unless explicitly enabled.
+// Set NEXT_PUBLIC_AUTH_DISCORD_ENABLED=true to show it.
 export const DISCORD_AUTH_ENABLED =
-  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_DISCORD_ENABLED) ?? true;
+  parseOptionalBooleanEnv(process.env.NEXT_PUBLIC_AUTH_DISCORD_ENABLED) ?? false;
