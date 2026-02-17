@@ -13,7 +13,7 @@ import {
   Req,
   UnauthorizedException
 } from "@nestjs/common";
-import { IsString, IsOptional } from "class-validator";
+import { IsString, IsOptional, MinLength } from "class-validator";
 import type { UserSession } from "@thallesp/nestjs-better-auth";
 import { DiagnosticsService } from "./diagnostics.service";
 
@@ -27,12 +27,15 @@ class LogMissingItemDto {
   itemCode?: string;
 
   @IsString()
+  @MinLength(1)
   itemName!: string;
 
   @IsString()
+  @MinLength(1)
   context!: string;
 
   @IsString()
+  @MinLength(1)
   source!: string;
 
   @IsString()
