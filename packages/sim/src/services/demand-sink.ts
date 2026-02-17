@@ -1,3 +1,50 @@
+/**
+ * Demand Sink - NPC Consumption Engine
+ *
+ * @module demand-sink
+ *
+ * ## Purpose
+ * NPCs consume inventory items at configured rates to drive item scarcity and
+ * create baseline market demand. Simulates consumer economy removing items from circulation.
+ *
+ * ## Key Operations
+ * - **resolveDemandQuantityForCompanyItem**: Calculates per-company demand using stable
+ *   hash + variability factor
+ * - **runDemandSinkForTick**: Targets specific item codes, finds NPC companies with inventory,
+ *   decrements quantity until demand met
+ *
+ * ## Configuration
+ * - **enabled**: Master switch for demand sink
+ * - **itemCodes**: Which items are consumed (default: 11 higher-tier items)
+ * - **baseQuantityPerCompany**: Base consumption per company per tick
+ * - **variabilityQuantity**: Random variation range (0 to variabilityQuantity)
+ *
+ * Default targets high-tier items (HAND_TOOLS, MACHINE_PARTS, TOOL_KIT, POWER_UNIT, etc.)
+ * to create demand pressure on manufactured goods.
+ *
+ * ## Invariants
+ * - Demand applies only to NPC companies (non-players without owner)
+ * - Only consumes available inventory (not reserved)
+ * - Processes companies/items in sorted order for determinism
+ * - Consumption cannot result in negative inventory
+ *
+ * ## Determinism
+ * - Stable hash function: `hashString(companyCode + itemCode) % 10000`
+ * - Quantity: `base + (hash % (variability + 1))`
+ * - Same company + item + config → same demand quantity
+ * - Company processing order: sorted by id
+ *
+ * ## Transaction Boundaries
+ * - All consumption for a tick occurs in single transaction
+ * - Atomic inventory decrements
+ * - Rollback on any error
+ *
+ * ## Simulation Impact
+ * - Drives item scarcity (items removed from economy)
+ * - Creates price pressure (supply reduction)
+ * - Balances production vs. consumption
+ * - Prevents infinite inventory accumulation
+ */
 import { Prisma } from "@prisma/client";
 import { DomainInvariantError } from "../domain/errors";
 

@@ -1,3 +1,65 @@
+/**
+ * Bot Coordination Engine
+ *
+ * @module bots/bot-runner
+ *
+ * ## Purpose
+ * Orchestrates execution of both liquidity-providing and producer bots across NPC companies.
+ * Bots operate under the same rules as player companies, providing market depth, price
+ * discovery, and economic activity in the simulation.
+ *
+ * ## Key Operations
+ * - Load NPC companies (limited by `botCount`), items, inventory, and market state
+ * - Infer bot strategy per company (LIQUIDITY or PRODUCER)
+ * - Plan execution across liquidity traders and producer bots based on strategy
+ * - Execute planned orders and production jobs within transaction
+ *
+ * ## Bot Strategies
+ * 1. **LIQUIDITY**: Provides market depth by placing resting buy/sell orders around reference prices
+ *    - Maintains order book presence
+ *    - Reduces spread volatility
+ *    - Enables player/bot trading
+ * 2. **PRODUCER**: Starts profitable production jobs when margins exceed thresholds
+ *    - Drives item supply
+ *    - Creates capital recycling
+ *    - Responds to market prices
+ *
+ * ## Strategy Inference
+ * Bot strategy determined by company code or configuration. Bots are sorted by code
+ * for deterministic execution order.
+ *
+ * ## Simulation Impact
+ * - Supplies market liquidity and production capacity
+ * - Impacts price discovery through order placement
+ * - Affects market depth and order book structure
+ * - Influences availability of goods for player/other companies
+ *
+ * ## Determinism Guarantees
+ * - Deterministic execution: Companies sorted by code before processing
+ * - Reference prices resolved in consistent order (trades → order book → defaults)
+ * - No randomness in strategy selection or execution planning
+ * - Same market state + tick → identical bot actions
+ *
+ * ## Transaction Boundaries
+ * - All bot actions execute within the tick transaction
+ * - Order placement and production starts are atomic
+ * - Failures in one bot don't affect others (try-catch per bot)
+ *
+ * ## Configuration
+ * - `enabled`: Master switch for all bot activity
+ * - `botCount`: Limit number of active bots (performance tuning)
+ * - `itemCodes`: Which items bots trade/produce
+ * - `spreadBps`: Liquidity bot spread around reference price
+ * - `maxNotionalPerTickCents`: Budget cap per bot per tick
+ * - `targetQuantityPerSide`: Target order size for liquidity bots
+ * - `producerCadenceTicks`: How often producer bots evaluate opportunities
+ * - `producerMinProfitBps`: Minimum profit margin for production
+ *
+ * ## Error Handling
+ * - Individual bot failures are caught and logged (don't stop other bots)
+ * - Invalid state gracefully skipped
+ * - DomainInvariantError for configuration validation
+ */
 import { OrderSide, OrderStatus, Prisma } from "@prisma/client";
 import { resolveIconItemFallbackPriceCents } from "@corpsim/shared";
 import { DomainInvariantError } from "../domain/errors";

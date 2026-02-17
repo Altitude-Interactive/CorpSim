@@ -1,3 +1,65 @@
+/**
+ * Shipment and Logistics Service
+ *
+ * @module shipments
+ *
+ * ## Purpose
+ * Manages inter-region logistics with travel time, inventory transfer, and logistics fees.
+ * Enables companies to move inventory between regions they own, supporting multi-region
+ * operations and market arbitrage.
+ *
+ * ## Key Operations
+ * - **listShipments**: Filters shipments by player/company/status
+ * - **createShipment**: Deducts fee, locks inventory, schedules delivery at future tick
+ * - **cancelShipment**: Only if IN_TRANSIT; refunds inventory (fee non-refundable)
+ * - **deliverDueShipmentsForTick**: Batch-completes shipments when `currentTick >= tickArrives`,
+ *   transfers inventory to destination
+ *
+ * ## Shipment Lifecycle
+ * 1. **Creation**: Player initiates shipment via `createShipment()` - validates inventory,
+ *    deducts fee and locks inventory
+ * 2. **In Transit**: Shipment travels for calculated duration (region-based + workforce modifier)
+ * 3. **Delivery**: At arrival tick, `deliverDueShipmentsForTick()` transfers inventory to destination
+ * 4. **Cancellation** (optional): Player can cancel in-transit shipments to recover inventory
+ *
+ * ## Invariants Enforced
+ * - Item must be unlocked by research (player companies) or specialization constraints
+ * - Cannot ship to same region (source != destination)
+ * - Travel time depends on region pair (fixed map from region service)
+ * - Must have available inventory (quantity - reserved) and cash for fees
+ * - Cancellation only allowed for IN_TRANSIT status
+ * - Destination inventory created or incremented atomically on delivery
+ *
+ * ## Side Effects and Transaction Boundaries
+ * All operations are atomic (prisma.$transaction):
+ * - **createShipment**: Decrements inventory + cash (two optimistic locks), creates shipment record,
+ *   logs fee ledger entry
+ * - **deliverDueShipmentsForTick**: Updates shipment status, upserts destination inventory
+ * - **cancelShipment**: Returns inventory to source, updates shipment status to CANCELLED
+ *
+ * ## Deterministic Travel Time
+ * - **Base Time**: Region-to-region travel time from fixed map (e.g., A→B = 10 ticks)
+ * - **Workforce Modifier**: Logistics allocation affects duration via `applyDurationMultiplierTicks()`
+ *   - Higher logistics allocation → faster travel
+ *   - Lower logistics allocation → slower travel
+ * - **Arrival Tick**: `currentTick + adjustedDuration`
+ *
+ * ## Delivery Processing
+ * - Deterministic order: `ORDER BY tickArrives ASC, createdAt ASC`
+ * - Batch processing for efficiency (all due shipments in single tick)
+ * - Atomic inventory transfer (no partial deliveries)
+ *
+ * ## Fee Structure
+ * - **Base Fee**: Fixed cost per shipment (configured)
+ * - **Unit Fee**: Cost per item shipped (configured)
+ * - **Total**: `baseFee + (quantity * feePerUnit)`
+ * - Fees are non-refundable even on cancellation
+ *
+ * ## Error Handling
+ * - NotFoundError: Shipment, company, region, or item doesn't exist
+ * - DomainInvariantError: Same-region shipment, insufficient inventory/cash, item locked
+ * - OptimisticLockConflictError: Concurrent modification detected (retry required)
+ */
 import {
   LedgerEntryType,
   Prisma,

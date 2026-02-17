@@ -1,3 +1,42 @@
+/**
+ * Simulation Invariant Validator
+ *
+ * @module invariants
+ *
+ * ## Purpose
+ * Scans database for constraint violations on companies and inventory.
+ * Used for diagnostics, testing, and detecting data corruption or logic bugs.
+ *
+ * ## Key Operations
+ * - **collectCompanyInvariantIssues**: Validates company financial and workforce constraints
+ * - **collectInventoryInvariantIssues**: Validates inventory quantity constraints
+ * - **scanSimulationInvariants**: Runs parallel queries to detect violations, returns up to 50 issues
+ *
+ * ## Invariants Checked
+ * ### Company Invariants:
+ * - `cashCents ≥ 0` (no negative cash)
+ * - `reservedCashCents ≥ 0` (no negative reservations)
+ * - `reservedCashCents ≤ cashCents` (can't reserve more than balance)
+ * - Workforce allocation: Each 0-100%, sum = 100%
+ * - `workforceCapacity ≥ 0` (no negative workforce)
+ * - `orgEfficiencyBps` in [0, 10000] (valid efficiency range)
+ *
+ * ### Inventory Invariants:
+ * - `quantity ≥ 0` (no negative inventory)
+ * - `reservedQuantity ≥ 0` (no negative reservations)
+ * - `reservedQuantity ≤ quantity` (can't reserve more than stock)
+ *
+ * ## Usage
+ * - Diagnostic tool for detecting constraint violations
+ * - Testing infrastructure for validating simulation integrity
+ * - Post-deployment health checks
+ * - Debugging economic anomalies
+ *
+ * ## Performance
+ * - Parallel query execution for efficiency
+ * - Result limit (max 50 issues) prevents excessive data transfer
+ * - Designed for periodic scanning, not real-time validation
+ */
 import { Prisma, PrismaClient } from "@prisma/client";
 
 export type InvariantIssueCode =

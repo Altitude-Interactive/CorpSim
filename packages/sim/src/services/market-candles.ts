@@ -1,3 +1,43 @@
+/**
+ * Market Candles Service - OHLCV Aggregation
+ *
+ * @module market-candles
+ *
+ * ## Purpose
+ * Aggregates trades into OHLC (Open, High, Low, Close) candlesticks with volume and VWAP.
+ * Provides historical price data for charting and analytics.
+ *
+ * ## Key Operations
+ * - **computeTickCandlesFromTrades**: Groups trades by item+region, sorts by time, computes
+ *   open/high/low/close prices, volume, trade count, VWAP (with rounding)
+ * - **upsertMarketCandlesForTick**: Fetches trades for tick, computes candles, upserts into database
+ *
+ * ## Candle Computation
+ * - **Open**: First trade price in the tick
+ * - **High**: Highest trade price in the tick
+ * - **Low**: Lowest trade price in the tick
+ * - **Close**: Last trade price in the tick
+ * - **Volume**: Sum of all trade quantities
+ * - **Trade Count**: Number of trades
+ * - **VWAP**: Volume-weighted average price = sum(price × quantity) / sum(quantity)
+ *
+ * ## Invariants
+ * - Trade must have itemId, regionId, positive price (cents), positive quantity
+ * - Tick must be non-negative integer
+ * - Candle volume must be positive integer
+ * - Trades sorted by createdAt for deterministic open/close
+ *
+ * ## Determinism
+ * - Trades sorted by timestamp + id (deterministic ordering)
+ * - VWAP calculation uses integer arithmetic (no floating point)
+ * - Same trades → same candles (reproducible)
+ *
+ * ## Usage
+ * - Historical price charts
+ * - Market analytics and reporting
+ * - Price discovery indicators
+ * - Trading strategy backtesting
+ */
 import { Prisma } from "@prisma/client";
 import { DomainInvariantError } from "../domain/errors";
 
