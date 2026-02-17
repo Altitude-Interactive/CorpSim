@@ -172,6 +172,7 @@ jobs:
           tags: |
             ${{ steps.image.outputs.repo }}:${{ steps.version.outputs.tag }}
             ${{ steps.image.outputs.repo }}:${{ steps.version.outputs.version }}
+            ${{ steps.image.outputs.repo }}:latest
           build-args: |
             NEXT_PUBLIC_API_URL=
             NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250
