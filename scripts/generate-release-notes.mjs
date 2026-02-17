@@ -55,6 +55,7 @@ function getCommitsSinceTag(previousTag) {
     const range = previousTag ? `${previousTag}..HEAD` : "HEAD";
     const output = execFileSync("git", ["log", range, "--format=%H|||%s|||%an|||%ae"], {
       encoding: "utf8",
+      stdio: ["inherit", "pipe", "pipe"], // Suppress stderr
     }).trim();
     
     if (!output) {
@@ -77,7 +78,7 @@ function getCommitsSinceTag(previousTag) {
       };
     });
   } catch (error) {
-    console.error("Failed to get commits:", error.message);
+    // Tag might not exist or git command failed - that's okay, we'll fall back to CHANGELOG.md
     return [];
   }
 }
@@ -90,6 +91,7 @@ function getContributorsBeforeTag(tag) {
   try {
     const output = execFileSync("git", ["log", tag, "--format=%ae"], {
       encoding: "utf8",
+      stdio: ["inherit", "pipe", "pipe"], // Suppress stderr
     }).trim();
     
     if (!output) {
@@ -98,7 +100,7 @@ function getContributorsBeforeTag(tag) {
     
     return new Set(output.split("\n"));
   } catch (error) {
-    // Tag might not exist
+    // Tag might not exist - that's okay
     return new Set();
   }
 }
