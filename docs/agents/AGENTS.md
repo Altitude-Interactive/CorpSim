@@ -550,7 +550,47 @@ Rules:
 * Prefer CLI scripts
 * Log economic actions with correlation IDs
 
-# 15. Agent Workflow (Codex / Coding Agents)
+# 15. Documentation Maintenance Policy
+
+**Critical:** Documentation MUST stay aligned with code. Misleading docs are worse than no docs.
+
+## Rules for Documentation Changes
+
+1. **Code changes require doc updates** - If you modify behavior documented in:
+   - JSDoc/TSDoc comments → Update inline documentation
+   - Architecture docs (`docs/architecture/`) → Update corresponding files
+   - AGENTS.md → Update if architectural boundaries change
+
+2. **Verify claims before documenting** - Never document aspirational behavior:
+   - "ACID" → Verify single-transaction execution
+   - "Deterministic" → Verify no randomness, fixed ordering
+   - "Atomic" → Verify all-or-nothing rollback
+   - "Idempotent" → Verify deduplication mechanism exists
+
+3. **Update docs in same PR as code** - Not later, not separately:
+   - JSDoc updates alongside function changes
+   - Architecture doc updates alongside system refactors
+   - Examples updated when APIs change
+
+4. **Flag doc drift during review** - If you spot outdated documentation:
+   - Comment on PR if found during review
+   - Create issue if found during development
+   - Fix immediately for critical invariants
+
+5. **Link docs to code** - Make references explicit:
+   - JSDoc: Reference specific functions/modules
+   - Architecture docs: Reference actual file paths
+   - Examples: Use real code snippets, not pseudo-code
+
+## Documentation Hierarchy
+
+When conflicts arise, precedence (highest to lowest):
+1. **Code implementation** - Source of truth
+2. **JSDoc in source files** - Module/function-level detail
+3. **Architecture docs** - High-level system design
+4. **AGENTS.md** - Development rules and boundaries
+
+# 16. Agent Workflow (Codex / Coding Agents)
 
 When implementing tasks:
 
@@ -559,5 +599,6 @@ When implementing tasks:
 3. Implement with tests + migration if needed
 4. Run typecheck/lint/tests
 5. Keep changes minimal and modular
+6. **Update documentation** if behavior changes
 
 If instructions conflict, the closest AGENTS.md to the edited code wins.

@@ -411,6 +411,167 @@ Tick N+1 Start
 
 ---
 
+## Determinism and BullMQ Guarantees
+
+### Deterministic Execution
+
+**What Makes Execution Deterministic:**
+
+1. **Fixed Pipeline Order**
+   - 10 stages always execute in same sequence
+   - No stage reordering or conditional skipping
+   - Same input state → same output state
+
+2. **Explicit Ordering in Queries**
+   ```typescript
+   // All queries use ORDER BY for deterministic results
+   ORDER BY tickCompletes ASC, createdAt ASC, id ASC
+   ```
+
+3. **No Randomness in Logic**
+   - Bot cadence: hash-based (deterministic)
+   - Contract pricing: formula-based (deterministic)
+   - Demand quantities: hash-based (deterministic)
+   - Market matching: price-time priority (deterministic)
+
+4. **Integer Arithmetic Only**
+   - No floating point in economic calculations
+   - BigInt for currency (prevents rounding errors)
+   - Integer quantities for inventory
+
+**Reproducibility Guarantee:**
+```
+Given:
+- Database state at tick N
+- No external player actions during tick N+1
+
+Then:
+- Tick N+1 produces identical results every time
+- Replaying from backup at tick N → same tick N+1 state
+```
+
+---
+
+### BullMQ Integration and Assumptions
+
+**BullMQ Role:**
+- **Job scheduling** - Adds tick jobs to queue at intervals
+- **Job distribution** - Workers pick jobs from queue
+- **Retry handling** - Retries failed jobs with backoff
+
+**BullMQ Does NOT Guarantee:**
+❌ FIFO job execution order
+❌ Single worker processing at a time
+❌ Tick N completes before tick N+1 starts
+
+**Application-Level Guarantees:**
+
+1. **Idempotency via executionKey**
+   ```typescript
+   // Each tick job has unique executionKey
+   // Stored in SimulationTickExecution table
+   // Duplicate job attempts return early (no re-execution)
+   ```
+
+2. **Optimistic Locking (Effective Concurrency = 1)**
+   ```typescript
+   // World state lockVersion increments with each tick
+   // Update query: WHERE lockVersion = <expected>
+   // Only one worker can advance each tick
+   // Concurrent workers get 0 rows updated → retry
+   ```
+
+3. **Sequential Tick Advancement**
+   ```typescript
+   // Ticks always increment by 1: currentTick + 1
+   // Cannot skip ticks (enforced by application logic)
+   // Cannot execute same tick twice (executionKey check)
+   // Cannot execute out of order (lockVersion check)
+   ```
+
+4. **Retry Safety**
+   ```typescript
+   // Retries are safe because:
+   // - Idempotency: executionKey prevents duplicate execution
+   // - Transaction rollback: Failed attempts leave no partial state
+   // - Optimistic locking: Concurrent attempts serialize
+   ```
+
+**Failure Scenarios and Behavior:**
+
+| Scenario | BullMQ Behavior | Application Behavior | Result |
+|----------|-----------------|---------------------|--------|
+| Worker dies mid-tick | Job marked failed, retried | Transaction rolls back | Tick re-attempted |
+| Optimistic lock conflict | Job succeeds | One worker wins, others retry | Tick advances once |
+| Duplicate job in queue | Both jobs execute | executionKey deduplicates | Tick executes once |
+| Jobs out of order | Tick N+1 before N | lockVersion prevents N+1 | N executes, then N+1 |
+
+**Configuration for Determinism:**
+
+```typescript
+// queue-runtime.ts configuration
+{
+  // Scheduler adds jobs (single instance via lease)
+  schedulerIntervalMs: 1000,  // How often to check for new ticks
+  
+  // Worker processes jobs (multiple instances OK)
+  maxConflictRetries: 4,      // Retry optimistic lock conflicts
+  initialBackoffMs: 50,        // Start with 50ms backoff
+  
+  // BullMQ job options
+  attempts: 3,                 // Retry failed jobs
+  backoff: { type: 'exponential', delay: 2000 },
+  removeOnComplete: false,     // Keep job history for debugging
+  removeOnFail: false          // Keep failed jobs for analysis
+}
+```
+
+**Documented Assumptions:**
+- See [Failure Modes](./FAILURE_MODES.md) for detailed failure scenarios
+- See `apps/worker/src/queue-runtime.ts` JSDoc for implementation details
+- See `apps/worker/src/worker-loop.ts` for retry logic
+
+---
+
+## ACID Transaction Properties
+
+**Atomicity**
+✅ **Verified**: Entire tick executes in single Prisma transaction
+```typescript
+await prisma.$transaction(async (tx) => {
+  // All 10 pipeline stages
+  // Either all succeed or all rollback
+});
+```
+
+**Consistency**
+✅ **Verified**: Invariants enforced before and after mutations
+```typescript
+assertCashInvariant(state);        // Before mutation
+// ... mutation ...
+assertCashInvariant(nextState);    // After mutation
+```
+
+**Isolation**
+⚠️ **Read Committed** (PostgreSQL default)
+- Each transaction sees committed data only
+- Optimistic locking prevents lost updates
+- Not Serializable (performance trade-off)
+- Concurrent player actions may interleave with tick
+
+**Durability**
+✅ **Verified**: PostgreSQL WAL ensures committed transactions survive crashes
+- fsync enabled (default)
+- Transaction logs replicated (production setup dependent)
+
+**Summary:**
+- Tick processing provides **ACD** (Atomicity, Consistency, Durability)
+- Isolation level is **Read Committed**, not **Serializable**
+- Optimistic locking adds serialization for world state updates
+- ACID claim is accurate for tick execution scope
+
+---
+
 ## Performance Characteristics
 
 ### Tick Processing Time
@@ -434,4 +595,5 @@ Tick N+1 Start
 - [Architecture Overview](./OVERVIEW.md) - High-level system design
 - [Economic Invariants](./ECONOMIC_INVARIANTS.md) - Financial rules
 - [System Boundaries](./SYSTEM_BOUNDARIES.md) - Module responsibilities
+- [Failure Modes and Recovery](./FAILURE_MODES.md) - Error handling and recovery
 - [Tick Engine JSDoc](../../packages/sim/src/services/tick-engine.ts) - Implementation details

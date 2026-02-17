@@ -8,6 +8,7 @@
   - [Simulation Pipeline Flow](./architecture/SIMULATION_PIPELINE.md) - Detailed tick execution
   - [Economic Invariants](./architecture/ECONOMIC_INVARIANTS.md) - Financial rules and constraints
   - [System Boundaries](./architecture/SYSTEM_BOUNDARIES.md) - Module responsibilities and layering
+  - [Failure Modes and Recovery](./architecture/FAILURE_MODES.md) - Error handling and recovery procedures
 - **Coding rules** → [docs/agents/AGENTS.md](./agents/AGENTS.md)
 - **UI design system** → [docs/design/DESIGN_GUIDELINES.md](./design/DESIGN_GUIDELINES.md)
 
@@ -26,7 +27,8 @@ docs/
 │   ├── OVERVIEW.md              # High-level design, principles
 │   ├── SIMULATION_PIPELINE.md   # Tick-by-tick execution flow
 │   ├── ECONOMIC_INVARIANTS.md   # Financial integrity rules
-│   └── SYSTEM_BOUNDARIES.md     # Module responsibilities
+│   ├── SYSTEM_BOUNDARIES.md     # Module responsibilities
+│   └── FAILURE_MODES.md         # Error handling and recovery
 ├── agents/                      # Agent/bot documentation
 │   └── AGENTS.md                # Development rules (source of truth)
 ├── design/                      # UI/UX design
@@ -80,6 +82,7 @@ docs/
 ### Troubleshooting
 - Invariant violations: Check [Economic Invariants](./architecture/ECONOMIC_INVARIANTS.md)
 - Tick processing issues: Review [Simulation Pipeline](./architecture/SIMULATION_PIPELINE.md)
+- Failure scenarios: See [Failure Modes and Recovery](./architecture/FAILURE_MODES.md)
 - Worker coordination: See [ADR 0001](./adr/0001-worker-runtime-bullmq.md)
 
 ## Source Code Documentation
