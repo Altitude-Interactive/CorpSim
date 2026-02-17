@@ -16,11 +16,25 @@ This deploys a permanently running preview stack with:
 - Compose file: `docker-compose.preview.yml`
 - Auto deploy on push: enabled
 
-## 2) Set environment variables
+## 2) Set environment variables and build arguments
 
 You can use local `.env.preview` as the canonical template for these values.
 
-Minimum required:
+### ⚠️ Critical: Build-time vs Runtime Variables
+
+**IMPORTANT:** Next.js `NEXT_PUBLIC_*` variables are **baked into the JavaScript bundle at build time**. In Dokploy, you MUST configure these as **build arguments** in addition to environment variables, otherwise the client-side code will not have the correct values.
+
+**In Dokploy UI:**
+1. Go to your Compose app → **Environment** tab
+2. Set runtime environment variables as usual
+3. **Additionally**, if Dokploy provides a "Build Arguments" section, set:
+   - `NEXT_PUBLIC_API_URL=https://<your-api-domain>`
+   - `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250`
+   - `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15`
+
+If Dokploy doesn't have a separate Build Arguments UI, ensure these variables are set in the Environment section **before** triggering a build/deploy.
+
+### Minimum required environment variables:
 
 - `POSTGRES_DB=corpsim`
 - `POSTGRES_USER=postgres`
@@ -33,7 +47,9 @@ Minimum required:
 - `WEB_PORT=4311`
 - `WEB_PUBLIC_PORT=4311`
 - `CORS_ORIGIN=https://<your-web-domain>`
-- `NEXT_PUBLIC_API_URL=https://<your-api-domain>`
+- `NEXT_PUBLIC_API_URL=https://<your-api-domain>` ⚠️ **Must also be set as build argument**
+- `NEXT_PUBLIC_SHIPMENT_BASE_FEE_CENTS=250` ⚠️ **Must also be set as build argument**
+- `NEXT_PUBLIC_SHIPMENT_FEE_PER_UNIT_CENTS=15` ⚠️ **Must also be set as build argument**
 
 Release image settings (tag-first):
 
@@ -72,3 +88,23 @@ Do not run `sim:reset` in preview unless you intentionally want to wipe/reseed s
 - API health: `GET /health`
 - World health: `GET /v1/world/health`
 - Open the web URL and confirm overview data updates while worker ticks.
+
+## Troubleshooting
+
+### Authentication failing with "Provider not found" or 404 errors
+
+**Symptom:** When clicking "Continue with Google" (or other OAuth providers), you get:
+- "Google sign-up failed - Provider not found" error
+- 404 errors in browser console for `/api/auth/sign-in/social`
+- Auth requests going to wrong URL (e.g., `localhost` instead of your domain)
+
+**Cause:** The `NEXT_PUBLIC_API_URL` build argument was not set correctly when the Docker image was built. Next.js bakes these values into the client-side JavaScript bundle at build time.
+
+**Solution:**
+1. In Dokploy, ensure `NEXT_PUBLIC_API_URL` is set as a **build argument** (check Build Arguments or Build Environment section)
+2. Trigger a **full rebuild** (not just a restart)
+3. Verify the built image has the correct value by checking browser's network tab - requests should go to your API domain, not localhost
+
+### API calls going to localhost or wrong domain
+
+This is the same issue as above - `NEXT_PUBLIC_*` variables must be set as build arguments before building the image.
