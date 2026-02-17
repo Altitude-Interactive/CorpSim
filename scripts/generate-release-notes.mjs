@@ -123,6 +123,17 @@ function getContributorsBeforeTag(tag) {
   }
 }
 
+function escapeMarkdown(text) {
+  if (typeof text !== "string") {
+    return "";
+  }
+  // Remove newlines and escape Markdown control characters
+  return text
+    .replace(/[\r\n]+/g, " ")
+    .replace(/[\\`*_{}[\]()#+\-.!|]/g, "\\$&")
+    .trim();
+}
+
 function extractUsername(email) {
   if (typeof email !== "string" || !email) {
     // No email provided; signal that we cannot safely generate a username
@@ -209,17 +220,19 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
         seen.add(commit.prNumber);
         
         // Clean up the subject - remove PR number
-        let cleanSubject = commit.subject.replace(/\s*\(#\d+\)\s*$/, "").trim();
+        const cleanSubject = commit.subject.replace(/\s*\(#\d+\)\s*$/, "").trim();
+        const escapedSubject = escapeMarkdown(cleanSubject);
         
         const username = extractUsername(commit.authorEmail);
         if (username) {
           lines.push(
-            `* ${cleanSubject} by @${username} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
+            `* ${escapedSubject} by @${username} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
           );
         } else {
           // Fall back to author name if username cannot be safely extracted
+          const escapedAuthorName = escapeMarkdown(commit.authorName);
           lines.push(
-            `* ${cleanSubject} by ${commit.authorName} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
+            `* ${escapedSubject} by ${escapedAuthorName} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
           );
         }
       }
@@ -228,11 +241,13 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
     // Add commits without PR numbers
     for (const commit of commits) {
       if (!commit.prNumber) {
+        const escapedSubject = escapeMarkdown(commit.subject);
         const username = extractUsername(commit.authorEmail);
         if (username) {
-          lines.push(`* ${commit.subject} by @${username}`);
+          lines.push(`* ${escapedSubject} by @${username}`);
         } else {
-          lines.push(`* ${commit.subject} by ${commit.authorName}`);
+          const escapedAuthorName = escapeMarkdown(commit.authorName);
+          lines.push(`* ${escapedSubject} by ${escapedAuthorName}`);
         }
       }
     }
@@ -282,15 +297,17 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
             `* @${username} made their first contribution in [#${contributor.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${contributor.prNumber})`
           );
         } else {
+          const escapedName = escapeMarkdown(contributor.name);
           lines.push(
-            `* ${contributor.name} made their first contribution in [#${contributor.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${contributor.prNumber})`
+            `* ${escapedName} made their first contribution in [#${contributor.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${contributor.prNumber})`
           );
         }
       } else {
         if (username) {
           lines.push(`* @${username} made their first contribution`);
         } else {
-          lines.push(`* ${contributor.name} made their first contribution`);
+          const escapedName = escapeMarkdown(contributor.name);
+          lines.push(`* ${escapedName} made their first contribution`);
         }
       }
     }

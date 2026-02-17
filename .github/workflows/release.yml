@@ -122,7 +122,7 @@ jobs:
             echo "tag_available=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build release notes from changelog
+      - name: Generate release notes
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
