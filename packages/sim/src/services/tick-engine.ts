@@ -1,3 +1,57 @@
+/**
+ * Tick Engine - Core Simulation Orchestration
+ *
+ * @module tick-engine
+ *
+ * ## Purpose
+ * The tick engine is the authoritative orchestrator for advancing the discrete simulation state.
+ * It coordinates a deterministic, transactional pipeline of subsystems (bots, production, market,
+ * logistics, research, contracts) in a fixed, reproducible order.
+ *
+ * ## Deterministic Guarantees
+ * - **Total ordering**: All tick operations execute in a strict, fixed sequence
+ * - **ACID compliance**: Every tick runs within a single database transaction
+ * - **Reproducibility**: Same input state + options → identical output state
+ * - **Sequential incrementing**: currentTick always increments by exactly 1 per advance
+ *
+ * ## Invariants Enforced
+ * - Lock version consistency via optimistic locking (detects concurrent modifications)
+ * - Non-negative lockVersion validation on all inputs
+ * - Idempotency via optional executionKey (same key cannot execute twice)
+ * - All-or-nothing transaction semantics (no partial tick advances)
+ *
+ * ## Side Effects
+ * All state mutations occur within a single transaction boundary:
+ * - Bot actions (market orders, production starts)
+ * - Production/research completions
+ * - Market trades and settlements
+ * - Shipment deliveries
+ * - Workforce updates (arrivals, salaries, efficiency)
+ * - Demand consumption
+ * - Contract lifecycle (expiration, generation)
+ * - Market candle aggregation
+ * - World state finalization (tick increment, lock version bump)
+ *
+ * ## Transaction Boundaries
+ * - Single transaction wraps entire tick pipeline
+ * - Rollback on any subsystem failure (preserves consistency)
+ * - Optimistic locking prevents concurrent advances
+ *
+ * ## Data Flow
+ * ```
+ * Tick N → [Bots] → [Production] → [Research] → [Market Matching]
+ *        → [Shipments] → [Workforce] → [Demand] → [Contracts]
+ *        → [Candles] → [World State Update] → Tick N+1
+ * ```
+ * Each stage reads state modified by previous stages; cascading updates within transaction.
+ *
+ * ## Concurrency Model
+ * Uses optimistic locking to enable high concurrency without lock contention:
+ * - lockVersion incremented on every successful advance
+ * - Pre-execution check: lockVersion matches expected
+ * - Post-execution validation: updateMany() with version condition
+ * - Conflicts trigger OptimisticLockConflictError for client retry
+ */
 import { Prisma, PrismaClient } from "@prisma/client";
 import { BotRuntimeConfig, runBotsForTick } from "../bots/bot-runner";
 import { DomainInvariantError, OptimisticLockConflictError } from "../domain/errors";
@@ -13,12 +67,25 @@ import { completeDueResearchJobs } from "./research";
 import { deliverDueShipmentsForTick } from "./shipments";
 import { runWorkforceForTick, WorkforceRuntimeConfig } from "./workforce";
 
+/**
+ * Internal representation of world tick state for optimistic locking.
+ */
 interface WorldState {
   id: number;
   currentTick: number;
   lockVersion: number;
 }
 
+/**
+ * Configuration options for advancing simulation ticks.
+ *
+ * @property expectedLockVersion - Optional optimistic lock version check (prevents concurrent advances)
+ * @property runBots - Whether to execute bot strategies during the tick
+ * @property botConfig - Bot runtime configuration overrides
+ * @property demandConfig - Demand sink configuration overrides
+ * @property contractConfig - Contract lifecycle configuration overrides
+ * @property workforceConfig - Workforce system configuration overrides
+ */
 export interface AdvanceTickOptions {
   expectedLockVersion?: number;
   runBots?: boolean;
@@ -28,16 +95,39 @@ export interface AdvanceTickOptions {
   workforceConfig?: Partial<WorkforceRuntimeConfig>;
 }
 
+/**
+ * Options for advancing a single tick with idempotency support.
+ *
+ * @property executionKey - Optional unique key to ensure idempotent tick execution.
+ *                          If provided, the same key cannot execute twice.
+ */
 export interface AdvanceSingleTickOptions extends AdvanceTickOptions {
   executionKey?: string;
 }
 
+/**
+ * Result of a single tick advance operation.
+ *
+ * @property tickBefore - The tick number before the advance attempt
+ * @property tickAfter - The tick number after the advance attempt
+ * @property advanced - Whether the tick was actually advanced (false if idempotency check prevented re-execution)
+ */
 export interface AdvanceSingleTickResult {
   tickBefore: number;
   tickAfter: number;
   advanced: boolean;
 }
 
+/**
+ * Ensures the world tick state record exists.
+ *
+ * @param tx - Prisma transaction client
+ * @returns World state with current tick and lock version
+ *
+ * @remarks
+ * Creates the singleton world state record if it doesn't exist (id=1).
+ * This is safe to call concurrently - Prisma will handle race conditions.
+ */
 async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldState> {
   const existing = await tx.worldTickState.findUnique({
     where: { id: 1 },
@@ -61,6 +151,12 @@ async function ensureWorldState(tx: Prisma.TransactionClient): Promise<WorldStat
   return created;
 }
 
+/**
+ * Validates the expectedLockVersion parameter.
+ *
+ * @param expectedLockVersion - Lock version to validate
+ * @throws {DomainInvariantError} If lock version is not a non-negative integer
+ */
 function validateExpectedLockVersion(expectedLockVersion: number | undefined): void {
   if (
     expectedLockVersion !== undefined &&
@@ -70,6 +166,13 @@ function validateExpectedLockVersion(expectedLockVersion: number | undefined): v
   }
 }
 
+/**
+ * Normalizes and validates the execution key for idempotency.
+ *
+ * @param executionKey - Execution key to normalize
+ * @returns Trimmed execution key or undefined
+ * @throws {DomainInvariantError} If execution key is provided but empty after trimming
+ */
 function normalizeExecutionKey(executionKey: string | undefined): string | undefined {
   if (executionKey === undefined) {
     return undefined;
@@ -83,6 +186,17 @@ function normalizeExecutionKey(executionKey: string | undefined): string | undef
   return normalized;
 }
 
+/**
+ * Detects if an error is a unique constraint violation on the execution key.
+ *
+ * @param error - Error to check
+ * @param executionKey - Execution key that was used
+ * @returns True if error is an execution key conflict (idempotency check)
+ *
+ * @remarks
+ * Used to distinguish between idempotency conflicts (graceful) and other errors (propagate).
+ * Prisma error code P2002 indicates unique constraint violation.
+ */
 function isTickExecutionConflict(error: unknown, executionKey: string | undefined): boolean {
   if (executionKey === undefined) {
     return false;
@@ -112,6 +226,34 @@ function isTickExecutionConflict(error: unknown, executionKey: string | undefine
   );
 }
 
+/**
+ * Executes the deterministic tick pipeline in a fixed order.
+ *
+ * @param tx - Prisma transaction client
+ * @param nextTick - The tick number being advanced to
+ * @param options - Configuration options for subsystems
+ *
+ * @remarks
+ * ## Pipeline Stages (Executed Sequentially)
+ * 1. Bot actions (market orders, production starts)
+ * 2. Production job completions
+ * 3. Research completions and recipe unlocks
+ * 4. Market matching and settlement
+ * 5. Shipment deliveries
+ * 6. Workforce updates (arrivals, salaries, efficiency)
+ * 7. Demand sink consumption (baseline market activity)
+ * 8. Contract lifecycle (expiration and generation)
+ * 9. Market candle aggregation (OHLC/VWAP/volume)
+ *
+ * ## Determinism
+ * - Order is fixed and must not change (breaking change if reordered)
+ * - Each stage reads state modified by previous stages
+ * - All state mutations occur within the same transaction
+ *
+ * ## Error Handling
+ * - Any stage failure causes full transaction rollback
+ * - No partial tick advances are possible
+ */
 async function runTickPipeline(
   tx: Prisma.TransactionClient,
   nextTick: number,
@@ -143,6 +285,49 @@ async function runTickPipeline(
   await upsertMarketCandlesForTick(tx, nextTick);
 }
 
+/**
+ * Advances the simulation by exactly one tick.
+ *
+ * @param prisma - Prisma client for database access
+ * @param options - Configuration options for the tick advance
+ * @returns Result containing tick numbers and whether advance succeeded
+ *
+ * @throws {DomainInvariantError} If expectedLockVersion or executionKey validation fails
+ * @throws {OptimisticLockConflictError} If concurrent modification detected
+ *
+ * @remarks
+ * ## Transaction Guarantees
+ * - Entire tick executes in a single database transaction
+ * - All-or-nothing semantics (no partial advances)
+ * - State is consistent before and after execution
+ *
+ * ## Optimistic Locking
+ * - Checks expectedLockVersion if provided (prevents concurrent advances)
+ * - Updates lockVersion atomically with updateMany + where clause
+ * - Throws OptimisticLockConflictError if version mismatch detected
+ *
+ * ## Idempotency
+ * - Optional executionKey prevents duplicate execution
+ * - If executionKey already exists, returns {advanced: false} without error
+ * - Execution record created within transaction (atomic with tick advance)
+ *
+ * ## Execution Flow
+ * 1. Validate inputs (lock version, execution key)
+ * 2. Start transaction
+ * 3. Ensure world state exists
+ * 4. Check optimistic lock version (if provided)
+ * 5. Check/create execution record (if executionKey provided)
+ * 6. Run tick pipeline (all subsystems)
+ * 7. Update world state with optimistic lock check
+ * 8. Update execution record with final tick
+ * 9. Commit transaction
+ *
+ * ## Error Handling
+ * - Validation errors propagate immediately (before transaction)
+ * - Optimistic lock conflicts propagate for client retry
+ * - Execution key conflicts return gracefully (idempotency)
+ * - All other errors trigger transaction rollback
+ */
 export async function advanceSimulationTick(
   prisma: PrismaClient,
   options: AdvanceSingleTickOptions = {}
@@ -236,6 +421,33 @@ export async function advanceSimulationTick(
   }
 }
 
+/**
+ * Advances the simulation by multiple ticks sequentially.
+ *
+ * @param prisma - Prisma client for database access
+ * @param ticks - Number of ticks to advance (must be positive integer)
+ * @param options - Configuration options applied to all ticks
+ *
+ * @throws {DomainInvariantError} If ticks is not a positive integer
+ * @throws {OptimisticLockConflictError} If concurrent modification detected on any tick
+ *
+ * @remarks
+ * ## Execution Behavior
+ * - Executes ticks sequentially (not in parallel)
+ * - Each tick is an independent transaction
+ * - expectedLockVersion only checked on first tick (subsequent ticks have undefined lock version)
+ * - Configuration (runBots, configs) applied to all ticks
+ *
+ * ## Failure Handling
+ * - If any tick fails, remaining ticks are not executed
+ * - Completed ticks remain committed (each is a separate transaction)
+ * - Caller should handle partial completion (check world state after error)
+ *
+ * ## Use Cases
+ * - Fast-forwarding simulation for testing
+ * - Catching up after downtime
+ * - Batch tick processing in worker loops
+ */
 export async function advanceSimulationTicks(
   prisma: PrismaClient,
   ticks: number,
@@ -259,6 +471,17 @@ export async function advanceSimulationTicks(
   }
 }
 
+/**
+ * Retrieves the current world tick state.
+ *
+ * @param prisma - Prisma client for database access
+ * @returns World state with current tick, lock version, and last advance timestamp (or null if not yet initialized)
+ *
+ * @remarks
+ * - This is a read-only operation (no transaction required)
+ * - Returns null if world state has never been initialized
+ * - Use for monitoring, diagnostics, and lock version retrieval
+ */
 export async function getWorldTickState(prisma: PrismaClient) {
   return prisma.worldTickState.findUnique({
     where: { id: 1 },
