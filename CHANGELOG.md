@@ -183,3 +183,52 @@ All notable changes to CorpSim are documented in this file.
 
 ### Patch
 - [api] Allow anonymous access to v1/world/health so public health probes work without session auth.
+
+## 0.8.0 - 2026-02-17
+
+### Minor
+- [api] Comprehensive security audit and critical vulnerability fixes
+- [web] Add account linking management to profile panel
+- [api] Add admin auth account bootstrap and prevent external linking
+- [web] Add admin dashboard for Better Auth management
+- [web] Add admin support flow to open user profiles
+- [web] Add admin support overlay for account unlinking
+- [api] Add admin transfer tools for player company data
+- [web] Replace support transfer with export/import flow using JSON files
+- [web] Add developer and moderation admin links with new routes
+- [api, web] Add optional ETA countdown to maintenance mode
+- [api] Add moderator refunds and order cancellation tools
+- [sim] Fix agriculture recipe inputs and add missing item tracking system
+- [api,web] Add GitHub, Microsoft, and Discord OAuth authentication support alongside existing Google auth using Better Auth.
+
+### Patch
+- [ci] Fix lodash CVE-2025-13465 prototype pollution vulnerability
+- [web] Handle Better Auth errors with toast manager
+- [web] Raise toast z-index above profile overlay
+- [web] Increase error toast display duration
+- [web] Deduplicate account linking error toasts
+- [db] Remove fake auth users from local database
+- [api] Prevent admin accounts from being banned
+- [web] Allow unbanning users from the admin support overlay
+- [web] Require admin confirmation before deleting a user
+- [web] Style admin nav link and move it above documentation
+- [api] Allow support imports without tick freshness checks
+- [web] Warn when importing a stale support export file
+- [web] Style the support import file input button
+- [api] Block admin accounts from player gameplay endpoints
+- [api] Hide admin accounts from the player registry
+- [web] Avoid onboarding checks and redirect admins to admin tools
+- [ci] Bump @typescript-eslint/parser to 8.56.0
+- [ci] Remove release entry check from verify workflow
+- [ci] Exclude apps/web from root ESLint run
+- [web] Fix moderator role assignment typecheck
+- [ci] Add repository governance templates and security automation
+- [ci] Ignore workspace settings.json
+- [web] Allow email or username registration
+- [ops] Harden maintenance ETA handling
+- [api] Fix Better Auth typecheck issues in API
+- [ci] Skip heavy verify gates for docs-only changes by adding path-based change detection.
+- [ci] Skip release-entry enforcement for bot-authored pull requests to unblock Copilot automated fixes.
+- [ci] Add an always-on Verify Gate job so branch protection can require a single status check.
+- [api] Improve error handling with structured logging and better type safety in tests
+- [docs] Add CONTRIBUTING.md with local dev, PR, testing, maintenance mode, and release entry guidelines.
