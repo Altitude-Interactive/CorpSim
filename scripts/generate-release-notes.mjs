@@ -280,7 +280,7 @@ async function run() {
   const changelogEntries = await parseChangelogSection(changelogPath, version);
   
   if (commits.length === 0 && changelogEntries.length === 0) {
-    console.error("No commits or changelog entries found for release notes");
+    console.error(`No commits or changelog entries found for version ${version}. Ensure the version exists in CHANGELOG.md or commits exist since the previous tag.`);
     process.exitCode = 1;
     return;
   }
