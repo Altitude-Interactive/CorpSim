@@ -3,7 +3,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 
 /**
  * Generate enhanced GitHub release notes in Dokploy style
@@ -60,31 +59,42 @@ function getCommitsSinceTag(previousTag) {
   
   try {
     const range = `${previousTag}..HEAD`;
-    const output = execFileSync("git", ["log", range, "--format=%H%x00%s%x00%an%x00%ae"], {
-      encoding: "utf8",
-      stdio: ["inherit", "pipe", "ignore"], // Suppress stderr
-    }).trim();
+    const output = execFileSync(
+      "git",
+      ["log", "-z", range, "--format=%H%x00%s%x00%an%x00%ae"],
+      {
+        encoding: "utf8",
+        stdio: ["inherit", "pipe", "ignore"], // Suppress stderr
+      },
+    ).trim();
     
     if (!output) {
       return [];
     }
     
-    return output.split("\n").map((line) => {
-      const parts = line.split("\0");
-      const [hash, subject, authorName, authorEmail] = parts;
+    const fields = output.split("\0");
+    const commits = [];
+    
+    for (let i = 0; i + 3 < fields.length; i += 4) {
+      const hash = fields[i];
+      const subject = fields[i + 1];
+      const authorName = fields[i + 2];
+      const authorEmail = fields[i + 3];
       
       // Extract PR number from subject (e.g., "Fix bug (#123)")
       const prMatch = subject?.match(/\(#(\d+)\)/);
       const prNumber = prMatch ? prMatch[1] : null;
       
-      return {
+      commits.push({
         hash: hash || "",
         subject: subject || "",
         authorName: authorName || "",
         authorEmail: authorEmail || "",
         prNumber,
-      };
-    });
+      });
+    }
+    
+    return commits;
   } catch (error) {
     // Tag might not exist or git command failed - that's okay, we'll fall back to CHANGELOG.md
     return [];
@@ -114,15 +124,37 @@ function getContributorsBeforeTag(tag) {
 }
 
 function extractUsername(email) {
-  // Try to extract GitHub username from email
-  // Format: username@users.noreply.github.com or just use email prefix
-  const githubMatch = email.match(/^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/);
-  if (githubMatch) {
-    return githubMatch[1];
+  if (typeof email !== "string" || !email) {
+    // No email provided; signal that we cannot safely generate a username
+    return null;
   }
-  
-  // Fallback to email prefix with safety check
-  return email.split("@")[0] ?? email;
+
+  // Try to extract GitHub username from email
+  // Format: username@users.noreply.github.com (optionally with numeric prefix: 123+username@...)
+  const githubMatch = email.match(/^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/);
+  let candidate;
+
+  if (githubMatch) {
+    candidate = githubMatch[1];
+  } else {
+    // Fallback: use the email local-part as a candidate only
+    const prefix = email.split("@")[0];
+    if (!prefix) {
+      return null;
+    }
+    candidate = prefix;
+  }
+
+  // Allow only GitHub-username-safe characters: letters, digits, and hyphen
+  const sanitized = candidate.replace(/[^A-Za-z0-9-]/g, "");
+
+  // If sanitization removed characters or results in empty string,
+  // do not use this as a mention handle; let the caller fall back to a non-mention display
+  if (!sanitized || sanitized !== candidate) {
+    return null;
+  }
+
+  return sanitized;
 }
 
 async function parseChangelogSection(changelogPath, version) {
@@ -180,9 +212,16 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
         let cleanSubject = commit.subject.replace(/\s*\(#\d+\)\s*$/, "").trim();
         
         const username = extractUsername(commit.authorEmail);
-        lines.push(
-          `* ${cleanSubject} by @${username} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
-        );
+        if (username) {
+          lines.push(
+            `* ${cleanSubject} by @${username} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
+          );
+        } else {
+          // Fall back to author name if username cannot be safely extracted
+          lines.push(
+            `* ${cleanSubject} by ${commit.authorName} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
+          );
+        }
       }
     }
     
@@ -190,7 +229,11 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
     for (const commit of commits) {
       if (!commit.prNumber) {
         const username = extractUsername(commit.authorEmail);
-        lines.push(`* ${commit.subject} by @${username}`);
+        if (username) {
+          lines.push(`* ${commit.subject} by @${username}`);
+        } else {
+          lines.push(`* ${commit.subject} by ${commit.authorName}`);
+        }
       }
     }
   } else if (changelogEntries.length > 0) {
@@ -234,11 +277,21 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
     for (const [email, contributor] of currentContributors) {
       const username = extractUsername(email);
       if (contributor.prNumber) {
-        lines.push(
-          `* @${username} made their first contribution in [#${contributor.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${contributor.prNumber})`
-        );
+        if (username) {
+          lines.push(
+            `* @${username} made their first contribution in [#${contributor.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${contributor.prNumber})`
+          );
+        } else {
+          lines.push(
+            `* ${contributor.name} made their first contribution in [#${contributor.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${contributor.prNumber})`
+          );
+        }
       } else {
-        lines.push(`* @${username} made their first contribution`);
+        if (username) {
+          lines.push(`* @${username} made their first contribution`);
+        } else {
+          lines.push(`* ${contributor.name} made their first contribution`);
+        }
       }
     }
     
@@ -275,7 +328,12 @@ async function run() {
   }
   
   const repoInfo = getRepoInfo();
-  const previousTag = (previousVersion && previousVersion !== "0.0.0") ? `v${previousVersion}` : null;
+  const previousTag =
+    previousVersion &&
+    previousVersion !== "0.0.0" &&
+    previousVersion !== version
+      ? `v${previousVersion}`
+      : null;
   const commits = getCommitsSinceTag(previousTag);
   const changelogEntries = await parseChangelogSection(changelogPath, version);
   

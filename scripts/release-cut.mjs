@@ -91,6 +91,8 @@ function ensureTagIsFree(nextVersion, skipRemoteCheck) {
   }
 }
 
+const PRIORITY = { major: 0, minor: 1, patch: 2 };
+
 function buildSection(nextVersion, entries) {
   const date = new Date().toISOString().slice(0, 10);
 
@@ -98,8 +100,7 @@ function buildSection(nextVersion, entries) {
   
   // Sort entries: major, then minor, then patch
   const sorted = [...entries].sort((a, b) => {
-    const priority = { major: 0, minor: 1, patch: 2 };
-    return (priority[a.type] ?? 999) - (priority[b.type] ?? 999);
+    return (PRIORITY[a.type] ?? 999) - (PRIORITY[b.type] ?? 999);
   });
   
   for (const entry of sorted) {
