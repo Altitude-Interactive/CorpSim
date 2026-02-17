@@ -45,7 +45,9 @@ function validateAuthConfiguration(): void {
 }
 
 // Run validation once when the module loads (client-side only)
-validateAuthConfiguration();
+if (typeof window !== "undefined") {
+  validateAuthConfiguration();
+}
 
 export const authClient = createAuthClient({
   baseURL: resolveAuthBaseUrl(),

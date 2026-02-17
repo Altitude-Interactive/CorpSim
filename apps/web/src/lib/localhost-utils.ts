@@ -4,9 +4,9 @@
  * @returns true if the hostname is localhost, 127.0.0.1, or ::1
  */
 export function isLocalhostHostname(hostname: string): boolean {
-  if (!hostname) return false;
+  if (!hostname || !hostname.trim()) return false;
 
-  const normalized = hostname.toLowerCase();
+  const normalized = hostname.toLowerCase().trim();
 
   if (
     normalized === "localhost" ||
