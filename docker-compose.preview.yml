@@ -176,7 +176,7 @@ services:
       - corpsim_internal
 
 volumes:
-  pgdata_preview_v2:
+  pgdata_preview_v3:
   redisdata:
 
 networks:
