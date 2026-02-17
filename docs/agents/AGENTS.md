@@ -331,6 +331,132 @@ For implementation details, read JSDoc in source files:
 * `packages/sim/src/domain/errors.ts`
 * And other service modules
 
+## Frontend Managers and Providers (MUST Use)
+
+When working on frontend (apps/web), agents MUST use existing manager/provider systems instead of implementing duplicate functionality.
+
+### ToastManager (`components/ui/toast-manager.tsx`)
+**Purpose**: Centralized toast notifications and popup dialogs
+
+**✅ Use For:**
+* Success/error/warning/info messages
+* Confirmation popups (async with result)
+* Blocking dialogs
+* User notifications
+
+**❌ Never:**
+* Create custom toast components
+* Implement inline alert/notification systems
+* Build custom dialog/modal systems
+
+**Usage:**
+```typescript
+import { useToastManager } from '@/components/ui/toast-manager';
+
+const { showToast, confirmPopup } = useToastManager();
+
+// Show toast
+showToast({ 
+  title: "Order placed", 
+  variant: "success" 
+});
+
+// Confirmation dialog
+const confirmed = await confirmPopup({ 
+  title: "Cancel order?",
+  variant: "danger" 
+});
+```
+
+### UiSfxManager (`lib/ui-sfx.ts` + `components/layout/ui-sfx-provider.tsx`)
+**Purpose**: Centralized UI sound effects
+
+**✅ Use For:**
+* UI interactions (ui_open, ui_close)
+* Feedback sounds (feedback_success, feedback_error, feedback_warning)
+* Action sounds (action_place_order, action_start_production)
+* Event sounds (event_production_completed, event_research_completed)
+
+**❌ Never:**
+* Play audio directly with HTML5 Audio API
+* Create custom sound effect systems
+* Bypass the SFX manager
+
+**Usage:**
+```typescript
+import { useUiSfx } from '@/components/layout/ui-sfx-provider';
+
+const { play } = useUiSfx();
+
+// Play sound
+play('feedback_success');
+play('action_place_order');
+```
+
+### ControlManager (`components/layout/control-manager.tsx`)
+**Purpose**: Centralized keyboard shortcuts and panel management
+
+**✅ Use For:**
+* Registering keyboard shortcuts
+* Panel open/close state (side panels, dialogs)
+* Shortcut customization and persistence
+* Preventing shortcut conflicts
+
+**❌ Never:**
+* Add global keyboard event listeners directly
+* Manage panel state with useState in components
+* Hardcode keyboard shortcuts without using manager
+
+**Usage:**
+```typescript
+import { useControlManager, useControlShortcut } from '@/components/layout/control-manager';
+
+// Register shortcut
+useControlShortcut({
+  id: 'toggle-inventory',
+  key: 'i',
+  title: 'Toggle Inventory',
+  onTrigger: () => console.log('Inventory toggled')
+});
+
+// Panel management
+const { isPanelOpen, togglePanel } = useControlManager();
+const isOpen = isPanelOpen('inventory');
+togglePanel('inventory');
+```
+
+### MaintenanceProvider (`components/maintenance/maintenance-provider.tsx`)
+**Purpose**: Tracks maintenance mode state for UI
+
+**✅ Use For:**
+* Checking if maintenance mode is active
+* Displaying maintenance overlays
+* Disabling actions during maintenance
+
+**❌ Never:**
+* Poll maintenance status manually
+* Implement custom maintenance checks
+
+### ActiveCompanyProvider (`components/company/active-company-provider.tsx`)
+**Purpose**: Global active company context
+
+**✅ Use For:**
+* Getting current active company
+* Company selection state
+* Company-scoped operations
+
+**❌ Never:**
+* Pass company ID through prop drilling
+* Store company ID in local component state for global operations
+
+## Manager Usage Rules
+
+1. **Always import and use existing managers** - Never reimplement
+2. **Read manager source code** - Understand capabilities before coding
+3. **Use provided hooks** - Don't access context directly
+4. **Follow patterns** - Match existing usage in codebase
+5. **Extend managers if needed** - Add to existing system, don't create parallel systems
+
 # 6. Domain Model (Minimum Modules)
 
 * **Company** - cash, capacity, buildings, settings
