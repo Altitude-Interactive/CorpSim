@@ -23,6 +23,7 @@
     "worker:once": "pnpm -C apps/worker once",
     "lint:boundaries": "node scripts/check-import-boundaries.mjs",
     "lint": "eslint . --ext .ts",
+    "pretypecheck": "pnpm prisma:generate",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "verify": "pnpm typecheck && pnpm lint && pnpm lint:boundaries && pnpm test && pnpm api:test && pnpm web:typecheck && pnpm web:lint && pnpm web:build",
