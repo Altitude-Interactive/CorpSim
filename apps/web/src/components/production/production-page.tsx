@@ -78,7 +78,7 @@ export function ProductionPage() {
   const [recipePage, setRecipePage] = useState(1);
   const [recipePageSize, setRecipePageSize] =
     useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(10);
-  const [quantityInput, setQuantityInput] = useState("1");
+  const [quantityInput, setQuantityInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
@@ -614,7 +614,7 @@ export function ProductionPage() {
                   <Input
                     value={quantityInput}
                     onChange={(event) => setQuantityInput(event.target.value)}
-                    placeholder="1"
+                    placeholder="Enter number of runs (e.g., 10)"
                   />
                 </div>
 
