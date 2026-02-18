@@ -195,6 +195,8 @@ export function ResearchPage() {
     didPrimeStatusesRef.current = false;
   }, [activeCompanyId]);
 
+  const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node] as const)), [nodes]);
+
   useEffect(() => {
     const nextStatusById = new Map(nodes.map((node) => [node.id, node.status] as const));
     if (!didPrimeStatusesRef.current) {
@@ -218,7 +220,7 @@ export function ResearchPage() {
       
       // Show toast notification for completed research
       const unlockedRecipes = completedNodes.flatMap((node) => node.unlockRecipes);
-      const recipeNames = unlockedRecipes.map((recipe) => recipe.name).join(", ");
+      const recipeNames = unlockedRecipes.map((recipe) => recipe.recipeName).join(", ");
       const message = unlockedRecipes.length > 0
         ? `Research complete! Unlocked recipes: ${recipeNames}`
         : "Research complete!";
@@ -232,7 +234,6 @@ export function ResearchPage() {
     statusByNodeIdRef.current = nextStatusById;
   }, [nodes, play, showToast, nodeById]);
 
-  const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node] as const)), [nodes]);
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
 
   const filteredNodes = useMemo(() => {

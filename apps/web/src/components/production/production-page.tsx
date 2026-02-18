@@ -345,7 +345,7 @@ export function ProductionPage() {
         const job = newlyCompleted[0];
         showToast({
           title: "Production Complete",
-          description: `Produced ${job.runs} × ${job.outputItem.name}`,
+          description: `Produced ${job.quantity} × ${job.recipe.outputItem.name}`,
           variant: "success"
         });
       } else {
