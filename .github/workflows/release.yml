@@ -122,21 +122,7 @@ jobs:
             echo "tag_available=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Generate release notes
-        if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          PREVIOUS_VERSION="${{ steps.version.outputs.previous_version }}"
-          
-          node scripts/generate-release-notes.mjs \
-            --version "$VERSION" \
-            --previous-version "$PREVIOUS_VERSION" \
-            > RELEASE_NOTES.md
 
-          if [ ! -s RELEASE_NOTES.md ]; then
-            echo "Failed to generate release notes for version $VERSION"
-            exit 1
-          fi
 
       - name: Configure git identity
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
@@ -228,4 +214,4 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: CorpSim ${{ steps.version.outputs.tag }}
-          body_path: RELEASE_NOTES.md
+          generate_release_notes: true
