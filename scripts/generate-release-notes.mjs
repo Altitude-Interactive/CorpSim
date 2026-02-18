@@ -13,6 +13,7 @@ import { readFile } from "node:fs/promises";
  * This script combines information from:
  * 1. CHANGELOG.md - for structured change descriptions
  * 2. Git history - for PR numbers and contributor information
+ * 3. GitHub API - for accurate GitHub usernames
  */
 
 function parseArgs(args) {
@@ -48,6 +49,69 @@ function getRepoInfo() {
     console.error("Failed to get repo info:", error.message);
     throw error;
   }
+}
+
+/**
+ * Fetch GitHub username for a commit using the GitHub API
+ * @param {string} commitHash - The commit SHA
+ * @param {object} repoInfo - Repository owner and name
+ * @returns {Promise<string|null>} GitHub username or null if not found
+ */
+async function fetchGitHubUsername(commitHash, repoInfo) {
+  try {
+    const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/commits/${commitHash}`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'CorpSim-Release-Notes-Generator',
+      },
+    });
+    
+    if (!response.ok) {
+      // API call failed - return null to fall back to email-based extraction
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Try to get the GitHub username from the commit author
+    // The author field contains the GitHub user who made the commit
+    if (data.author && data.author.login) {
+      return data.author.login;
+    }
+    
+    // Fallback to committer if author is not available
+    if (data.committer && data.committer.login) {
+      return data.committer.login;
+    }
+    
+    return null;
+  } catch (error) {
+    // Network error or API unavailable - return null to fall back
+    return null;
+  }
+}
+
+/**
+ * Fetch GitHub usernames for multiple commits with caching
+ * @param {Array<{hash: string, authorEmail: string}>} commits - Array of commits
+ * @param {object} repoInfo - Repository owner and name
+ * @returns {Promise<Map<string, string>>} Map of commit hash to GitHub username
+ */
+async function fetchGitHubUsernames(commits, repoInfo) {
+  const usernameCache = new Map();
+  
+  // Fetch usernames for all unique commit hashes
+  const uniqueCommits = [...new Set(commits.map(c => c.hash))];
+  
+  for (const hash of uniqueCommits) {
+    const username = await fetchGitHubUsername(hash, repoInfo);
+    if (username) {
+      usernameCache.set(hash, username);
+    }
+  }
+  
+  return usernameCache;
 }
 
 function getCommitsSinceTag(previousTag) {
@@ -217,7 +281,7 @@ async function parseChangelogSection(changelogPath, version) {
   return entries;
 }
 
-function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersion, repoInfo) {
+async function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersion, repoInfo, usernameCache) {
   const lines = ["## What's Changed", ""];
   
   // Filter commits with PR numbers
@@ -235,7 +299,8 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
         const cleanSubject = commit.subject.replace(/\s*\(#\d+\)\s*$/, "").trim();
         const escapedSubject = escapeMarkdown(cleanSubject);
         
-        const username = extractUsername(commit.authorEmail);
+        // Try to get username from cache first, then fall back to email extraction
+        const username = usernameCache.get(commit.hash) || extractUsername(commit.authorEmail);
         if (username) {
           lines.push(
             `* ${escapedSubject} by @${username} in [#${commit.prNumber}](https://github.com/${repoInfo.owner}/${repoInfo.repo}/pull/${commit.prNumber})`
@@ -254,7 +319,8 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
     for (const commit of commits) {
       if (!commit.prNumber) {
         const escapedSubject = escapeMarkdown(commit.subject);
-        const username = extractUsername(commit.authorEmail);
+        // Try to get username from cache first, then fall back to email extraction
+        const username = usernameCache.get(commit.hash) || extractUsername(commit.authorEmail);
         if (username) {
           lines.push(`* ${escapedSubject} by @${username}`);
         } else {
@@ -288,6 +354,7 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
         currentContributors.set(commit.authorEmail, {
           name: commit.authorName,
           email: commit.authorEmail,
+          hash: commit.hash,
           prNumber: commit.prNumber || null,
         });
       } else if (!existing.prNumber && commit.prNumber) {
@@ -302,7 +369,8 @@ function buildReleaseNotes(commits, changelogEntries, previousTag, currentVersio
     lines.push("## New Contributors", "");
     
     for (const [email, contributor] of currentContributors) {
-      const username = extractUsername(email);
+      // Try to get username from cache first, then fall back to email extraction
+      const username = usernameCache.get(contributor.hash) || extractUsername(email);
       if (contributor.prNumber) {
         if (username) {
           lines.push(
@@ -372,7 +440,10 @@ async function run() {
     return;
   }
   
-  const releaseNotes = buildReleaseNotes(commits, changelogEntries, previousTag, version, repoInfo);
+  // Fetch GitHub usernames for all commits
+  const usernameCache = await fetchGitHubUsernames(commits, repoInfo);
+  
+  const releaseNotes = await buildReleaseNotes(commits, changelogEntries, previousTag, version, repoInfo, usernameCache);
   console.log(releaseNotes);
 }
 
