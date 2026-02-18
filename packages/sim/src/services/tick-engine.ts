@@ -23,6 +23,7 @@
  * ## Side Effects
  * All state mutations occur within a single transaction boundary:
  * - Bot actions (market orders, production starts)
+ * - Building operating costs (deduct costs, deactivate buildings)
  * - Production/research completions
  * - Market trades and settlements
  * - Shipment deliveries
@@ -39,7 +40,7 @@
  *
  * ## Data Flow
  * ```
- * Tick N → [Bots] → [Production] → [Research] → [Market Matching]
+ * Tick N → [Bots] → [Building Operating Costs] → [Production] → [Research] → [Market Matching]
  *        → [Shipments] → [Workforce] → [Demand] → [Contracts]
  *        → [Candles] → [World State Update] → Tick N+1
  * ```
@@ -66,6 +67,7 @@ import { completeDueProductionJobs } from "./production";
 import { completeDueResearchJobs } from "./research";
 import { deliverDueShipmentsForTick } from "./shipments";
 import { runWorkforceForTick, WorkforceRuntimeConfig } from "./workforce";
+import { applyBuildingOperatingCostsWithTx } from "./buildings";
 
 /**
  * Internal representation of world tick state for optimistic locking.
@@ -236,14 +238,15 @@ function isTickExecutionConflict(error: unknown, executionKey: string | undefine
  * @remarks
  * ## Pipeline Stages (Executed Sequentially)
  * 1. Bot actions (market orders, production starts)
- * 2. Production job completions
- * 3. Research completions and recipe unlocks
- * 4. Market matching and settlement
- * 5. Shipment deliveries
- * 6. Workforce updates (arrivals, salaries, efficiency)
- * 7. Demand sink consumption (baseline market activity)
- * 8. Contract lifecycle (expiration and generation)
- * 9. Market candle aggregation (OHLC/VWAP/volume)
+ * 2. Building operating costs (deduct costs, deactivate unpaid buildings)
+ * 3. Production job completions
+ * 4. Research completions and recipe unlocks
+ * 5. Market matching and settlement
+ * 6. Shipment deliveries
+ * 7. Workforce updates (arrivals, salaries, efficiency)
+ * 8. Demand sink consumption (baseline market activity)
+ * 9. Contract lifecycle (expiration and generation)
+ * 10. Market candle aggregation (OHLC/VWAP/volume)
  *
  * ## Determinism
  * - Order is fixed and must not change (breaking change if reordered)
@@ -261,19 +264,21 @@ async function runTickPipeline(
 ): Promise<void> {
   // Tick pipeline order:
   // 1) bot actions (orders / production starts)
-  // 2) production completions
-  // 3) research completions and recipe unlocks
-  // 4) market matching and settlement
-  // 5) shipment deliveries
-  // 6) workforce update (scheduled arrivals, salary ledger, efficiency)
-  // 7) baseline demand sink consumption
-  // 8) contract lifecycle (expire and generate)
-  // 9) market candle aggregation (OHLC/VWAP/volume)
-  // 10) finalize world tick state
+  // 2) building operating costs (deactivate unpaid buildings)
+  // 3) production completions
+  // 4) research completions and recipe unlocks
+  // 5) market matching and settlement
+  // 6) shipment deliveries
+  // 7) workforce update (scheduled arrivals, salary ledger, efficiency)
+  // 8) baseline demand sink consumption
+  // 9) contract lifecycle (expire and generate)
+  // 10) market candle aggregation (OHLC/VWAP/volume)
+  // 11) finalize world tick state
   if (options.runBots) {
     await runBotsForTick(tx, nextTick, options.botConfig);
   }
 
+  await applyBuildingOperatingCostsWithTx(tx, { tick: nextTick });
   await completeDueProductionJobs(tx, nextTick);
   await completeDueResearchJobs(tx, nextTick);
   // Matching runs in tick processing, not in request path.
