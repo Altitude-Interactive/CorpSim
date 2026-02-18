@@ -52,10 +52,10 @@ export function WorkforcePage() {
   const { health } = useWorldHealth();
   const [workforce, setWorkforce] = useState<CompanyWorkforce | null>(null);
   const [allocationDraft, setAllocationDraft] = useState<AllocationDraft>({
-    operationsPct: "40",
-    researchPct: "20",
-    logisticsPct: "20",
-    corporatePct: "20"
+    operationsPct: "",
+    researchPct: "",
+    logisticsPct: "",
+    corporatePct: ""
   });
   const [capacityDeltaInput, setCapacityDeltaInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
