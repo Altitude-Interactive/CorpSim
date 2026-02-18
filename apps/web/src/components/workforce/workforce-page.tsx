@@ -207,7 +207,7 @@ export function WorkforcePage() {
         deltaCapacity
       });
       await loadWorkforce();
-      setCapacityDeltaInput("0");
+      setCapacityDeltaInput("");
       setError(null);
       showToast({
         title: "Capacity request submitted",
