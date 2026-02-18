@@ -201,29 +201,29 @@ describe("building service", () => {
             {
               id: "building-1",
               companyId: "company-1",
-              weeklyOperatingCostCents: 500n,
-              lastOperatingCostTick: 10,
-              company: {
-                id: "company-1",
-                cashCents: 10000n,
-                reservedCashCents: 0n
-              }
+              weeklyOperatingCostCents: 500n
             },
             {
               id: "building-2",
               companyId: "company-2",
-              weeklyOperatingCostCents: 300n,
-              lastOperatingCostTick: 10,
-              company: {
-                id: "company-2",
-                cashCents: 5000n,
-                reservedCashCents: 0n
-              }
+              weeklyOperatingCostCents: 300n
             }
           ]),
           update: buildingUpdate
         },
         company: {
+          findUniqueOrThrow: vi
+            .fn()
+            .mockResolvedValueOnce({
+              id: "company-1",
+              cashCents: 10000n,
+              reservedCashCents: 0n
+            })
+            .mockResolvedValueOnce({
+              id: "company-2",
+              cashCents: 5000n,
+              reservedCashCents: 0n
+            }),
           update: companyUpdate
         },
         ledgerEntry: {
@@ -254,18 +254,17 @@ describe("building service", () => {
             {
               id: "building-1",
               companyId: "company-1",
-              weeklyOperatingCostCents: 500n,
-              lastOperatingCostTick: 10,
-              company: {
-                id: "company-1",
-                cashCents: 100n, // Insufficient
-                reservedCashCents: 0n
-              }
+              weeklyOperatingCostCents: 500n
             }
           ]),
           update: buildingUpdate
         },
         company: {
+          findUniqueOrThrow: vi.fn().mockResolvedValue({
+            id: "company-1",
+            cashCents: 100n, // Insufficient
+            reservedCashCents: 0n
+          }),
           update: vi.fn()
         },
         ledgerEntry: {
@@ -305,6 +304,119 @@ describe("building service", () => {
       expect(result.processedCount).toBe(0);
       expect(result.deactivatedCount).toBe(0);
       expect(result.totalCostCents).toBe(0n);
+    });
+
+    it("respects reserved cash when checking affordability", async () => {
+      const buildingUpdate = vi.fn().mockResolvedValue(null);
+
+      const tx = {
+        building: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "building-1",
+              companyId: "company-1",
+              weeklyOperatingCostCents: 500n
+            }
+          ]),
+          update: buildingUpdate
+        },
+        company: {
+          findUniqueOrThrow: vi.fn().mockResolvedValue({
+            id: "company-1",
+            cashCents: 600n, // Enough total cash
+            reservedCashCents: 200n // But only 400 available
+          }),
+          update: vi.fn()
+        },
+        ledgerEntry: {
+          create: vi.fn()
+        }
+      } as unknown as Prisma.TransactionClient;
+
+      const currentTick = 10 + BUILDING_OPERATING_COST_INTERVAL_TICKS;
+      const result = await applyBuildingOperatingCostsWithTx(tx, {
+        tick: currentTick
+      });
+
+      // Should deactivate because available cash (400) < operating cost (500)
+      expect(result.processedCount).toBe(0);
+      expect(result.deactivatedCount).toBe(1);
+      expect(buildingUpdate).toHaveBeenCalledWith({
+        where: { id: "building-1" },
+        data: {
+          status: BuildingStatus.INACTIVE,
+          lastOperatingCostTick: currentTick
+        }
+      });
+    });
+
+    it("handles multiple buildings for same company with fresh cash values", async () => {
+      const companyUpdate = vi.fn().mockResolvedValue(null);
+      const buildingUpdate = vi.fn().mockResolvedValue(null);
+      const ledgerCreate = vi.fn().mockResolvedValue(null);
+
+      const tx = {
+        building: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "building-1",
+              companyId: "company-1",
+              weeklyOperatingCostCents: 300n
+            },
+            {
+              id: "building-2",
+              companyId: "company-1", // Same company
+              weeklyOperatingCostCents: 200n
+            }
+          ]),
+          update: buildingUpdate
+        },
+        company: {
+          findUniqueOrThrow: vi
+            .fn()
+            // First building: company has 1000
+            .mockResolvedValueOnce({
+              id: "company-1",
+              cashCents: 1000n,
+              reservedCashCents: 0n
+            })
+            // Second building: company now has 700 (after first deduction)
+            .mockResolvedValueOnce({
+              id: "company-1",
+              cashCents: 700n,
+              reservedCashCents: 0n
+            }),
+          update: companyUpdate
+        },
+        ledgerEntry: {
+          create: ledgerCreate
+        }
+      } as unknown as Prisma.TransactionClient;
+
+      const currentTick = 10 + BUILDING_OPERATING_COST_INTERVAL_TICKS;
+      const result = await applyBuildingOperatingCostsWithTx(tx, {
+        tick: currentTick
+      });
+
+      // Both buildings should be processed with correct cash values
+      expect(result.processedCount).toBe(2);
+      expect(result.deactivatedCount).toBe(0);
+      expect(result.totalCostCents).toBe(500n);
+
+      // Verify company.findUniqueOrThrow was called twice (once per building)
+      expect(tx.company.findUniqueOrThrow).toHaveBeenCalledTimes(2);
+      
+      // First update: 1000 - 300 = 700
+      expect(companyUpdate).toHaveBeenNthCalledWith(1, {
+        where: { id: "company-1" },
+        data: { cashCents: 700n }
+      });
+      
+      // Second update: 700 - 200 = 500
+      expect(companyUpdate).toHaveBeenNthCalledWith(2, {
+        where: { id: "company-1" },
+        data: { cashCents: 500n }
+      });
     });
   });
 

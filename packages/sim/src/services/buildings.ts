@@ -257,9 +257,10 @@ export async function acquireBuildingWithTx(
  *
  * @remarks
  * - Operating costs charged every BUILDING_OPERATING_COST_INTERVAL_TICKS (weekly)
- * - Buildings with insufficient company cash are deactivated
+ * - Buildings with insufficient available cash (after reservations) are deactivated
  * - Ledger entries created for each cost application
  * - Processing order is deterministic (by building ID)
+ * - Fresh company data fetched for each building to avoid stale cash values
  */
 export async function applyBuildingOperatingCostsWithTx(
   tx: Prisma.TransactionClient,
@@ -271,7 +272,7 @@ export async function applyBuildingOperatingCostsWithTx(
     throw new DomainInvariantError("tick must be non-negative");
   }
 
-  // Find buildings due for operating cost
+  // Find buildings due for operating cost (without company data to avoid stale values)
   const dueBuildings = await tx.building.findMany({
     where: {
       status: BuildingStatus.ACTIVE,
@@ -289,14 +290,10 @@ export async function applyBuildingOperatingCostsWithTx(
     orderBy: {
       id: "asc" // Deterministic processing order
     },
-    include: {
-      company: {
-        select: {
-          id: true,
-          cashCents: true,
-          reservedCashCents: true
-        }
-      }
+    select: {
+      id: true,
+      companyId: true,
+      weeklyOperatingCostCents: true
     }
   });
 
@@ -307,9 +304,25 @@ export async function applyBuildingOperatingCostsWithTx(
   for (const building of dueBuildings) {
     const operatingCost = building.weeklyOperatingCostCents;
 
-    if (building.company.cashCents >= operatingCost) {
+    // Fetch fresh company data to avoid stale cash values when processing multiple buildings
+    const company = await tx.company.findUniqueOrThrow({
+      where: { id: building.companyId },
+      select: {
+        id: true,
+        cashCents: true,
+        reservedCashCents: true
+      }
+    });
+
+    // Check if company has sufficient available cash (respecting reservations)
+    const available = availableCash({
+      cashCents: company.cashCents,
+      reservedCashCents: company.reservedCashCents
+    });
+
+    if (available >= operatingCost) {
       // Company can afford operating cost
-      const newCashCents = building.company.cashCents - operatingCost;
+      const newCashCents = company.cashCents - operatingCost;
 
       await tx.company.update({
         where: { id: building.companyId },
