@@ -32,10 +32,14 @@
  * ## Invariants Enforced
  * - **No Negative Cash**: Operating costs cannot create negative balance
  * - **Mandatory Ledger Entries**: All financial mutations write ledger entries
- * - **Capacity Limits**: Production jobs cannot exceed building capacity
- * - **Active Building Requirement**: Production requires ACTIVE building
+ * - **Reserved Cash Respect**: Operating costs check available cash (after reservations)
  * - **Regional Association**: Buildings tied to specific region
  * - **Operating Cost Tracking**: lastOperatingCostTick prevents duplicate charges
+ *
+ * ## Invariants Planned (Not Yet Enforced)
+ * - **Capacity Limits**: Production jobs cannot exceed building capacity (Phase 2)
+ * - **Active Building Requirement**: Production requires ACTIVE building (Phase 2)
+ * - **Storage Limits**: Warehouse capacity limits inventory (Phase 3)
  *
  * ## Financial Rules
  * - Acquisition cost paid upfront (immediate ledger entry)
@@ -172,7 +176,7 @@ function validateAcquireBuildingInput(input: AcquireBuildingInput): void {
 export async function acquireBuildingWithTx(
   tx: Prisma.TransactionClient,
   input: AcquireBuildingInput
-): Promise<any> {
+) {
   validateAcquireBuildingInput(input);
 
   const company = await tx.company.findUnique({
@@ -392,7 +396,7 @@ export async function applyBuildingOperatingCostsWithTx(
 export async function reactivateBuildingWithTx(
   tx: Prisma.TransactionClient,
   input: ReactivateBuildingInput
-): Promise<any> {
+) {
   if (!input.buildingId) {
     throw new DomainInvariantError("buildingId is required");
   }
@@ -434,7 +438,7 @@ export async function reactivateBuildingWithTx(
 export async function getBuildingsForCompany(
   tx: Prisma.TransactionClient | PrismaClient,
   companyId: string
-): Promise<any[]> {
+) {
   return tx.building.findMany({
     where: { companyId },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }]

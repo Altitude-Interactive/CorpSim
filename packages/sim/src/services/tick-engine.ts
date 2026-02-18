@@ -239,6 +239,7 @@ function isTickExecutionConflict(error: unknown, executionKey: string | undefine
  * ## Pipeline Stages (Executed Sequentially)
  * 1. Bot actions (market orders, production starts)
  * 2. Building operating costs (deduct costs, deactivate unpaid buildings)
+ *    - Note: Production validation doesn't yet check building status (Phase 2)
  * 3. Production job completions
  * 4. Research completions and recipe unlocks
  * 5. Market matching and settlement
@@ -265,6 +266,7 @@ async function runTickPipeline(
   // Tick pipeline order:
   // 1) bot actions (orders / production starts)
   // 2) building operating costs (deactivate unpaid buildings)
+  //    Note: Production validation doesn't yet check building status (Phase 2)
   // 3) production completions
   // 4) research completions and recipe unlocks
   // 5) market matching and settlement
