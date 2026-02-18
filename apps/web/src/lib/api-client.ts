@@ -1,6 +1,6 @@
 import { isLocalhostHostname, isLocalhostUrl } from "./localhost-utils";
 
-export const HEALTH_POLL_INTERVAL_MS = 3_000;
+export const HEALTH_POLL_INTERVAL_MS = 15_000;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
 

@@ -15,6 +15,7 @@ import { useControlManager } from "./control-manager";
 import { PROFILE_PANEL_ID } from "./profile-panel";
 import { StatusIndicator } from "./status-indicator";
 import { UiSfxSettings } from "./ui-sfx-settings";
+import { TickCountdown } from "./tick-countdown";
 import { useWorldHealth } from "./world-health-provider";
 
 export function TopBar() {
@@ -38,7 +39,10 @@ export function TopBar() {
       <div className="flex h-14 items-center justify-between gap-3 px-4">
         <div className="min-w-0">
           <h1 className="text-base font-semibold">{TOP_BAR_TITLES[pathname] ?? "CorpSim"}</h1>
-          <p className="text-xs text-muted-foreground">{formatCadencePoint(health?.currentTick)}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted-foreground">{formatCadencePoint(health?.currentTick)}</p>
+            <TickCountdown />
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <ActiveCompanyCombobox />

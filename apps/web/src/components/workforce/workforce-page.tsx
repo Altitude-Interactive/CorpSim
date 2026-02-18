@@ -52,12 +52,12 @@ export function WorkforcePage() {
   const { health } = useWorldHealth();
   const [workforce, setWorkforce] = useState<CompanyWorkforce | null>(null);
   const [allocationDraft, setAllocationDraft] = useState<AllocationDraft>({
-    operationsPct: "40",
-    researchPct: "20",
-    logisticsPct: "20",
-    corporatePct: "20"
+    operationsPct: "",
+    researchPct: "",
+    logisticsPct: "",
+    corporatePct: ""
   });
-  const [capacityDeltaInput, setCapacityDeltaInput] = useState("0");
+  const [capacityDeltaInput, setCapacityDeltaInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoadedWorkforce, setHasLoadedWorkforce] = useState(false);
   const [isSavingAllocation, setIsSavingAllocation] = useState(false);
@@ -207,7 +207,7 @@ export function WorkforcePage() {
         deltaCapacity
       });
       await loadWorkforce();
-      setCapacityDeltaInput("0");
+      setCapacityDeltaInput("");
       setError(null);
       showToast({
         title: "Capacity request submitted",
@@ -246,6 +246,9 @@ export function WorkforcePage() {
       <Card>
         <CardHeader>
           <CardTitle>Organizational Capacity</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Workforce capacity determines production speed and research efficiency. Higher capacity allows faster operations, but increases weekly salary costs. Allocation percentages control which departments receive speed bonuses.
+          </p>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-md border border-border bg-muted/30 p-3">
@@ -278,42 +281,69 @@ export function WorkforcePage() {
       <Card>
         <CardHeader>
           <CardTitle>Allocation Controls</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Distribute your workforce across departments. Higher allocation in each area provides speed bonuses. Total must equal 100%.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-5" onSubmit={handleAllocationSubmit}>
-            <Input
-              value={allocationDraft.operationsPct}
-              onChange={(event) =>
-                setAllocationDraft((current) => ({ ...current, operationsPct: event.target.value }))
-              }
-              placeholder="Operations %"
-              inputMode="numeric"
-            />
-            <Input
-              value={allocationDraft.researchPct}
-              onChange={(event) =>
-                setAllocationDraft((current) => ({ ...current, researchPct: event.target.value }))
-              }
-              placeholder="Research %"
-              inputMode="numeric"
-            />
-            <Input
-              value={allocationDraft.logisticsPct}
-              onChange={(event) =>
-                setAllocationDraft((current) => ({ ...current, logisticsPct: event.target.value }))
-              }
-              placeholder="Logistics %"
-              inputMode="numeric"
-            />
-            <Input
-              value={allocationDraft.corporatePct}
-              onChange={(event) =>
-                setAllocationDraft((current) => ({ ...current, corporatePct: event.target.value }))
-              }
-              placeholder="Corporate %"
-              inputMode="numeric"
-            />
-            <Button type="submit" disabled={isSavingAllocation || allocationSum !== 100}>
+            <div>
+              <label htmlFor="workforce-ops-pct" className="mb-1 block text-xs text-muted-foreground">
+                Operations %
+              </label>
+              <Input
+                id="workforce-ops-pct"
+                value={allocationDraft.operationsPct}
+                onChange={(event) =>
+                  setAllocationDraft((current) => ({ ...current, operationsPct: event.target.value }))
+                }
+                placeholder="e.g., 40"
+                inputMode="numeric"
+              />
+            </div>
+            <div>
+              <label htmlFor="workforce-research-pct" className="mb-1 block text-xs text-muted-foreground">
+                Research %
+              </label>
+              <Input
+                id="workforce-research-pct"
+                value={allocationDraft.researchPct}
+                onChange={(event) =>
+                  setAllocationDraft((current) => ({ ...current, researchPct: event.target.value }))
+                }
+                placeholder="e.g., 20"
+                inputMode="numeric"
+              />
+            </div>
+            <div>
+              <label htmlFor="workforce-logistics-pct" className="mb-1 block text-xs text-muted-foreground">
+                Logistics %
+              </label>
+              <Input
+                id="workforce-logistics-pct"
+                value={allocationDraft.logisticsPct}
+                onChange={(event) =>
+                  setAllocationDraft((current) => ({ ...current, logisticsPct: event.target.value }))
+                }
+                placeholder="e.g., 20"
+                inputMode="numeric"
+              />
+            </div>
+            <div>
+              <label htmlFor="workforce-corporate-pct" className="mb-1 block text-xs text-muted-foreground">
+                Corporate %
+              </label>
+              <Input
+                id="workforce-corporate-pct"
+                value={allocationDraft.corporatePct}
+                onChange={(event) =>
+                  setAllocationDraft((current) => ({ ...current, corporatePct: event.target.value }))
+                }
+                placeholder="e.g., 20"
+                inputMode="numeric"
+              />
+            </div>
+            <Button type="submit" disabled={isSavingAllocation || allocationSum !== 100} className="self-end">
               Save Allocation
             </Button>
           </form>
@@ -345,7 +375,7 @@ export function WorkforcePage() {
             <Input
               value={capacityDeltaInput}
               onChange={(event) => setCapacityDeltaInput(event.target.value)}
-              placeholder="Delta capacity"
+              placeholder="Enter change (e.g., +50 or -20)"
               inputMode="numeric"
             />
             <Button type="submit" disabled={isRequestingCapacity}>
