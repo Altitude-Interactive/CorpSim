@@ -143,6 +143,30 @@ Preferred components:
 
 Avoid custom components unless necessary.
 
+### Form Input Guidelines
+
+**Placeholder Text:**
+* Use descriptive placeholders with examples instead of prefilled values
+* Example: `"Enter price (e.g., 1.50)"` not a prefilled `"1.00"`
+* Empty initial state helps users understand field purpose
+* Placeholders should explain what value is expected
+
+**Labels:**
+* Add explicit labels above inputs for clarity
+* Use `htmlFor`/`id` attributes for accessibility (screen readers)
+* Labels should be independent of default values
+
+**Toast Notifications:**
+* Use for completion feedback (research complete, production finished)
+* Show actionable information (e.g., "Unlocked recipes: X, Y, Z")
+* Truncate long lists with `"+ N more"` pattern
+* Deduplicate repeated items in multi-item toasts
+
+**Time Display:**
+* Show countdown timers for time-based systems ("Next week in 42s")
+* Include tooltips explaining time units and progression
+* Update in real-time for dynamic feedback
+
 ---
 
 ## Data Visualization
