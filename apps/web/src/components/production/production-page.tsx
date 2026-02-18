@@ -331,18 +331,33 @@ export function ProductionPage() {
       return;
     }
 
-    let hasNewCompletion = false;
-    for (const jobId of nextIds) {
-      if (!completedJobIdsRef.current.has(jobId)) {
-        hasNewCompletion = true;
-        break;
+    const newlyCompleted: ProductionJob[] = [];
+    for (const job of completedJobs) {
+      if (!completedJobIdsRef.current.has(job.id)) {
+        newlyCompleted.push(job);
       }
     }
-    if (hasNewCompletion) {
+    if (newlyCompleted.length > 0) {
       play("event_production_completed");
+      
+      // Show toast notification for completed jobs
+      if (newlyCompleted.length === 1) {
+        const job = newlyCompleted[0];
+        showToast({
+          title: "Production Complete",
+          description: `Produced ${job.runs} × ${job.outputItem.name}`,
+          variant: "success"
+        });
+      } else {
+        showToast({
+          title: "Production Complete",
+          description: `${newlyCompleted.length} production jobs completed`,
+          variant: "success"
+        });
+      }
     }
     completedJobIdsRef.current = nextIds;
-  }, [completedJobs, play]);
+  }, [completedJobs, play, showToast]);
   const showInitialRecipesSkeleton = isLoadingRecipes && !hasLoadedRecipes;
   const showInitialJobsSkeleton = isLoadingJobs && !hasLoadedJobs;
 
