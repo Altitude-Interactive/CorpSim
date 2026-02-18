@@ -45,7 +45,7 @@
     "@corpsim/shared": "workspace:*",
     "@corpsim/sim": "workspace:*",
     "@nestjs/common": "^11.1.13",
-    "@nestjs/core": "^11.1.13",
+    "@nestjs/core": "^11.1.14",
     "@nestjs/platform-express": "^11.1.13",
     "@prisma/client": "^6.19.2",
     "dotenv": "^16.6.1"
