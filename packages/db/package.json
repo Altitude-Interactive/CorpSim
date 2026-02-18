@@ -12,7 +12,7 @@
     "dotenv": "^16.6.1"
   },
   "devDependencies": {
-    "dotenv-cli": "^8.0.0",
+    "dotenv-cli": "^11.0.0",
     "prisma": "^6.19.2",
     "tsx": "^4.21.0"
   },
