@@ -1,9 +1,10 @@
 ---
 type: patch
 area: ci
-summary: Fix release notes to mention GitHub usernames instead of email addresses
+summary: Use GitHub's built-in release notes generation for correct usernames
 ---
 
-- Use GitHub API to fetch actual GitHub usernames for release note mentions
-- Fall back to email-based extraction when API is unavailable
+- Switch from custom release notes script to GitHub's `generate_release_notes: true`
+- Follows Dokploy's proven approach for accurate username mentions
+- Simpler, more maintainable, no custom API calls needed
 - Fixes issue where `@contact` was shown instead of `@BENZOOgataga`
