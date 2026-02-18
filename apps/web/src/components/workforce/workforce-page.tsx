@@ -288,10 +288,11 @@ export function WorkforcePage() {
         <CardContent className="space-y-3">
           <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-5" onSubmit={handleAllocationSubmit}>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
+              <label htmlFor="workforce-ops-pct" className="mb-1 block text-xs text-muted-foreground">
                 Operations %
               </label>
               <Input
+                id="workforce-ops-pct"
                 value={allocationDraft.operationsPct}
                 onChange={(event) =>
                   setAllocationDraft((current) => ({ ...current, operationsPct: event.target.value }))
@@ -301,10 +302,11 @@ export function WorkforcePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
+              <label htmlFor="workforce-research-pct" className="mb-1 block text-xs text-muted-foreground">
                 Research %
               </label>
               <Input
+                id="workforce-research-pct"
                 value={allocationDraft.researchPct}
                 onChange={(event) =>
                   setAllocationDraft((current) => ({ ...current, researchPct: event.target.value }))
@@ -314,10 +316,11 @@ export function WorkforcePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
+              <label htmlFor="workforce-logistics-pct" className="mb-1 block text-xs text-muted-foreground">
                 Logistics %
               </label>
               <Input
+                id="workforce-logistics-pct"
                 value={allocationDraft.logisticsPct}
                 onChange={(event) =>
                   setAllocationDraft((current) => ({ ...current, logisticsPct: event.target.value }))
@@ -327,10 +330,11 @@ export function WorkforcePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
+              <label htmlFor="workforce-corporate-pct" className="mb-1 block text-xs text-muted-foreground">
                 Corporate %
               </label>
               <Input
+                id="workforce-corporate-pct"
                 value={allocationDraft.corporatePct}
                 onChange={(event) =>
                   setAllocationDraft((current) => ({ ...current, corporatePct: event.target.value }))

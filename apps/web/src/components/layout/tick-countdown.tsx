@@ -23,7 +23,9 @@ export function TickCountdown() {
       const lastAdvancedTime = new Date(health.lastAdvancedAt!).getTime();
       const now = Date.now();
       const elapsed = now - lastAdvancedTime;
-      const remaining = DEFAULT_TICK_INTERVAL_MS - (elapsed % DEFAULT_TICK_INTERVAL_MS);
+      const remaining =
+        (DEFAULT_TICK_INTERVAL_MS - (elapsed % DEFAULT_TICK_INTERVAL_MS)) %
+        DEFAULT_TICK_INTERVAL_MS;
       setSecondsRemaining(Math.ceil(remaining / 1000));
     };
 

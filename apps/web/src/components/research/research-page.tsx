@@ -220,10 +220,25 @@ export function ResearchPage() {
       
       // Show toast notification for completed research
       const unlockedRecipes = completedNodes.flatMap((node) => node.unlockRecipes);
-      const recipeNames = unlockedRecipes.map((recipe) => recipe.recipeName).join(", ");
-      const message = unlockedRecipes.length > 0
-        ? `Research complete! Unlocked recipes: ${recipeNames}`
-        : "Research complete!";
+      const uniqueRecipeNamesSet = new Set<string>(
+        unlockedRecipes
+          .map((recipe) => recipe.recipeName)
+          .filter((name): name is string => Boolean(name && name.trim()))
+      );
+      const uniqueRecipeNames = Array.from(uniqueRecipeNamesSet);
+      const MAX_RECIPES_IN_TOAST = 3;
+      let message: string;
+
+      if (uniqueRecipeNames.length > 0) {
+        const displayedNames = uniqueRecipeNames.slice(0, MAX_RECIPES_IN_TOAST);
+        const remainingCount = uniqueRecipeNames.length - displayedNames.length;
+        const baseList = displayedNames.join(", ");
+        const summary =
+          remainingCount > 0 ? `${baseList} + ${remainingCount} more` : baseList;
+        message = `Research complete! Unlocked recipes: ${summary}`;
+      } else {
+        message = "Research complete!";
+      }
       
       showToast({
         title: completedNodes.length === 1 ? completedNodes[0].name : "Research Complete",
