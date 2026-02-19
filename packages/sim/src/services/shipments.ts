@@ -84,6 +84,7 @@ import {
   applyDurationMultiplierTicks,
   resolveWorkforceRuntimeModifiers
 } from "./workforce";
+import { validateStorageCapacity } from "./buildings";
 
 export interface ShipmentRuntimeConfig {
   baseFeeCents: bigint;
@@ -669,6 +670,14 @@ export async function deliverDueShipmentsForTick(
     if (updated.count !== 1) {
       continue;
     }
+
+    // Validate storage capacity before adding delivered inventory
+    await validateStorageCapacity(
+      tx,
+      shipment.companyId,
+      shipment.toRegionId,
+      shipment.quantity
+    );
 
     await tx.inventory.upsert({
       where: {
