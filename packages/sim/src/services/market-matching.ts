@@ -61,6 +61,7 @@ import {
   PrismaClient
 } from "@prisma/client";
 import { DomainInvariantError, NotFoundError } from "../domain/errors";
+import { validateStorageCapacity } from "./buildings";
 
 /**
  * Order representation for matching purposes.
@@ -336,6 +337,14 @@ async function settleMatch(
       reservedQuantity: sellerInventory.reservedQuantity - match.quantity
     }
   });
+
+  // Validate storage capacity before adding buyer inventory
+  await validateStorageCapacity(
+    tx,
+    buyOrder.companyId,
+    buyOrder.regionId,
+    match.quantity
+  );
 
   await tx.inventory.upsert({
     where: {

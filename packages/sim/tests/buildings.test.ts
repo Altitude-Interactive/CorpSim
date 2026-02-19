@@ -8,6 +8,7 @@ import {
   applyBuildingOperatingCostsWithTx,
   reactivateBuildingWithTx,
   getProductionCapacityForCompany,
+  validateProductionBuildingAvailable,
   BUILDING_OPERATING_COST_INTERVAL_TICKS
 } from "../src";
 
@@ -521,6 +522,44 @@ describe("building service", () => {
 
       expect(result.totalCapacity).toBe(0);
       expect(result.usedCapacity).toBe(0);
+    });
+  });
+
+  describe("validateProductionBuildingAvailable", () => {
+    it("validates company has active production building", async () => {
+      const tx = {
+        building: {
+          count: vi.fn().mockResolvedValue(2)
+        }
+      } as unknown as Prisma.TransactionClient;
+
+      await expect(
+        validateProductionBuildingAvailable(tx, "company-1")
+      ).resolves.not.toThrow();
+    });
+
+    it("throws when company has no active production buildings", async () => {
+      const tx = {
+        building: {
+          count: vi.fn().mockResolvedValue(0)
+        }
+      } as unknown as Prisma.TransactionClient;
+
+      await expect(
+        validateProductionBuildingAvailable(tx, "company-1")
+      ).rejects.toThrow(DomainInvariantError);
+    });
+
+    it("validates required parameters", async () => {
+      const tx = {
+        building: {
+          count: vi.fn().mockResolvedValue(1)
+        }
+      } as unknown as Prisma.TransactionClient;
+
+      await expect(
+        validateProductionBuildingAvailable(tx, "")
+      ).rejects.toThrow(DomainInvariantError);
     });
   });
 });

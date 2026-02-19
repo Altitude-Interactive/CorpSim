@@ -81,6 +81,10 @@ import {
   applyDurationMultiplierTicks,
   resolveWorkforceRuntimeModifiers
 } from "./workforce";
+import {
+  validateProductionBuildingAvailable,
+  validateStorageCapacity
+} from "./buildings";
 
 interface RecipeInputRow {
   itemId: string;
@@ -488,6 +492,9 @@ export async function createProductionJobWithTx(
     throw new DomainInvariantError("recipe durationTicks cannot be negative");
   }
 
+  // Validate company has at least one active production building
+  await validateProductionBuildingAvailable(tx, input.companyId);
+
   const requirements = calculateRecipeInputRequirements(recipe.inputs, input.quantity);
   const requiredItemIds = requirements.map((entry) => entry.itemId);
 
@@ -866,6 +873,14 @@ export async function completeDueProductionJobs(
     }
 
     const outputQuantity = job.recipe.outputQuantity * job.runs;
+
+    // Validate storage capacity before adding output inventory
+    await validateStorageCapacity(
+      tx,
+      job.companyId,
+      job.company.regionId,
+      outputQuantity
+    );
 
     await tx.inventory.upsert({
       where: {

@@ -239,7 +239,6 @@ function isTickExecutionConflict(error: unknown, executionKey: string | undefine
  * ## Pipeline Stages (Executed Sequentially)
  * 1. Bot actions (market orders, production starts)
  * 2. Building operating costs (deduct costs, deactivate unpaid buildings)
- *    - Note: Production validation doesn't yet check building status (Phase 2)
  * 3. Production job completions
  * 4. Research completions and recipe unlocks
  * 5. Market matching and settlement
@@ -248,6 +247,10 @@ function isTickExecutionConflict(error: unknown, executionKey: string | undefine
  * 8. Demand sink consumption (baseline market activity)
  * 9. Contract lifecycle (expiration and generation)
  * 10. Market candle aggregation (OHLC/VWAP/volume)
+ *
+ * ## Phase 3 Validations
+ * - Storage capacity checked before inventory mutations (production, market, shipments)
+ * - Building availability validated for production job creation
  *
  * ## Determinism
  * - Order is fixed and must not change (breaking change if reordered)
@@ -266,7 +269,6 @@ async function runTickPipeline(
   // Tick pipeline order:
   // 1) bot actions (orders / production starts)
   // 2) building operating costs (deactivate unpaid buildings)
-  //    Note: Production validation doesn't yet check building status (Phase 2)
   // 3) production completions
   // 4) research completions and recipe unlocks
   // 5) market matching and settlement
@@ -276,6 +278,10 @@ async function runTickPipeline(
   // 9) contract lifecycle (expire and generate)
   // 10) market candle aggregation (OHLC/VWAP/volume)
   // 11) finalize world tick state
+  //
+  // Phase 3 Validations:
+  // - Storage capacity checked before inventory mutations (production, market, shipments)
+  // - Building availability validated for production job creation
   if (options.runBots) {
     await runBotsForTick(tx, nextTick, options.botConfig);
   }

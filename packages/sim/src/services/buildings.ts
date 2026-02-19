@@ -125,9 +125,25 @@ export interface ReactivateBuildingInput {
 }
 
 /**
+ * ## Building Staffing (Future Enhancement)
+ *
+ * When employee assignment is implemented:
+ * - Buildings will have minEmployees, maxEmployees, employeesAssigned fields
+ * - Effective capacity = baseCapacity * (employeesAssigned - minEmployees) / (maxEmployees - minEmployees)
+ * - Buildings with employeesAssigned < minEmployees automatically set to INACTIVE status
+ * - Staffing changes do not affect running production jobs, only new jobs
+ *
+ * Current implementation:
+ * - All buildings use full capacity when ACTIVE
+ * - Staffing mechanics deferred to future phase
+ */
+
+/**
  * Constants
  */
 export const BUILDING_OPERATING_COST_INTERVAL_TICKS = 7; // Weekly
+export const BASE_STORAGE_CAPACITY_PER_REGION = 1000;
+export const WAREHOUSE_CAPACITY_PER_SLOT = 500;
 
 /**
  * Validates building acquisition input
@@ -512,3 +528,136 @@ export async function getProductionCapacityForCompany(
 
   return { totalCapacity, usedCapacity };
 }
+
+/**
+ * Calculates total storage capacity for a region
+ *
+ * @param warehouseCount - Number of active warehouses in the region
+ * @param capacityPerWarehouse - Storage capacity per warehouse (default: WAREHOUSE_CAPACITY_PER_SLOT)
+ * @param baseCapacity - Base storage capacity per region (default: BASE_STORAGE_CAPACITY_PER_REGION)
+ * @returns Total storage capacity
+ *
+ * @remarks
+ * - Base capacity is the minimum storage available in any region
+ * - Each warehouse adds additional capacity based on capacitySlots or fixed amount
+ * - Formula: baseCapacity + (warehouseCount * capacityPerWarehouse)
+ */
+export function calculateRegionalStorageCapacity(
+  warehouseCount: number,
+  capacityPerWarehouse: number = WAREHOUSE_CAPACITY_PER_SLOT,
+  baseCapacity: number = BASE_STORAGE_CAPACITY_PER_REGION
+): number {
+  if (!Number.isInteger(warehouseCount) || warehouseCount < 0) {
+    throw new DomainInvariantError("warehouseCount must be a non-negative integer");
+  }
+  if (!Number.isInteger(capacityPerWarehouse) || capacityPerWarehouse < 0) {
+    throw new DomainInvariantError("capacityPerWarehouse must be a non-negative integer");
+  }
+  if (!Number.isInteger(baseCapacity) || baseCapacity < 0) {
+    throw new DomainInvariantError("baseCapacity must be a non-negative integer");
+  }
+
+  return baseCapacity + (warehouseCount * capacityPerWarehouse);
+}
+
+/**
+ * Validates that adding inventory to a region would not exceed storage capacity
+ *
+ * @param tx - Prisma transaction client
+ * @param companyId - Company ID
+ * @param regionId - Region ID
+ * @param quantityToAdd - Quantity of inventory to add
+ *
+ * @throws {DomainInvariantError} If adding inventory would exceed regional storage capacity
+ *
+ * @remarks
+ * - Calculates current total inventory in region (all items combined)
+ * - Gets warehouse count to calculate total capacity
+ * - Throws error if current + quantityToAdd exceeds capacity
+ * - Must be called before any inventory mutation (production, market, shipments)
+ */
+export async function validateStorageCapacity(
+  tx: Prisma.TransactionClient,
+  companyId: string,
+  regionId: string,
+  quantityToAdd: number
+): Promise<void> {
+  if (!companyId) {
+    throw new DomainInvariantError("companyId is required");
+  }
+  if (!regionId) {
+    throw new DomainInvariantError("regionId is required");
+  }
+  if (!Number.isInteger(quantityToAdd) || quantityToAdd < 0) {
+    throw new DomainInvariantError("quantityToAdd must be a non-negative integer");
+  }
+
+  // Get current total inventory in region
+  const currentInventory = await tx.inventory.aggregate({
+    where: { companyId, regionId },
+    _sum: { quantity: true }
+  });
+
+  // Get warehouse count for capacity calculation
+  const warehouseCount = await tx.building.count({
+    where: {
+      companyId,
+      regionId,
+      buildingType: BuildingType.WAREHOUSE,
+      status: BuildingStatus.ACTIVE
+    }
+  });
+
+  const capacity = calculateRegionalStorageCapacity(warehouseCount);
+  const currentTotal = currentInventory._sum.quantity || 0;
+
+  if (currentTotal + quantityToAdd > capacity) {
+    throw new DomainInvariantError(
+      `storage capacity exceeded: current=${currentTotal}, adding=${quantityToAdd}, capacity=${capacity}`
+    );
+  }
+}
+
+/**
+ * Validates that a company has at least one active production building
+ *
+ * @param tx - Prisma transaction client
+ * @param companyId - Company ID
+ *
+ * @throws {DomainInvariantError} If company has no active production buildings
+ *
+ * @remarks
+ * - Production buildings include: MINE, FARM, FACTORY, MEGA_FACTORY
+ * - Only ACTIVE buildings are counted
+ * - Must be called before creating production jobs
+ */
+export async function validateProductionBuildingAvailable(
+  tx: Prisma.TransactionClient,
+  companyId: string
+): Promise<void> {
+  if (!companyId) {
+    throw new DomainInvariantError("companyId is required");
+  }
+
+  const productionBuildingTypes = [
+    BuildingType.MINE,
+    BuildingType.FARM,
+    BuildingType.FACTORY,
+    BuildingType.MEGA_FACTORY
+  ];
+
+  const activeBuildingCount = await tx.building.count({
+    where: {
+      companyId,
+      buildingType: { in: productionBuildingTypes },
+      status: BuildingStatus.ACTIVE
+    }
+  });
+
+  if (activeBuildingCount === 0) {
+    throw new DomainInvariantError(
+      `company ${companyId} has no active production buildings`
+    );
+  }
+}
+
