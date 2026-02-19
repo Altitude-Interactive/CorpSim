@@ -22,10 +22,10 @@ await validateStorageCapacity(tx, buyOrder.companyId, buyOrder.regionId, match.q
 // Location: packages/sim/src/services/market-matching.ts:356-361
 ```
 
-**2. System-Driven Operations → RETURN TO SENDER**
+**2. System-Driven Operations → DELIVERY ROLLBACK**
 - Shipment deliveries
 
-**Behavior:** Operation completes successfully but with degraded outcome (inventory returns to origin).
+**Behavior:** When destination storage full, delivery rolls back to origin (NOT a new shipment with travel time).
 
 **Implementation:**
 ```typescript
@@ -34,12 +34,23 @@ try {
   destinationRegionId = shipment.toRegionId; // Normal delivery
 } catch (error) {
   if (error instanceof DomainInvariantError && error.message.includes("storage capacity exceeded")) {
-    destinationRegionId = shipment.fromRegionId; // Return to sender
+    destinationRegionId = shipment.fromRegionId; // Rollback to origin
     returnedCount += 1;
+    
+    // CRITICAL: Validate origin capacity (maintains hard cap invariants)
+    await validateStorageCapacity(tx, shipment.companyId, shipment.fromRegionId, shipment.quantity);
+    // If origin also full, delivery fails - player must manage storage better
   }
 }
-// Location: packages/sim/src/services/shipments.ts:675-695
+// Location: packages/sim/src/services/shipments.ts:713-734
 ```
+
+**Key Differences from "Return to Sender":**
+- This is a ROLLBACK, not a logistics return
+- No new shipment record created
+- No additional travel time
+- Origin capacity IS validated (hard caps maintained)
+- May fail if both regions full (acceptable - player error)
 
 ---
 
@@ -49,20 +60,24 @@ try {
 
 When multiple operations target the same storage in a single tick:
 
-1. **Deterministic Order:** All operations processed in creation/arrival order (ASC)
+1. **Deterministic Order:** All operations processed in deterministic order: `ORDER BY tickArrives ASC, tickCreated ASC`
+   - Uses tickCreated (deterministic) instead of createdAt (wall-clock time)
+   - Guarantees same order on replay
 2. **Sequential Validation:** Each operation validates against current state
-3. **First-Come-First-Served:** Early operations succeed, later ones may fail/return
+3. **First-Come-First-Served:** Early operations succeed, later ones may fail/rollback
 
 ### Example Scenario
 
 ```
 Tick 100 at Region A (capacity: 1000, current: 900):
-  1. Shipment 1 arrives (quantity: 50) → ✅ Delivered (950/1000)
-  2. Shipment 2 arrives (quantity: 100) → ❌ Returned to sender (950/1000)
+  1. Shipment 1 (tickCreated=50) arrives (quantity: 50) → ✅ Delivered (950/1000)
+  2. Shipment 2 (tickCreated=51) arrives (quantity: 100) → ❌ Rollback to origin
+     - Destination full, attempts rollback
+     - Origin capacity validated - succeeds or fails based on origin state
   3. Production completes (net +80) → ❌ Fails validation (950/1000)
 ```
 
-**Key Insight:** No race conditions possible - everything is sequential within transaction.
+**Key Insight:** No race conditions possible - everything is sequential within transaction, ordered by deterministic fields.
 
 ---
 
@@ -76,13 +91,23 @@ Without overflow policy, player could be stuck:
 - **Game broken - tick cannot advance**
 
 ### Solution
-Shipment returns to sender automatically. Player consequences:
+Shipment delivery rolls back to origin when destination full. 
+
+**Typical Case (Origin Has Space):**
 - ✅ Tick advances successfully
-- ✅ Items safe at origin
+- ✅ Items returned to origin
 - ❌ Logistics fee wasted ($250 + $15/unit)
 - ❌ Travel time wasted
 
-**Player learns:** Check destination capacity before shipping.
+**Edge Case (Both Regions Full):**
+- ❌ Delivery fails with error
+- Tick advancement blocked ONLY if player filled both regions
+- This is acceptable - player made a serious mistake
+- Provides clear feedback: "manage your storage better"
+
+**Player learns:** Check destination capacity before shipping AND don't overfill origin during transit.
+
+**Hard Cap Invariants Maintained:** No storage bypass - all regions respect capacity limits.
 
 ---
 

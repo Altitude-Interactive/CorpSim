@@ -23,26 +23,34 @@
  * 4. **Cancellation** (optional): Player can cancel in-transit shipments to recover inventory
  *
  * ## DETERMINISTIC OVERFLOW POLICY
- * **Storage Full at Destination → Return to Sender**
+ * **Storage Full at Destination → Delivery Rollback (Return to Origin)**
  * 
  * When a shipment arrives but destination storage is full:
- * - Shipment status: DELIVERED (not failed - deterministic status regardless of outcome)
- * - Inventory destination: Origin region (fromRegionId) UNCONDITIONALLY
- * - Origin capacity validation: SKIPPED (origin always accepts returns to prevent soft-lock)
+ * - Shipment status: DELIVERED (completed, not failed - deterministic status)
+ * - Inventory action: ROLLBACK - items returned to origin region (fromRegionId)
+ * - This is NOT a new shipment with transit time - it's an immediate rollback
+ * - Origin capacity validation: NOT SKIPPED - follows same rules as normal inventory
  * - No error thrown (prevents tick blocking)
- * - Deterministic: Always returns to sender, never partial delivery
+ * - Deterministic: Always returns to origin, never partial delivery
  * - Player consequence: Wasted logistics fee, items back at origin
- * - Atomicity: Return happens in same transaction as delivery attempt
+ * - Atomicity: Rollback happens in same transaction as delivery attempt
  * - Idempotency: Shipment update uses optimistic locking (updateMany with status condition)
  * 
- * **Rationale for skipping origin validation:**
- * If origin storage is also full, blocking would create a deadlock. By unconditionally
- * accepting returns at origin, we ensure tick advancement never fails. This is acceptable
- * because the items were originally in that region - we're just undoing the shipment.
- * Origin storage may temporarily exceed capacity, but this is a bounded violation
- * (limited to shipment quantity) and self-corrects as player manages inventory.
+ * **Rationale for immediate rollback vs new return shipment:**
+ * A logistics return shipment would add complexity (new shipment record, travel time, more fees).
+ * Since the player caused the overflow by not managing capacity, an immediate rollback
+ * is a fair penalty (wasted fee + time) while keeping the system simple and deterministic.
  * 
- * This prevents soft-locks where tick advancement fails due to player storage mismanagement.
+ * **Origin capacity handling:**
+ * The rollback follows normal inventory rules - if origin is ALSO full, the delivery
+ * will fail with an error. This is acceptable because:
+ * 1. Player must have cleared space at origin for the shipment to have been created
+ * 2. If origin filled during transit, player made a mistake (shipped too much)
+ * 3. Failure is deterministic and provides clear feedback
+ * 4. Alternative (overflow bucket) would add complexity for rare edge case
+ * 
+ * This prevents most soft-locks (typical case: destination full, origin has space)
+ * while maintaining hard storage cap invariants everywhere.
  *
  * ## Invariants Enforced
  * - Item must be unlocked by research (player companies) or specialization constraints
@@ -51,15 +59,15 @@
  * - Must have available inventory (quantity - reserved) and cash for fees
  * - Cancellation only allowed for IN_TRANSIT status
  * - Destination inventory created or incremented atomically on delivery
- * - **Overflow invariant**: Delivery never exceeds destination capacity (returns to sender instead)
- * - **Origin overflow allowance**: Returns bypass origin capacity check (bounded violation)
+ * - **Overflow invariant**: Delivery never exceeds destination capacity (rollback to origin instead)
+ * - **Hard capacity caps**: Origin must have capacity for rollback (no bypass - maintains invariants)
  *
  * ## Side Effects and Transaction Boundaries
  * All operations are atomic (prisma.$transaction):
  * - **createShipment**: Decrements inventory + cash (two optimistic locks), creates shipment record,
  *   logs fee ledger entry
  * - **deliverDueShipmentsForTick**: Updates shipment status, upserts destination inventory OR
- *   returns to origin if destination storage full (NO ledger entry for returns - fee already paid)
+ *   rolls back to origin if destination storage full (validates origin capacity - may fail delivery)
  * - **cancelShipment**: Returns inventory to source, updates shipment status to CANCELLED
  *
  * ## Deterministic Travel Time
@@ -70,10 +78,10 @@
  * - **Arrival Tick**: `currentTick + adjustedDuration`
  *
  * ## Delivery Processing
- * - Deterministic order: `ORDER BY tickArrives ASC, createdAt ASC`
+ * - Deterministic order: `ORDER BY tickArrives ASC, tickCreated ASC`
  * - Batch processing for efficiency (all due shipments in single tick)
  * - Atomic inventory transfer (no partial deliveries)
- * - Overflow handling: Return to sender if destination full (origin always accepts)
+ * - Overflow handling: Rollback to origin if destination full (validates origin capacity)
  * - Idempotency: updateMany prevents double-processing on retry
  *
  * ## Fee Structure
@@ -671,14 +679,15 @@ export async function deliverDueShipmentsForTick(
         lte: tick
       }
     },
-    orderBy: [{ tickArrives: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ tickArrives: "asc" }, { tickCreated: "asc" }],
     select: {
       id: true,
       companyId: true,
       fromRegionId: true,
       toRegionId: true,
       itemId: true,
-      quantity: true
+      quantity: true,
+      tickCreated: true
     }
   });
 
@@ -702,7 +711,7 @@ export async function deliverDueShipmentsForTick(
     }
 
     // Check if destination has storage capacity
-    // If not, return shipment to origin (overflow policy: return to sender)
+    // If not, rollback delivery to origin (overflow policy: immediate rollback)
     let destinationRegionId = shipment.toRegionId;
     let deliveredToDestination = true;
 
@@ -714,11 +723,20 @@ export async function deliverDueShipmentsForTick(
         shipment.quantity
       );
     } catch (error) {
-      // Storage full at destination - return to sender
+      // Storage full at destination - rollback to origin
       if (error instanceof DomainInvariantError && error.message.includes("storage capacity exceeded")) {
         destinationRegionId = shipment.fromRegionId;
         deliveredToDestination = false;
         returnedCount += 1;
+        
+        // Validate origin capacity for rollback (maintains hard cap invariants)
+        // If origin is also full, this will throw and fail the delivery
+        await validateStorageCapacity(
+          tx,
+          shipment.companyId,
+          shipment.fromRegionId,
+          shipment.quantity
+        );
       } else {
         throw error;
       }
