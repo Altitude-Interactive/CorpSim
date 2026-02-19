@@ -6,18 +6,15 @@ import type {
   ProductionCapacityInfo,
   PreflightValidationResult,
   ValidationIssue,
-  BuildingTypeDefinition,
-  BuildingCategory
+  BuildingTypeDefinition
 } from "@corpsim/shared";
 import {
   assertCompanyOwnedByPlayer,
   resolvePlayerById,
   acquireBuildingWithTx,
   reactivateBuildingWithTx,
-  getBuildingsForCompany,
   getProductionCapacityForCompany,
   calculateRegionalStorageCapacity,
-  BASE_STORAGE_CAPACITY_PER_REGION,
   WAREHOUSE_CAPACITY_PER_SLOT
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
