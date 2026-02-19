@@ -453,6 +453,8 @@ export type FinanceLedgerEntryType =
   | "PRODUCTION_COST"
   | "WORKFORCE_SALARY_EXPENSE"
   | "WORKFORCE_RECRUITMENT_EXPENSE"
+  | "BUILDING_OPERATING_COST"
+  | "BUILDING_ACQUISITION"
   | "MANUAL_ADJUSTMENT";
 
 export interface FinanceLedgerEntry {
