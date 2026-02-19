@@ -22,6 +22,18 @@
  * 3. **Delivery**: At arrival tick, `deliverDueShipmentsForTick()` transfers inventory to destination
  * 4. **Cancellation** (optional): Player can cancel in-transit shipments to recover inventory
  *
+ * ## DETERMINISTIC OVERFLOW POLICY
+ * **Storage Full at Destination → Return to Sender**
+ * 
+ * When a shipment arrives but destination storage is full:
+ * - Shipment status: DELIVERED (not failed)
+ * - Inventory destination: Origin region (fromRegionId)
+ * - No error thrown (prevents tick blocking)
+ * - Deterministic: Always returns to sender, never partial delivery
+ * - Player consequence: Wasted logistics fee, items back at origin
+ * 
+ * This prevents soft-locks where tick advancement fails due to player storage mismanagement.
+ *
  * ## Invariants Enforced
  * - Item must be unlocked by research (player companies) or specialization constraints
  * - Cannot ship to same region (source != destination)
@@ -29,12 +41,14 @@
  * - Must have available inventory (quantity - reserved) and cash for fees
  * - Cancellation only allowed for IN_TRANSIT status
  * - Destination inventory created or incremented atomically on delivery
+ * - **Overflow invariant**: Delivery never exceeds storage capacity (returns to sender instead)
  *
  * ## Side Effects and Transaction Boundaries
  * All operations are atomic (prisma.$transaction):
  * - **createShipment**: Decrements inventory + cash (two optimistic locks), creates shipment record,
  *   logs fee ledger entry
- * - **deliverDueShipmentsForTick**: Updates shipment status, upserts destination inventory
+ * - **deliverDueShipmentsForTick**: Updates shipment status, upserts destination inventory OR
+ *   returns to origin if destination storage full
  * - **cancelShipment**: Returns inventory to source, updates shipment status to CANCELLED
  *
  * ## Deterministic Travel Time
@@ -48,17 +62,19 @@
  * - Deterministic order: `ORDER BY tickArrives ASC, createdAt ASC`
  * - Batch processing for efficiency (all due shipments in single tick)
  * - Atomic inventory transfer (no partial deliveries)
+ * - Overflow handling: Return to sender if destination full
  *
  * ## Fee Structure
  * - **Base Fee**: Fixed cost per shipment (configured)
  * - **Unit Fee**: Cost per item shipped (configured)
  * - **Total**: `baseFee + (quantity * feePerUnit)`
- * - Fees are non-refundable even on cancellation
+ * - Fees are non-refundable even on cancellation or overflow return
  *
  * ## Error Handling
  * - NotFoundError: Shipment, company, region, or item doesn't exist
  * - DomainInvariantError: Same-region shipment, insufficient inventory/cash, item locked
  * - OptimisticLockConflictError: Concurrent modification detected (retry required)
+ * - **No errors on overflow**: Returns to sender deterministically
  */
 import {
   LedgerEntryType,
@@ -632,7 +648,7 @@ export async function cancelShipmentWithTx(
 export async function deliverDueShipmentsForTick(
   tx: Prisma.TransactionClient,
   tick: number
-): Promise<number> {
+): Promise<{ deliveredCount: number; returnedCount: number }> {
   ensureTick(tick, "tick");
 
   const dueShipments = await tx.shipment.findMany({
@@ -654,6 +670,7 @@ export async function deliverDueShipmentsForTick(
   });
 
   let deliveredCount = 0;
+  let returnedCount = 0;
 
   for (const shipment of dueShipments) {
     const updated = await tx.shipment.updateMany({
@@ -671,26 +688,41 @@ export async function deliverDueShipmentsForTick(
       continue;
     }
 
-    // Validate storage capacity before adding delivered inventory
-    await validateStorageCapacity(
-      tx,
-      shipment.companyId,
-      shipment.toRegionId,
-      shipment.quantity
-    );
+    // Check if destination has storage capacity
+    // If not, return shipment to origin (overflow policy: return to sender)
+    let destinationRegionId = shipment.toRegionId;
+    let deliveredToDestination = true;
+
+    try {
+      await validateStorageCapacity(
+        tx,
+        shipment.companyId,
+        shipment.toRegionId,
+        shipment.quantity
+      );
+    } catch (error) {
+      // Storage full at destination - return to sender
+      if (error instanceof DomainInvariantError && error.message.includes("storage capacity exceeded")) {
+        destinationRegionId = shipment.fromRegionId;
+        deliveredToDestination = false;
+        returnedCount += 1;
+      } else {
+        throw error;
+      }
+    }
 
     await tx.inventory.upsert({
       where: {
         companyId_itemId_regionId: {
           companyId: shipment.companyId,
           itemId: shipment.itemId,
-          regionId: shipment.toRegionId
+          regionId: destinationRegionId
         }
       },
       create: {
         companyId: shipment.companyId,
         itemId: shipment.itemId,
-        regionId: shipment.toRegionId,
+        regionId: destinationRegionId,
         quantity: shipment.quantity,
         reservedQuantity: 0
       },
@@ -701,8 +733,10 @@ export async function deliverDueShipmentsForTick(
       }
     });
 
-    deliveredCount += 1;
+    if (deliveredToDestination) {
+      deliveredCount += 1;
+    }
   }
 
-  return deliveredCount;
+  return { deliveredCount, returnedCount };
 }
