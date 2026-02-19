@@ -22,6 +22,14 @@ import { WorldService } from "../world/world.service";
 
 // Building type definitions with costs (Phase 5 balance pass)
 const BUILDING_DEFINITIONS: Record<BuildingType, Omit<BuildingTypeDefinition, "buildingType">> = {
+  [BuildingType.WORKSHOP]: {
+    category: "PRODUCTION",
+    name: "Workshop",
+    description: "Small-scale production facility for beginners",
+    acquisitionCostCents: "2500000", // $25,000
+    weeklyOperatingCostCents: "150000", // $1,500/week
+    capacitySlots: 1
+  },
   [BuildingType.MINE]: {
     category: "PRODUCTION",
     name: "Mine",
@@ -323,6 +331,7 @@ export class BuildingsService {
     try {
       // Check for active production buildings
       const productionBuildingTypes = [
+        BuildingType.WORKSHOP,
         BuildingType.MINE,
         BuildingType.FARM,
         BuildingType.FACTORY,

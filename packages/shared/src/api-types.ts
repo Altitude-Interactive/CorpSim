@@ -559,6 +559,7 @@ export interface WorkforceCapacityChangeResult {
 }
 
 export type BuildingType =
+  | "WORKSHOP"
   | "MINE"
   | "FARM"
   | "FACTORY"

@@ -26,11 +26,21 @@
  * **Storage Full at Destination → Return to Sender**
  * 
  * When a shipment arrives but destination storage is full:
- * - Shipment status: DELIVERED (not failed)
- * - Inventory destination: Origin region (fromRegionId)
+ * - Shipment status: DELIVERED (not failed - deterministic status regardless of outcome)
+ * - Inventory destination: Origin region (fromRegionId) UNCONDITIONALLY
+ * - Origin capacity validation: SKIPPED (origin always accepts returns to prevent soft-lock)
  * - No error thrown (prevents tick blocking)
  * - Deterministic: Always returns to sender, never partial delivery
  * - Player consequence: Wasted logistics fee, items back at origin
+ * - Atomicity: Return happens in same transaction as delivery attempt
+ * - Idempotency: Shipment update uses optimistic locking (updateMany with status condition)
+ * 
+ * **Rationale for skipping origin validation:**
+ * If origin storage is also full, blocking would create a deadlock. By unconditionally
+ * accepting returns at origin, we ensure tick advancement never fails. This is acceptable
+ * because the items were originally in that region - we're just undoing the shipment.
+ * Origin storage may temporarily exceed capacity, but this is a bounded violation
+ * (limited to shipment quantity) and self-corrects as player manages inventory.
  * 
  * This prevents soft-locks where tick advancement fails due to player storage mismanagement.
  *
@@ -41,14 +51,15 @@
  * - Must have available inventory (quantity - reserved) and cash for fees
  * - Cancellation only allowed for IN_TRANSIT status
  * - Destination inventory created or incremented atomically on delivery
- * - **Overflow invariant**: Delivery never exceeds storage capacity (returns to sender instead)
+ * - **Overflow invariant**: Delivery never exceeds destination capacity (returns to sender instead)
+ * - **Origin overflow allowance**: Returns bypass origin capacity check (bounded violation)
  *
  * ## Side Effects and Transaction Boundaries
  * All operations are atomic (prisma.$transaction):
  * - **createShipment**: Decrements inventory + cash (two optimistic locks), creates shipment record,
  *   logs fee ledger entry
  * - **deliverDueShipmentsForTick**: Updates shipment status, upserts destination inventory OR
- *   returns to origin if destination storage full
+ *   returns to origin if destination storage full (NO ledger entry for returns - fee already paid)
  * - **cancelShipment**: Returns inventory to source, updates shipment status to CANCELLED
  *
  * ## Deterministic Travel Time
@@ -62,13 +73,15 @@
  * - Deterministic order: `ORDER BY tickArrives ASC, createdAt ASC`
  * - Batch processing for efficiency (all due shipments in single tick)
  * - Atomic inventory transfer (no partial deliveries)
- * - Overflow handling: Return to sender if destination full
+ * - Overflow handling: Return to sender if destination full (origin always accepts)
+ * - Idempotency: updateMany prevents double-processing on retry
  *
  * ## Fee Structure
  * - **Base Fee**: Fixed cost per shipment (configured)
  * - **Unit Fee**: Cost per item shipped (configured)
  * - **Total**: `baseFee + (quantity * feePerUnit)`
  * - Fees are non-refundable even on cancellation or overflow return
+ * - **NO additional ledger entry on return** - fee already recorded at shipment creation
  *
  * ## Error Handling
  * - NotFoundError: Shipment, company, region, or item doesn't exist
