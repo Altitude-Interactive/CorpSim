@@ -55,21 +55,6 @@ describe("market candles integration", () => {
     playerId = playerCompany.ownerPlayerId;
     playerRegionId = playerCompany.regionId;
 
-    // Add warehouse to buyer to ensure sufficient storage capacity
-    await prisma.building.create({
-      data: {
-        companyId: playerCompanyId,
-        regionId: playerRegionId,
-        buildingType: "WAREHOUSE",
-        status: "ACTIVE",
-        acquisitionCostCents: 0n,
-        weeklyOperatingCostCents: 0n,
-        capacitySlots: 1,
-        tickAcquired: 0,
-        lastOperatingCostTick: 0
-      }
-    });
-
     const sellerCompany = await prisma.company.create({
       data: {
         code: "PLAYER_CANDLE_SELLER",

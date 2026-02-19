@@ -766,6 +766,36 @@ export async function seedWorld(
     }))
   });
 
+  // Create buildings for player company to support production and storage
+  if (playerCompany) {
+    await prisma.building.createMany({
+      data: [
+        {
+          companyId: playerCompany.id,
+          regionId: coreRegion.id,
+          buildingType: "FACTORY",
+          status: "ACTIVE",
+          acquisitionCostCents: 0n,
+          weeklyOperatingCostCents: 0n,
+          capacitySlots: 5,
+          tickAcquired: 0,
+          lastOperatingCostTick: 0
+        },
+        {
+          companyId: playerCompany.id,
+          regionId: coreRegion.id,
+          buildingType: "WAREHOUSE",
+          status: "ACTIVE",
+          acquisitionCostCents: 0n,
+          weeklyOperatingCostCents: 0n,
+          capacitySlots: 1,
+          tickAcquired: 0,
+          lastOperatingCostTick: 0
+        }
+      ]
+    });
+  }
+
   const recipesByKey: Record<string, { id: string; code: string }> = {};
   for (const definition of RECIPE_DEFINITIONS) {
     const recipe = await prisma.recipe.create({
