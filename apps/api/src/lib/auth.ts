@@ -372,6 +372,7 @@ function resolveAuthRateLimit() {
 
 function resolveAuthAdvancedOptions() {
   const ipAddressHeaders = parseCsvEnv("AUTH_IP_ADDRESS_HEADERS");
+  const cookieDomain = parseTrimmedEnv("BETTER_AUTH_COOKIE_DOMAIN");
   return {
     useSecureCookies: process.env.NODE_ENV === "production",
     disableErrorPage: true,
@@ -388,8 +389,16 @@ function resolveAuthAdvancedOptions() {
               "fly-client-ip"
             ],
       ipv6Subnet: resolveIpv6Subnet()
-    }
-  } as const;
+    },
+    ...(cookieDomain
+      ? {
+          crossSubDomainCookies: {
+            enabled: true,
+            domain: cookieDomain
+          }
+        }
+      : {})
+  };
 }
 
 function normalizeHandleSeed(seed: string): string {
@@ -498,10 +507,15 @@ function resolveTrustedOrigins(): string[] {
 }
 
 function resolveAuthBaseUrl(): string {
+  // BETTER_AUTH_URL must point to the domain where /api/auth/* is publicly accessible.
+  // In multi-subdomain production deployments the nginx proxy routes
+  // /api/auth/* from the web domain to this API, so APP_URL / WEB_URL is the
+  // correct fallback – NOT API_URL (the internal API subdomain).
   const explicit =
     process.env.BETTER_AUTH_URL?.trim() ||
-    process.env.API_URL?.trim() ||
-    process.env.APP_URL?.trim();
+    process.env.APP_URL?.trim() ||
+    process.env.WEB_URL?.trim() ||
+    process.env.API_URL?.trim();
 
   if (explicit) {
     return explicit;
