@@ -249,7 +249,10 @@ function isTickExecutionConflict(error: unknown, executionKey: string | undefine
  * 10. Market candle aggregation (OHLC/VWAP/volume)
  *
  * ## Phase 3 Validations
- * - Storage capacity checked before inventory mutations (production, market, shipments)
+ * - Storage capacity enforced at inventory mutation points
+ *   - Production: validates net inventory change (outputs - inputs consumed)
+ *   - Market settlement: validates buyer's capacity before trade execution
+ *   - Shipment delivery: validates destination capacity before delivery
  * - Building availability validated for production job creation
  *
  * ## Determinism
@@ -280,7 +283,10 @@ async function runTickPipeline(
   // 11) finalize world tick state
   //
   // Phase 3 Validations:
-  // - Storage capacity checked before inventory mutations (production, market, shipments)
+  // - Storage capacity enforced at inventory mutation points:
+  //   * Production: validates net change (outputs - inputs), skips if net negative
+  //   * Market: validates buyer capacity before trade execution
+  //   * Shipments: validates destination capacity before delivery
   // - Building availability validated for production job creation
   if (options.runBots) {
     await runBotsForTick(tx, nextTick, options.botConfig);

@@ -856,14 +856,24 @@ export async function completeDueProductionJobs(
     }
 
     const outputQuantity = job.recipe.outputQuantity * job.runs;
-
-    // Validate storage capacity BEFORE any inventory mutations
-    await validateStorageCapacity(
-      tx,
-      job.companyId,
-      job.company.regionId,
-      outputQuantity
+    
+    // Calculate net inventory change (outputs added minus inputs consumed)
+    const totalInputQuantity = requirements.reduce(
+      (sum, requirement) => sum + requirement.quantity,
+      0
     );
+    const netInventoryChange = outputQuantity - totalInputQuantity;
+
+    // Validate storage capacity accounts for net change after consuming inputs
+    // (only validate if net change is positive, i.e., we're adding more than consuming)
+    if (netInventoryChange > 0) {
+      await validateStorageCapacity(
+        tx,
+        job.companyId,
+        job.company.regionId,
+        netInventoryChange
+      );
+    }
 
     for (const requirement of requirements) {
       await tx.inventory.update({
