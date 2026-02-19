@@ -1,4 +1,9 @@
 import type {
+  BuildingCategory,
+  BuildingRecord,
+  BuildingStatus,
+  BuildingType,
+  BuildingTypeDefinition,
   CompanySpecialization,
   CompanySpecializationOption,
   DatabaseSchemaReadiness,
@@ -25,14 +30,18 @@ import type {
   PlayerRegistryCompany,
   PlayerRegistryEntry,
   PlayerRegistryItemHolding,
+  PreflightValidationResult,
+  ProductionCapacityInfo,
   ProductionJob,
   ProductionJobStatus,
   ProductionRecipe,
+  RegionalStorageInfo,
   RegionSummary,
   ResearchJob,
   ResearchNode,
   ResearchNodeStatus,
   ShipmentRecord,
+  ValidationIssue,
   WorkforceCapacityChangeResult,
   WorldHealth,
   WorldTickState
@@ -905,3 +914,118 @@ export function parseWorkforceCapacityChangeResult(
   };
 }
 
+export function parseBuildingRecord(value: unknown): BuildingRecord {
+  if (!isRecord(value)) {
+    throw new Error("Invalid building record payload");
+  }
+
+  if (!isRecord(value.region)) {
+    throw new Error("Invalid building region payload");
+  }
+
+  return {
+    id: readString(value.id, "id"),
+    companyId: readString(value.companyId, "companyId"),
+    regionId: readString(value.regionId, "regionId"),
+    buildingType: readString(value.buildingType, "buildingType") as BuildingType,
+    status: readString(value.status, "status") as BuildingStatus,
+    name: readNullableString(value.name, "name"),
+    acquisitionCostCents: readString(value.acquisitionCostCents, "acquisitionCostCents"),
+    weeklyOperatingCostCents: readString(
+      value.weeklyOperatingCostCents,
+      "weeklyOperatingCostCents"
+    ),
+    capacitySlots: readNumber(value.capacitySlots, "capacitySlots"),
+    tickAcquired: readNumber(value.tickAcquired, "tickAcquired"),
+    tickConstructionCompletes:
+      value.tickConstructionCompletes === null
+        ? null
+        : readNumber(value.tickConstructionCompletes, "tickConstructionCompletes"),
+    lastOperatingCostTick:
+      value.lastOperatingCostTick === null
+        ? null
+        : readNumber(value.lastOperatingCostTick, "lastOperatingCostTick"),
+    createdAt: readString(value.createdAt, "createdAt"),
+    updatedAt: readString(value.updatedAt, "updatedAt"),
+    region: {
+      id: readString(value.region.id, "region.id"),
+      code: readString(value.region.code, "region.code"),
+      name: readString(value.region.name, "region.name")
+    }
+  };
+}
+
+export function parseRegionalStorageInfo(value: unknown): RegionalStorageInfo {
+  if (!isRecord(value)) {
+    throw new Error("Invalid regional storage info payload");
+  }
+
+  return {
+    companyId: readString(value.companyId, "companyId"),
+    regionId: readString(value.regionId, "regionId"),
+    currentUsage: readNumber(value.currentUsage, "currentUsage"),
+    maxCapacity: readNumber(value.maxCapacity, "maxCapacity"),
+    usagePercentage: readNumber(value.usagePercentage, "usagePercentage"),
+    warehouseCount: readNumber(value.warehouseCount, "warehouseCount")
+  };
+}
+
+export function parseProductionCapacityInfo(value: unknown): ProductionCapacityInfo {
+  if (!isRecord(value)) {
+    throw new Error("Invalid production capacity info payload");
+  }
+
+  return {
+    companyId: readString(value.companyId, "companyId"),
+    totalCapacity: readNumber(value.totalCapacity, "totalCapacity"),
+    usedCapacity: readNumber(value.usedCapacity, "usedCapacity"),
+    availableCapacity: readNumber(value.availableCapacity, "availableCapacity"),
+    usagePercentage: readNumber(value.usagePercentage, "usagePercentage")
+  };
+}
+
+export function parseValidationIssue(value: unknown): ValidationIssue {
+  if (!isRecord(value)) {
+    throw new Error("Invalid validation issue payload");
+  }
+
+  return {
+    code: readString(value.code, "code"),
+    message: readString(value.message, "message"),
+    severity: readString(value.severity, "severity") as "ERROR" | "WARNING"
+  };
+}
+
+export function parsePreflightValidationResult(value: unknown): PreflightValidationResult {
+  if (!isRecord(value)) {
+    throw new Error("Invalid preflight validation result payload");
+  }
+
+  return {
+    valid: readBoolean(value.valid, "valid"),
+    issues: readArray(value.issues, "issues").map(parseValidationIssue)
+  };
+}
+
+export function parseBuildingTypeDefinition(value: unknown): BuildingTypeDefinition {
+  if (!isRecord(value)) {
+    throw new Error("Invalid building type definition payload");
+  }
+
+  return {
+    buildingType: readString(value.buildingType, "buildingType") as BuildingType,
+    category: readString(value.category, "category") as BuildingCategory,
+    name: readString(value.name, "name"),
+    description: readString(value.description, "description"),
+    acquisitionCostCents: readString(value.acquisitionCostCents, "acquisitionCostCents"),
+    weeklyOperatingCostCents: readString(
+      value.weeklyOperatingCostCents,
+      "weeklyOperatingCostCents"
+    ),
+    capacitySlots: readNumber(value.capacitySlots, "capacitySlots"),
+    storageCapacity:
+      value.storageCapacity === undefined
+        ? undefined
+        : readNumber(value.storageCapacity, "storageCapacity")
+  };
+}

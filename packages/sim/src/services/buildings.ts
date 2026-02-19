@@ -16,7 +16,7 @@
  * 4. **Reactivation**: When cash is available, building can be manually or automatically reactivated
  *
  * ## Building Types and Categories
- * - **PRODUCTION**: MINE, FARM, FACTORY, MEGA_FACTORY
+ * - **PRODUCTION**: WORKSHOP, MINE, FARM, FACTORY, MEGA_FACTORY
  *   - Provide production job capacity
  *   - Required for production jobs
  *   - Have capacity slots limiting concurrent jobs
@@ -85,6 +85,17 @@ import {
   NotFoundError
 } from "../domain/errors";
 import { availableCash } from "../domain/reservations";
+
+/**
+ * Production building types that provide manufacturing capacity
+ */
+export const PRODUCTION_BUILDING_TYPES: BuildingType[] = [
+  BuildingType.WORKSHOP,
+  BuildingType.MINE,
+  BuildingType.FARM,
+  BuildingType.FACTORY,
+  BuildingType.MEGA_FACTORY
+];
 
 /**
  * Input for acquiring a new building
@@ -496,17 +507,10 @@ export async function getProductionCapacityForCompany(
   tx: Prisma.TransactionClient | PrismaClient,
   companyId: string
 ): Promise<{ totalCapacity: number; usedCapacity: number }> {
-  const productionBuildingTypes = [
-    BuildingType.MINE,
-    BuildingType.FARM,
-    BuildingType.FACTORY,
-    BuildingType.MEGA_FACTORY
-  ];
-
   const buildings = await tx.building.findMany({
     where: {
       companyId,
-      buildingType: { in: productionBuildingTypes },
+      buildingType: { in: PRODUCTION_BUILDING_TYPES },
       status: BuildingStatus.ACTIVE
     },
     select: {
@@ -627,7 +631,7 @@ export async function validateStorageCapacity(
  * @throws {DomainInvariantError} If company has no active production buildings
  *
  * @remarks
- * - Production buildings include: MINE, FARM, FACTORY, MEGA_FACTORY
+ * - Production buildings include: WORKSHOP, MINE, FARM, FACTORY, MEGA_FACTORY
  * - Only ACTIVE buildings are counted
  * - Must be called before creating production jobs
  */
@@ -639,17 +643,10 @@ export async function validateProductionBuildingAvailable(
     throw new DomainInvariantError("companyId is required");
   }
 
-  const productionBuildingTypes = [
-    BuildingType.MINE,
-    BuildingType.FARM,
-    BuildingType.FACTORY,
-    BuildingType.MEGA_FACTORY
-  ];
-
   const activeBuildingCount = await tx.building.count({
     where: {
       companyId,
-      buildingType: { in: productionBuildingTypes },
+      buildingType: { in: PRODUCTION_BUILDING_TYPES },
       status: BuildingStatus.ACTIVE
     }
   });

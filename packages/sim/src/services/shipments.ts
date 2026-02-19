@@ -22,6 +22,40 @@
  * 3. **Delivery**: At arrival tick, `deliverDueShipmentsForTick()` transfers inventory to destination
  * 4. **Cancellation** (optional): Player can cancel in-transit shipments to recover inventory
  *
+ * ## DETERMINISTIC OVERFLOW POLICY
+ * **Storage Full at Destination → Delivery Rollback or Retry**
+ * 
+ * When a shipment arrives but destination storage is full:
+ * 
+ * **Case 1: Origin has capacity (typical)**
+ * - Shipment status: DELIVERED (completed with rollback)
+ * - Inventory action: ROLLBACK - items returned to origin region (fromRegionId)
+ * - This is NOT a new shipment with transit time - it's an immediate rollback
+ * - Origin capacity validation: YES - maintains hard cap invariants
+ * - Player consequence: Wasted logistics fee, items back at origin
+ * 
+ * **Case 2: Both regions full (edge case)**
+ * - Shipment status: REMAINS IN_TRANSIT (not updated)
+ * - Inventory action: NONE - no delivery attempted
+ * - Next tick: Shipment will be retried automatically
+ * - Tick advancement: NEVER FAILS - continues deterministically
+ * - Player must: Clear space in either region for delivery to succeed
+ * 
+ * **Critical Guarantee: Tick Never Fails**
+ * If both destination and origin are full, the shipment remains IN_TRANSIT and will
+ * retry next tick. This ensures tick advancement NEVER fails due to storage overflow,
+ * preventing game-breaking soft-locks. The shipment will automatically deliver once
+ * the player clears space in either region.
+ * 
+ * **Rationale for retry vs throw:**
+ * Shipment delivery happens during tick processing (system-driven, not player action).
+ * Throwing an error would block tick advancement, creating a soft-lock. By keeping
+ * the shipment IN_TRANSIT and retrying next tick, we maintain determinism while
+ * giving the player time to manage storage.
+ * 
+ * **Atomicity:** Rollback happens in same transaction as delivery attempt
+ * **Idempotency:** Shipment update uses optimistic locking (updateMany with status condition)
+ *
  * ## Invariants Enforced
  * - Item must be unlocked by research (player companies) or specialization constraints
  * - Cannot ship to same region (source != destination)
@@ -29,12 +63,17 @@
  * - Must have available inventory (quantity - reserved) and cash for fees
  * - Cancellation only allowed for IN_TRANSIT status
  * - Destination inventory created or incremented atomically on delivery
+ * - **Overflow invariant**: Delivery never exceeds destination capacity (rollback or retry)
+ * - **Hard capacity caps**: All regions respect capacity limits (no bypass)
+ * - **Tick safety**: Tick advancement never fails due to storage (retry on double-full)
  *
  * ## Side Effects and Transaction Boundaries
  * All operations are atomic (prisma.$transaction):
  * - **createShipment**: Decrements inventory + cash (two optimistic locks), creates shipment record,
  *   logs fee ledger entry
- * - **deliverDueShipmentsForTick**: Updates shipment status, upserts destination inventory
+ * - **deliverDueShipmentsForTick**: Updates shipment status to DELIVERED (if delivery succeeds),
+ *   upserts destination inventory OR rolls back to origin (if origin has capacity) OR leaves
+ *   IN_TRANSIT for retry (if both regions full - ensures tick never fails)
  * - **cancelShipment**: Returns inventory to source, updates shipment status to CANCELLED
  *
  * ## Deterministic Travel Time
@@ -45,20 +84,25 @@
  * - **Arrival Tick**: `currentTick + adjustedDuration`
  *
  * ## Delivery Processing
- * - Deterministic order: `ORDER BY tickArrives ASC, createdAt ASC`
+ * - Deterministic order: `ORDER BY tickArrives ASC, tickCreated ASC`
  * - Batch processing for efficiency (all due shipments in single tick)
  * - Atomic inventory transfer (no partial deliveries)
+ * - Overflow handling: Rollback to origin if destination full (validates origin capacity)
+ * - Retry mechanism: If both regions full, shipment stays IN_TRANSIT (tick never fails)
+ * - Idempotency: updateMany prevents double-processing on retry
  *
  * ## Fee Structure
  * - **Base Fee**: Fixed cost per shipment (configured)
  * - **Unit Fee**: Cost per item shipped (configured)
  * - **Total**: `baseFee + (quantity * feePerUnit)`
- * - Fees are non-refundable even on cancellation
+ * - Fees are non-refundable even on cancellation or overflow return
+ * - **NO additional ledger entry on return** - fee already recorded at shipment creation
  *
  * ## Error Handling
  * - NotFoundError: Shipment, company, region, or item doesn't exist
  * - DomainInvariantError: Same-region shipment, insufficient inventory/cash, item locked
  * - OptimisticLockConflictError: Concurrent modification detected (retry required)
+ * - **No errors on overflow**: Returns to sender deterministically
  */
 import {
   LedgerEntryType,
@@ -632,7 +676,7 @@ export async function cancelShipmentWithTx(
 export async function deliverDueShipmentsForTick(
   tx: Prisma.TransactionClient,
   tick: number
-): Promise<number> {
+): Promise<{ deliveredCount: number; returnedCount: number }> {
   ensureTick(tick, "tick");
 
   const dueShipments = await tx.shipment.findMany({
@@ -642,55 +686,92 @@ export async function deliverDueShipmentsForTick(
         lte: tick
       }
     },
-    orderBy: [{ tickArrives: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ tickArrives: "asc" }, { tickCreated: "asc" }],
     select: {
       id: true,
       companyId: true,
       fromRegionId: true,
       toRegionId: true,
       itemId: true,
-      quantity: true
+      quantity: true,
+      tickCreated: true
     }
   });
 
   let deliveredCount = 0;
+  let returnedCount = 0;
 
   for (const shipment of dueShipments) {
-    const updated = await tx.shipment.updateMany({
-      where: {
-        id: shipment.id,
-        status: ShipmentStatus.IN_TRANSIT
-      },
-      data: {
-        status: ShipmentStatus.DELIVERED,
-        tickClosed: tick
-      }
-    });
+    // Check if destination has storage capacity
+    // If not, attempt rollback delivery to origin (overflow policy: immediate rollback)
+    let destinationRegionId = shipment.toRegionId;
+    let deliveredToDestination = true;
+    let shouldDeliver = true;
 
-    if (updated.count !== 1) {
-      continue;
+    try {
+      await validateStorageCapacity(
+        tx,
+        shipment.companyId,
+        shipment.toRegionId,
+        shipment.quantity
+      );
+    } catch (error) {
+      // Storage full at destination - attempt rollback to origin
+      if (error instanceof DomainInvariantError && error.message.includes("storage capacity exceeded")) {
+        // Try to rollback to origin
+        try {
+          await validateStorageCapacity(
+            tx,
+            shipment.companyId,
+            shipment.fromRegionId,
+            shipment.quantity
+          );
+          // Origin has capacity - rollback succeeds
+          destinationRegionId = shipment.fromRegionId;
+          deliveredToDestination = false;
+          returnedCount += 1;
+        } catch {
+          // Both destination AND origin are full - cannot deliver
+          // Keep shipment IN_TRANSIT, do not update status, will retry next tick
+          // This ensures tick advancement never fails due to storage overflow
+          shouldDeliver = false;
+        }
+      } else {
+        throw error;
+      }
     }
 
-    // Validate storage capacity before adding delivered inventory
-    await validateStorageCapacity(
-      tx,
-      shipment.companyId,
-      shipment.toRegionId,
-      shipment.quantity
-    );
+    // Only proceed with delivery if we have capacity somewhere
+    if (shouldDeliver) {
+      // Update shipment status to DELIVERED (with optimistic locking)
+      const updated = await tx.shipment.updateMany({
+        where: {
+          id: shipment.id,
+          status: ShipmentStatus.IN_TRANSIT
+        },
+        data: {
+          status: ShipmentStatus.DELIVERED,
+          tickClosed: tick
+        }
+      });
 
-    await tx.inventory.upsert({
+      if (updated.count !== 1) {
+        // Another process already updated this shipment, skip
+        continue;
+      }
+
+      await tx.inventory.upsert({
       where: {
         companyId_itemId_regionId: {
           companyId: shipment.companyId,
           itemId: shipment.itemId,
-          regionId: shipment.toRegionId
+          regionId: destinationRegionId
         }
       },
       create: {
         companyId: shipment.companyId,
         itemId: shipment.itemId,
-        regionId: shipment.toRegionId,
+        regionId: destinationRegionId,
         quantity: shipment.quantity,
         reservedQuantity: 0
       },
@@ -701,8 +782,12 @@ export async function deliverDueShipmentsForTick(
       }
     });
 
-    deliveredCount += 1;
+      if (deliveredToDestination) {
+        deliveredCount += 1;
+      }
+    }
+    // If shouldDeliver is false, shipment remains IN_TRANSIT and will be retried next tick
   }
 
-  return deliveredCount;
+  return { deliveredCount, returnedCount };
 }

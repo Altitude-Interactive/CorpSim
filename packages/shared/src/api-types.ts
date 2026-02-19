@@ -557,3 +557,91 @@ export interface WorkforceCapacityChangeResult {
   workforceCapacity: number;
   orgEfficiencyBps: number;
 }
+
+export type BuildingType =
+  | "WORKSHOP"
+  | "MINE"
+  | "FARM"
+  | "FACTORY"
+  | "MEGA_FACTORY"
+  | "WAREHOUSE"
+  | "HEADQUARTERS"
+  | "RND_CENTER";
+
+export type BuildingStatus = "ACTIVE" | "INACTIVE" | "CONSTRUCTION";
+
+export type BuildingCategory = "PRODUCTION" | "STORAGE" | "CORPORATE";
+
+export interface BuildingRecord {
+  id: string;
+  companyId: string;
+  regionId: string;
+  buildingType: BuildingType;
+  status: BuildingStatus;
+  name: string | null;
+  acquisitionCostCents: string;
+  weeklyOperatingCostCents: string;
+  capacitySlots: number;
+  tickAcquired: number;
+  tickConstructionCompletes: number | null;
+  lastOperatingCostTick: number | null;
+  createdAt: string;
+  updatedAt: string;
+  region: {
+    id: string;
+    code: string;
+    name: string;
+  };
+}
+
+export interface BuildingListFilters {
+  companyId: string;
+  regionId?: string;
+  status?: BuildingStatus;
+}
+
+export interface AcquireBuildingInput {
+  companyId: string;
+  regionId: string;
+  buildingType: BuildingType;
+  name?: string;
+}
+
+export interface RegionalStorageInfo {
+  companyId: string;
+  regionId: string;
+  currentUsage: number;
+  maxCapacity: number;
+  usagePercentage: number;
+  warehouseCount: number;
+}
+
+export interface ProductionCapacityInfo {
+  companyId: string;
+  totalCapacity: number;
+  usedCapacity: number;
+  availableCapacity: number;
+  usagePercentage: number;
+}
+
+export interface ValidationIssue {
+  code: string;
+  message: string;
+  severity: "ERROR" | "WARNING";
+}
+
+export interface PreflightValidationResult {
+  valid: boolean;
+  issues: ValidationIssue[];
+}
+
+export interface BuildingTypeDefinition {
+  buildingType: BuildingType;
+  category: BuildingCategory;
+  name: string;
+  description: string;
+  acquisitionCostCents: string;
+  weeklyOperatingCostCents: string;
+  capacitySlots: number;
+  storageCapacity?: number;
+}
