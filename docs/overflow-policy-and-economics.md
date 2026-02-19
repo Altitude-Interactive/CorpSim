@@ -91,23 +91,36 @@ Without overflow policy, player could be stuck:
 - **Game broken - tick cannot advance**
 
 ### Solution
-Shipment delivery rolls back to origin when destination full. 
+Shipment delivery has three-tier fallback to ensure tick NEVER fails:
 
-**Typical Case (Origin Has Space):**
-- ✅ Tick advances successfully
+**Tier 1: Normal Delivery (Destination Has Space)**
+- ✅ Tick advances
+- ✅ Items delivered to destination
+- ✅ Shipment status: DELIVERED
+
+**Tier 2: Rollback (Destination Full, Origin Has Space)**
+- ✅ Tick advances
 - ✅ Items returned to origin
 - ❌ Logistics fee wasted ($250 + $15/unit)
 - ❌ Travel time wasted
+- ✅ Shipment status: DELIVERED (with rollback)
 
-**Edge Case (Both Regions Full):**
-- ❌ Delivery fails with error
-- Tick advancement blocked ONLY if player filled both regions
-- This is acceptable - player made a serious mistake
-- Provides clear feedback: "manage your storage better"
+**Tier 3: Retry (Both Regions Full)**
+- ✅ Tick advances (CRITICAL - never fails)
+- ⏸️ Shipment stays IN_TRANSIT
+- 🔄 Automatic retry next tick
+- ℹ️ Player must clear space in either region
+- ✅ Shipment status: IN_TRANSIT (unchanged)
 
-**Player learns:** Check destination capacity before shipping AND don't overfill origin during transit.
+**Player learns:** 
+- Check destination capacity before shipping
+- Don't overfill origin during transit
+- Manage storage proactively to avoid retry loops
 
-**Hard Cap Invariants Maintained:** No storage bypass - all regions respect capacity limits.
+**Hard Cap Invariants Maintained:** 
+- All regions respect capacity limits
+- No storage bypass in any scenario
+- Retry mechanism prevents soft-lock without violating invariants
 
 ---
 
