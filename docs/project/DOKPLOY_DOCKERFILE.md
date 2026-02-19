@@ -91,10 +91,12 @@ pnpm sim:seed
 
 ## Nginx upstream mapping
 
-- `corpsim.altitude-interactive.com` -> `10.7.0.3:4311` (web app)
-- `corpsim-api.altitude-interactive.com` -> `10.7.0.3:4310` (API server)
+- `corpsim.altitude-interactive.com` -> `192.0.2.10:4311` (web app)
+- `corpsim-api.altitude-interactive.com` -> `192.0.2.10:4310` (API server)
 
 **IMPORTANT**: The nginx configuration for `corpsim.altitude-interactive.com` must proxy `/api/auth/*` requests to the API server at port 4310. This allows OAuth callbacks to work correctly on the main web domain. See `docs/project/corpsim.altitude.nginx.conf` for the complete configuration.
+
+**Note**: Replace the example IP address `192.0.2.10` (from RFC 5737 documentation range) with your actual server IP address.
 
 ## Troubleshooting
 

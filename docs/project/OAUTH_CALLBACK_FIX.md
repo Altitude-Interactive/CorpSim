@@ -31,12 +31,12 @@ server {
     listen [::]:443 ssl http2;
     server_name corpsim.altitude-interactive.com;
 
-    ssl_certificate /etc/ssl/cloudflare/altitude_pubkey.pem;
-    ssl_certificate_key /etc/ssl/cloudflare/altitude_privkey.key;
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
 
-    # Proxy OAuth callback routes to API server
+    # Proxy Better Auth routes (/api/auth/*) to API server
     location /api/auth/ {
-        proxy_pass http://10.7.0.3:4310;
+        proxy_pass http://192.0.2.10:4310;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -45,7 +45,7 @@ server {
     }
 
     location / {
-        proxy_pass http://10.7.0.3:4311;
+        proxy_pass http://192.0.2.10:4311;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -55,7 +55,7 @@ server {
 }
 ```
 
-This adds a specific proxy rule for `/api/auth/*` requests that forwards them to the API server.
+This adds a specific proxy rule for `/api/auth/*` requests that forwards them to the API server. Replace the example IP addresses and SSL certificate paths with your production values.
 
 ### 2. Update API Service Environment Variable
 In Dokploy (or your deployment platform), update the `corpsim-api` service environment variables:

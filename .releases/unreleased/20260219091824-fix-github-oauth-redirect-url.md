@@ -1,6 +1,6 @@
 ---
 type: patch
-area: api, web, infra
+area: web
 summary: Fix OAuth callback redirect URLs for GitHub, Microsoft, and Discord by configuring nginx proxy and BETTER_AUTH_URL
 ---
 
