@@ -1,4 +1,8 @@
 import type {
+  AcquireBuildingInput,
+  BuildingListFilters,
+  BuildingRecord,
+  BuildingTypeDefinition,
   CompanySpecialization,
   CompanySpecializationOption,
   CompanyWorkforce,
@@ -27,9 +31,12 @@ import type {
   PlaceMarketOrderInput,
   PlayerIdentity,
   PlayerRegistryEntry,
+  PreflightValidationResult,
+  ProductionCapacityInfo,
   ProductionJob,
   ProductionJobFilters,
   ProductionRecipe,
+  RegionalStorageInfo,
   RegionSummary,
   ResearchJob,
   ResearchNode,
@@ -55,6 +62,8 @@ import {
   invalidateCachedRequestPrefix
 } from "./request-cache";
 import {
+  parseBuildingRecord,
+  parseBuildingTypeDefinition,
   parseCompanyDetails,
   parseCompanySpecializationOption,
   parseCompanyWorkforce,
@@ -74,8 +83,11 @@ import {
   parseOnboardingStatus,
   parsePlayerIdentity,
   parsePlayerRegistryEntry,
+  parsePreflightValidationResult,
+  parseProductionCapacityInfo,
   parseProductionJob,
   parseProductionRecipe,
+  parseRegionalStorageInfo,
   parseRegionSummary,
   parseResearchJob,
   parseResearchNode,
@@ -836,3 +848,84 @@ export async function resetWorld(reseed = true): Promise<WorldTickState> {
   invalidateResearchCaches();
   return result;
 }
+
+// Buildings API
+
+export async function listBuildings(filters: BuildingListFilters): Promise<BuildingRecord[]> {
+  const params = new URLSearchParams();
+  params.set("companyId", filters.companyId);
+  if (filters.regionId) {
+    params.set("regionId", filters.regionId);
+  }
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  return fetchJson(`/v1/buildings?${params.toString()}`, (value) =>
+    readArray(value, "buildings").map(parseBuildingRecord)
+  );
+}
+
+export async function acquireBuilding(input: AcquireBuildingInput): Promise<BuildingRecord> {
+  return fetchJson("/v1/buildings/acquire", parseBuildingRecord, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function reactivateBuilding(buildingId: string): Promise<BuildingRecord> {
+  return fetchJson("/v1/buildings/reactivate", parseBuildingRecord, {
+    method: "POST",
+    body: JSON.stringify({ buildingId })
+  });
+}
+
+export async function getRegionalStorageInfo(
+  companyId: string,
+  regionId: string
+): Promise<RegionalStorageInfo> {
+  const params = new URLSearchParams();
+  params.set("companyId", companyId);
+  params.set("regionId", regionId);
+
+  return fetchJson(`/v1/buildings/storage-info?${params.toString()}`, parseRegionalStorageInfo);
+}
+
+export async function getProductionCapacityInfo(
+  companyId: string
+): Promise<ProductionCapacityInfo> {
+  const params = new URLSearchParams();
+  params.set("companyId", companyId);
+
+  return fetchJson(`/v1/buildings/capacity-info?${params.toString()}`, parseProductionCapacityInfo);
+}
+
+export async function preflightProductionJob(input: {
+  companyId: string;
+  recipeId: string;
+  quantity: number;
+}): Promise<PreflightValidationResult> {
+  return fetchJson("/v1/buildings/preflight/production-job", parsePreflightValidationResult, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function preflightBuyOrder(input: {
+  companyId: string;
+  regionId: string;
+  itemId: string;
+  quantity: number;
+}): Promise<PreflightValidationResult> {
+  return fetchJson("/v1/buildings/preflight/buy-order", parsePreflightValidationResult, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function getBuildingTypeDefinitions(): Promise<BuildingTypeDefinition[]> {
+  return fetchJson("/v1/buildings/definitions", (value) =>
+    readArray(value, "definitions").map(parseBuildingTypeDefinition)
+  );
+}
+
