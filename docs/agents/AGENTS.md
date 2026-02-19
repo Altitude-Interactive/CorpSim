@@ -298,15 +298,16 @@ availableInventory = quantity - reservedQuantity
 
 ### Tick Pipeline Order (NEVER REORDER)
 1. Bot actions
-2. Production completions
-3. Research completions
-4. Market matching
-5. Shipment deliveries
-6. Workforce updates
-7. Demand sink
-8. Contract lifecycle
-9. Market candles
-10. World state update
+2. Building operating costs
+3. Production completions
+4. Research completions
+5. Market matching
+6. Shipment deliveries
+7. Workforce updates
+8. Demand sink
+9. Contract lifecycle
+10. Market candles
+11. World state update
 
 Changing this order is a **breaking change**.
 

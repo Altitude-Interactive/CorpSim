@@ -71,56 +71,75 @@ enum LedgerEntryType {
   PRODUCTION_COST
   WORKFORCE_SALARY_EXPENSE
   WORKFORCE_RECRUITMENT_EXPENSE
+  BUILDING_OPERATING_COST
+  BUILDING_ACQUISITION
   MANUAL_ADJUSTMENT
 }
 
+enum BuildingType {
+  MINE
+  FARM
+  FACTORY
+  MEGA_FACTORY
+  WAREHOUSE
+  HEADQUARTERS
+  RND_CENTER
+}
+
+enum BuildingStatus {
+  ACTIVE
+  INACTIVE
+  CONSTRUCTION
+}
+
 model Company {
-  id                String       @id @default(cuid())
-  code              String       @unique
-  name              String
-  isPlayer          Boolean      @default(false)
-  specialization    CompanySpecialization @default(UNASSIGNED)
-  specializationChangedAt DateTime?
-  ownerPlayerId     String?
-  regionId          String
-  cashCents         BigInt
-  reservedCashCents BigInt       @default(0)
-  workforceCapacity Int          @default(0)
-  workforceAllocationOpsPct Int  @default(40)
-  workforceAllocationRngPct Int  @default(20)
-  workforceAllocationLogPct Int  @default(20)
-  workforceAllocationCorpPct Int @default(20)
-  orgEfficiencyBps  Int          @default(7000)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  ownerPlayer       Player?      @relation(fields: [ownerPlayerId], references: [id], onDelete: SetNull)
-  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
-  inventories       Inventory[]
-  orders            MarketOrder[]
-  productionJobs    ProductionJob[]
-  companyRecipes    CompanyRecipe[]
-  companyResearches CompanyResearch[]
-  researchJobs      ResearchJob[]
-  shipments         Shipment[]
-  ledgerEntries     LedgerEntry[]
-  workforceCapacityDeltas WorkforceCapacityDelta[]
-  buyContracts      Contract[]    @relation("ContractBuyerCompany")
-  sellContracts     Contract[]    @relation("ContractSellerCompany")
-  contractFulfillments ContractFulfillment[] @relation("ContractFulfillmentSellerCompany")
-  buyTrades         Trade[]      @relation("TradeBuyerCompany")
-  sellTrades        Trade[]      @relation("TradeSellerCompany")
+  id                         String                   @id @default(cuid())
+  code                       String                   @unique
+  name                       String
+  isPlayer                   Boolean                  @default(false)
+  specialization             CompanySpecialization    @default(UNASSIGNED)
+  specializationChangedAt    DateTime?
+  ownerPlayerId              String?
+  regionId                   String
+  cashCents                  BigInt
+  reservedCashCents          BigInt                   @default(0)
+  workforceCapacity          Int                      @default(0)
+  workforceAllocationOpsPct  Int                      @default(40)
+  workforceAllocationRngPct  Int                      @default(20)
+  workforceAllocationLogPct  Int                      @default(20)
+  workforceAllocationCorpPct Int                      @default(20)
+  orgEfficiencyBps           Int                      @default(7000)
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  ownerPlayer                Player?                  @relation(fields: [ownerPlayerId], references: [id], onDelete: SetNull)
+  region                     Region                   @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  inventories                Inventory[]
+  orders                     MarketOrder[]
+  productionJobs             ProductionJob[]
+  companyRecipes             CompanyRecipe[]
+  companyResearches          CompanyResearch[]
+  researchJobs               ResearchJob[]
+  shipments                  Shipment[]
+  ledgerEntries              LedgerEntry[]
+  workforceCapacityDeltas    WorkforceCapacityDelta[]
+  buyContracts               Contract[]               @relation("ContractBuyerCompany")
+  sellContracts              Contract[]               @relation("ContractSellerCompany")
+  contractFulfillments       ContractFulfillment[]    @relation("ContractFulfillmentSellerCompany")
+  buyTrades                  Trade[]                  @relation("TradeBuyerCompany")
+  sellTrades                 Trade[]                  @relation("TradeSellerCompany")
+  buildings                  Building[]
 
   @@index([ownerPlayerId])
   @@index([regionId])
 }
 
 model Player {
-  id                String       @id @default(cuid())
-  handle            String       @unique
+  id                  String    @id @default(cuid())
+  handle              String    @unique
   tutorialCompletedAt DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  companies         Company[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  companies           Company[]
 }
 
 model User {
@@ -148,16 +167,16 @@ model User {
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
   impersonatedBy String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
   @@index([userId])
@@ -209,48 +228,49 @@ model TwoFactor {
 }
 
 model Item {
-  id                String       @id @default(cuid())
-  code              String       @unique
-  name              String
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  inventories       Inventory[]
-  orders            MarketOrder[]
-  trades            Trade[]
-  candles           ItemTickCandle[]
-  shipments         Shipment[]
-  outputRecipes     Recipe[]     @relation("RecipeOutput")
-  recipeInputs      RecipeInput[]
-  contracts         Contract[]
+  id                   String                @id @default(cuid())
+  code                 String                @unique
+  name                 String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  inventories          Inventory[]
+  orders               MarketOrder[]
+  trades               Trade[]
+  candles              ItemTickCandle[]
+  shipments            Shipment[]
+  outputRecipes        Recipe[]              @relation("RecipeOutput")
+  recipeInputs         RecipeInput[]
+  contracts            Contract[]
   contractFulfillments ContractFulfillment[]
 }
 
 model Region {
-  id                String      @id @default(cuid())
-  code              String      @unique
-  name              String
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  companies         Company[]
-  inventories       Inventory[]
-  marketOrders      MarketOrder[]
-  trades            Trade[]
-  itemTickCandles   ItemTickCandle[]
-  shipmentsFrom     Shipment[]  @relation("ShipmentFromRegion")
-  shipmentsTo       Shipment[]  @relation("ShipmentToRegion")
+  id              String           @id @default(cuid())
+  code            String           @unique
+  name            String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  companies       Company[]
+  inventories     Inventory[]
+  marketOrders    MarketOrder[]
+  trades          Trade[]
+  itemTickCandles ItemTickCandle[]
+  shipmentsFrom   Shipment[]       @relation("ShipmentFromRegion")
+  shipmentsTo     Shipment[]       @relation("ShipmentToRegion")
+  buildings       Building[]
 }
 
 model Inventory {
-  companyId         String
-  itemId            String
-  regionId          String
-  quantity          Int          @default(0)
-  reservedQuantity  Int          @default(0)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  companyId        String
+  itemId           String
+  regionId         String
+  quantity         Int      @default(0)
+  reservedQuantity Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item             Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region           Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
 
   @@id([companyId, itemId, regionId])
   @@index([companyId])
@@ -259,22 +279,22 @@ model Inventory {
 }
 
 model Shipment {
-  id                String         @id @default(cuid())
-  companyId         String
-  fromRegionId      String
-  toRegionId        String
-  itemId            String
-  quantity          Int
-  status            ShipmentStatus @default(IN_TRANSIT)
-  tickCreated       Int
-  tickArrives       Int
-  tickClosed        Int?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  company           Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  fromRegion        Region         @relation("ShipmentFromRegion", fields: [fromRegionId], references: [id], onDelete: Restrict)
-  toRegion          Region         @relation("ShipmentToRegion", fields: [toRegionId], references: [id], onDelete: Restrict)
-  item              Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  id           String         @id @default(cuid())
+  companyId    String
+  fromRegionId String
+  toRegionId   String
+  itemId       String
+  quantity     Int
+  status       ShipmentStatus @default(IN_TRANSIT)
+  tickCreated  Int
+  tickArrives  Int
+  tickClosed   Int?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  fromRegion   Region         @relation("ShipmentFromRegion", fields: [fromRegionId], references: [id], onDelete: Restrict)
+  toRegion     Region         @relation("ShipmentToRegion", fields: [toRegionId], references: [id], onDelete: Restrict)
+  item         Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
   @@index([companyId, status, tickCreated])
   @@index([status, tickArrives])
@@ -282,27 +302,27 @@ model Shipment {
 }
 
 model MarketOrder {
-  id                String       @id @default(cuid())
+  id                String      @id @default(cuid())
   companyId         String
   itemId            String
   regionId          String
   side              OrderSide
-  status            OrderStatus  @default(OPEN)
+  status            OrderStatus @default(OPEN)
   quantity          Int
   remainingQuantity Int
   unitPriceCents    BigInt
-  reservedCashCents BigInt       @default(0)
-  reservedQuantity  Int          @default(0)
+  reservedCashCents BigInt      @default(0)
+  reservedQuantity  Int         @default(0)
   tickPlaced        Int
   tickClosed        Int?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
   closedAt          DateTime?
-  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
-  buyTrades         Trade[]      @relation("TradeBuyOrder")
-  sellTrades        Trade[]      @relation("TradeSellOrder")
+  company           Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item              Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region            Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  buyTrades         Trade[]     @relation("TradeBuyOrder")
+  sellTrades        Trade[]     @relation("TradeSellOrder")
 
   @@index([regionId, itemId, side, status, unitPriceCents, createdAt])
   @@index([companyId, status])
@@ -310,24 +330,24 @@ model MarketOrder {
 }
 
 model Trade {
-  id                String       @id @default(cuid())
-  buyOrderId        String
-  sellOrderId       String
-  buyerCompanyId    String
-  sellerCompanyId   String
-  itemId            String
-  regionId          String
-  quantity          Int
-  unitPriceCents    BigInt
-  totalPriceCents   BigInt
-  tick              Int
-  createdAt         DateTime     @default(now())
-  buyOrder          MarketOrder  @relation("TradeBuyOrder", fields: [buyOrderId], references: [id], onDelete: Cascade)
-  sellOrder         MarketOrder  @relation("TradeSellOrder", fields: [sellOrderId], references: [id], onDelete: Cascade)
-  buyerCompany      Company      @relation("TradeBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Cascade)
-  sellerCompany     Company      @relation("TradeSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: Cascade)
-  item              Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  region            Region       @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  id              String      @id @default(cuid())
+  buyOrderId      String
+  sellOrderId     String
+  buyerCompanyId  String
+  sellerCompanyId String
+  itemId          String
+  regionId        String
+  quantity        Int
+  unitPriceCents  BigInt
+  totalPriceCents BigInt
+  tick            Int
+  createdAt       DateTime    @default(now())
+  buyOrder        MarketOrder @relation("TradeBuyOrder", fields: [buyOrderId], references: [id], onDelete: Cascade)
+  sellOrder       MarketOrder @relation("TradeSellOrder", fields: [sellOrderId], references: [id], onDelete: Cascade)
+  buyerCompany    Company     @relation("TradeBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Cascade)
+  sellerCompany   Company     @relation("TradeSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: Cascade)
+  item            Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region          Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
 
   @@index([regionId, itemId, tick])
   @@index([buyerCompanyId, tick])
@@ -336,110 +356,137 @@ model Trade {
 }
 
 model Recipe {
-  id                String       @id @default(cuid())
-  code              String       @unique
-  name              String
-  durationTicks     Int
-  outputItemId      String
-  outputQuantity    Int
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  outputItem        Item         @relation("RecipeOutput", fields: [outputItemId], references: [id], onDelete: Restrict)
-  inputs            RecipeInput[]
-  jobs              ProductionJob[]
-  companyRecipes    CompanyRecipe[]
-  unlockedByNodes   ResearchNodeUnlockRecipe[]
+  id              String                     @id @default(cuid())
+  code            String                     @unique
+  name            String
+  durationTicks   Int
+  outputItemId    String
+  outputQuantity  Int
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  outputItem      Item                       @relation("RecipeOutput", fields: [outputItemId], references: [id], onDelete: Restrict)
+  inputs          RecipeInput[]
+  jobs            ProductionJob[]
+  companyRecipes  CompanyRecipe[]
+  unlockedByNodes ResearchNodeUnlockRecipe[]
 }
 
 model RecipeInput {
-  recipeId          String
-  itemId            String
-  quantity          Int
-  recipe            Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  item              Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  recipeId String
+  itemId   String
+  quantity Int
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  item     Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
   @@id([recipeId, itemId])
 }
 
 model ProductionJob {
-  id                String             @id @default(cuid())
-  companyId         String
-  recipeId          String
-  status            ProductionJobStatus @default(QUEUED)
-  runs              Int                @default(1)
-  startedTick       Int
-  dueTick           Int
-  completedTick     Int?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  recipe            Recipe             @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  id            String              @id @default(cuid())
+  companyId     String
+  recipeId      String
+  buildingId    String?
+  status        ProductionJobStatus @default(QUEUED)
+  runs          Int                 @default(1)
+  startedTick   Int
+  dueTick       Int
+  completedTick Int?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  company       Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recipe        Recipe              @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  building      Building?           @relation(fields: [buildingId], references: [id], onDelete: Restrict)
 
   @@index([status, dueTick])
   @@index([companyId, status])
+  @@index([buildingId, status])
+}
+
+model Building {
+  id                        String          @id @default(cuid())
+  companyId                 String
+  regionId                  String
+  buildingType              BuildingType
+  status                    BuildingStatus  @default(ACTIVE)
+  name                      String?
+  acquisitionCostCents      BigInt
+  weeklyOperatingCostCents  BigInt
+  capacitySlots             Int             @default(1)
+  tickAcquired              Int
+  tickConstructionCompletes Int?
+  lastOperatingCostTick     Int?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  company                   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  region                    Region          @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  productionJobs            ProductionJob[]
+
+  @@index([companyId, status])
+  @@index([regionId, buildingType])
+  @@index([status, lastOperatingCostTick])
 }
 
 model CompanyRecipe {
-  companyId   String
-  recipeId    String
-  isUnlocked  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  recipe      Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  companyId  String
+  recipeId   String
+  isUnlocked Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recipe     Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@id([companyId, recipeId])
   @@index([companyId, isUnlocked])
 }
 
 model ResearchNode {
-  id                String   @id @default(cuid())
-  code              String   @unique
+  id                String                     @id @default(cuid())
+  code              String                     @unique
   name              String
   description       String
   costCashCents     BigInt
   durationTicks     Int
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
   unlockRecipes     ResearchNodeUnlockRecipe[]
-  prerequisites     ResearchPrerequisite[] @relation("ResearchNodePrerequisites")
-  requiredBy        ResearchPrerequisite[] @relation("ResearchNodeRequiredBy")
+  prerequisites     ResearchPrerequisite[]     @relation("ResearchNodePrerequisites")
+  requiredBy        ResearchPrerequisite[]     @relation("ResearchNodeRequiredBy")
   companyResearches CompanyResearch[]
   researchJobs      ResearchJob[]
 }
 
 model ResearchNodeUnlockRecipe {
-  nodeId      String
-  recipeId    String
-  node        ResearchNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  recipe      Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  nodeId   String
+  recipeId String
+  node     ResearchNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  recipe   Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@id([nodeId, recipeId])
   @@index([recipeId])
 }
 
 model ResearchPrerequisite {
-  id                  String       @id @default(cuid())
-  nodeId              String
-  prerequisiteNodeId  String
-  node                ResearchNode @relation("ResearchNodePrerequisites", fields: [nodeId], references: [id], onDelete: Cascade)
-  prerequisiteNode    ResearchNode @relation("ResearchNodeRequiredBy", fields: [prerequisiteNodeId], references: [id], onDelete: Restrict)
+  id                 String       @id @default(cuid())
+  nodeId             String
+  prerequisiteNodeId String
+  node               ResearchNode @relation("ResearchNodePrerequisites", fields: [nodeId], references: [id], onDelete: Cascade)
+  prerequisiteNode   ResearchNode @relation("ResearchNodeRequiredBy", fields: [prerequisiteNodeId], references: [id], onDelete: Restrict)
 
   @@unique([nodeId, prerequisiteNodeId])
   @@index([prerequisiteNodeId])
 }
 
 model CompanyResearch {
-  id            String               @id @default(cuid())
+  id            String                @id @default(cuid())
   companyId     String
   nodeId        String
   status        CompanyResearchStatus @default(LOCKED)
   tickStarted   Int?
   tickCompletes Int?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  company       Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  node          ResearchNode         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  node          ResearchNode          @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, nodeId])
   @@index([companyId, status])
@@ -464,32 +511,32 @@ model ResearchJob {
 }
 
 model WorldTickState {
-  id                Int          @id @default(1)
-  currentTick       Int          @default(0)
-  lockVersion       Int          @default(0)
-  lastAdvancedAt    DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id             Int       @id @default(1)
+  currentTick    Int       @default(0)
+  lockVersion    Int       @default(0)
+  lastAdvancedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Contract {
-  id                String         @id @default(cuid())
+  id                String                @id @default(cuid())
   buyerCompanyId    String
   sellerCompanyId   String?
   itemId            String
   quantity          Int
   remainingQuantity Int
   priceCents        BigInt
-  status            ContractStatus @default(OPEN)
+  status            ContractStatus        @default(OPEN)
   tickCreated       Int
   tickExpires       Int
   tickAccepted      Int?
   tickClosed        Int?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  buyerCompany      Company        @relation("ContractBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Restrict)
-  sellerCompany     Company?       @relation("ContractSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: SetNull)
-  item              Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  buyerCompany      Company               @relation("ContractBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Restrict)
+  sellerCompany     Company?              @relation("ContractSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: SetNull)
+  item              Item                  @relation(fields: [itemId], references: [id], onDelete: Restrict)
   fulfillments      ContractFulfillment[]
 
   @@index([status, tickExpires])
@@ -498,17 +545,17 @@ model Contract {
 }
 
 model ContractFulfillment {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   contractId      String
   sellerCompanyId String
   itemId          String
   quantity        Int
   priceCents      BigInt
   tick            Int
-  createdAt       DateTime  @default(now())
-  contract        Contract  @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  sellerCompany   Company   @relation("ContractFulfillmentSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: Restrict)
-  item            Item      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  createdAt       DateTime @default(now())
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  sellerCompany   Company  @relation("ContractFulfillmentSellerCompany", fields: [sellerCompanyId], references: [id], onDelete: Restrict)
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
   @@index([contractId, tick])
   @@index([sellerCompanyId, tick])
@@ -516,40 +563,40 @@ model ContractFulfillment {
 }
 
 model LedgerEntry {
-  id                String         @id @default(cuid())
-  companyId         String
-  tick              Int
-  entryType         LedgerEntryType
+  id                     String          @id @default(cuid())
+  companyId              String
+  tick                   Int
+  entryType              LedgerEntryType
   /// Delta on total cashCents.
-  deltaCashCents    BigInt
+  deltaCashCents         BigInt
   /// Delta on reservedCashCents; positive reserves cash, negative releases it.
-  deltaReservedCashCents BigInt    @default(0)
+  deltaReservedCashCents BigInt          @default(0)
   /// cashCents balance after applying this entry.
-  balanceAfterCents BigInt
-  referenceType     String
-  referenceId       String
-  createdAt         DateTime       @default(now())
-  company           Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  balanceAfterCents      BigInt
+  referenceType          String
+  referenceId            String
+  createdAt              DateTime        @default(now())
+  company                Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId, tick])
 }
 
 model ItemTickCandle {
-  id          String   @id @default(cuid())
-  itemId      String
-  regionId    String
-  tick        Int
-  openCents   BigInt
-  highCents   BigInt
-  lowCents    BigInt
-  closeCents  BigInt
-  volumeQty   Int
-  tradeCount  Int
-  vwapCents   BigInt?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  region      Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  id         String   @id @default(cuid())
+  itemId     String
+  regionId   String
+  tick       Int
+  openCents  BigInt
+  highCents  BigInt
+  lowCents   BigInt
+  closeCents BigInt
+  volumeQty  Int
+  tradeCount Int
+  vwapCents  BigInt?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  region     Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
 
   @@unique([itemId, regionId, tick])
   @@index([itemId, regionId, tick])
@@ -599,23 +646,23 @@ model SimulationTickExecution {
 }
 
 model SimulationControlState {
-  id                        Int      @id @default(1)
-  botsPaused                Boolean  @default(false)
-  processingStopped         Boolean  @default(false)
+  id                         Int       @id @default(1)
+  botsPaused                 Boolean   @default(false)
+  processingStopped          Boolean   @default(false)
   lastInvariantViolationTick Int?
-  lastInvariantViolationAt  DateTime?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  lastInvariantViolationAt   DateTime?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 }
 
 model MissingItemLog {
-  id          String   @id @default(cuid())
-  itemCode    String?
-  itemName    String
-  context     String
-  source      String
-  metadata    String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  itemCode  String?
+  itemName  String
+  context   String
+  source    String
+  metadata  String?
+  createdAt DateTime @default(now())
 
   @@index([source, createdAt])
   @@index([itemCode])
