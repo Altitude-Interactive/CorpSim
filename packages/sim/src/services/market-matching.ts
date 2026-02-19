@@ -298,6 +298,14 @@ async function settleMatch(
   const buyReservedCash = buyOrder.reservedCashCents - reserveReduction;
   const sellReservedQuantity = sellOrder.reservedQuantity - match.quantity;
 
+  // Validate storage capacity BEFORE any inventory mutations
+  await validateStorageCapacity(
+    tx,
+    buyOrder.companyId,
+    buyOrder.regionId,
+    match.quantity
+  );
+
   if (buyerIsSeller) {
     await tx.company.update({
       where: { id: buyerCompany.id },
@@ -337,14 +345,6 @@ async function settleMatch(
       reservedQuantity: sellerInventory.reservedQuantity - match.quantity
     }
   });
-
-  // Validate storage capacity before adding buyer inventory
-  await validateStorageCapacity(
-    tx,
-    buyOrder.companyId,
-    buyOrder.regionId,
-    match.quantity
-  );
 
   await tx.inventory.upsert({
     where: {

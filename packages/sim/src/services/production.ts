@@ -492,8 +492,11 @@ export async function createProductionJobWithTx(
     throw new DomainInvariantError("recipe durationTicks cannot be negative");
   }
 
-  // Validate company has at least one active production building
-  await validateProductionBuildingAvailable(tx, input.companyId);
+  // Validate player company has at least one active production building
+  // (bots operate with different rules and may not have buildings)
+  if (company.isPlayer) {
+    await validateProductionBuildingAvailable(tx, input.companyId);
+  }
 
   const requirements = calculateRecipeInputRequirements(recipe.inputs, input.quantity);
   const requiredItemIds = requirements.map((entry) => entry.itemId);
@@ -852,6 +855,16 @@ export async function completeDueProductionJobs(
       );
     }
 
+    const outputQuantity = job.recipe.outputQuantity * job.runs;
+
+    // Validate storage capacity BEFORE any inventory mutations
+    await validateStorageCapacity(
+      tx,
+      job.companyId,
+      job.company.regionId,
+      outputQuantity
+    );
+
     for (const requirement of requirements) {
       await tx.inventory.update({
         where: {
@@ -871,16 +884,6 @@ export async function completeDueProductionJobs(
         }
       });
     }
-
-    const outputQuantity = job.recipe.outputQuantity * job.runs;
-
-    // Validate storage capacity before adding output inventory
-    await validateStorageCapacity(
-      tx,
-      job.companyId,
-      job.company.regionId,
-      outputQuantity
-    );
 
     await tx.inventory.upsert({
       where: {
