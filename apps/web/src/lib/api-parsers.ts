@@ -1029,5 +1029,3 @@ export function parseBuildingTypeDefinition(value: unknown): BuildingTypeDefinit
         : readNumber(value.storageCapacity, "storageCapacity")
   };
 }
-
-

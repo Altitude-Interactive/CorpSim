@@ -29,14 +29,7 @@ export class BuildingsController {
     @Query() query: ListBuildingsDto,
     @CurrentPlayerId() playerId: string
   ) {
-    return this.buildingsService.listBuildings(
-      {
-        companyId: query.companyId,
-        regionId: query.regionId,
-        status: query.status
-      },
-      playerId
-    );
+    return this.buildingsService.listBuildings(query, playerId);
   }
 
   @Post("acquire")
@@ -116,6 +109,7 @@ export class BuildingsController {
 
   @Get("definitions")
   async getBuildingTypeDefinitions() {
-    return this.buildingsService.getBuildingTypeDefinitions();
+    const definitions = await this.buildingsService.getBuildingTypeDefinitions();
+    return { definitions };
   }
 }
