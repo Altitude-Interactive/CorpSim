@@ -87,6 +87,17 @@ import {
 import { availableCash } from "../domain/reservations";
 
 /**
+ * Production building types that provide manufacturing capacity
+ */
+export const PRODUCTION_BUILDING_TYPES: BuildingType[] = [
+  BuildingType.WORKSHOP,
+  BuildingType.MINE,
+  BuildingType.FARM,
+  BuildingType.FACTORY,
+  BuildingType.MEGA_FACTORY
+];
+
+/**
  * Input for acquiring a new building
  */
 export interface AcquireBuildingInput {
@@ -496,17 +507,10 @@ export async function getProductionCapacityForCompany(
   tx: Prisma.TransactionClient | PrismaClient,
   companyId: string
 ): Promise<{ totalCapacity: number; usedCapacity: number }> {
-  const productionBuildingTypes = [
-    BuildingType.MINE,
-    BuildingType.FARM,
-    BuildingType.FACTORY,
-    BuildingType.MEGA_FACTORY
-  ];
-
   const buildings = await tx.building.findMany({
     where: {
       companyId,
-      buildingType: { in: productionBuildingTypes },
+      buildingType: { in: PRODUCTION_BUILDING_TYPES },
       status: BuildingStatus.ACTIVE
     },
     select: {
@@ -639,18 +643,10 @@ export async function validateProductionBuildingAvailable(
     throw new DomainInvariantError("companyId is required");
   }
 
-  const productionBuildingTypes = [
-    BuildingType.WORKSHOP,
-    BuildingType.MINE,
-    BuildingType.FARM,
-    BuildingType.FACTORY,
-    BuildingType.MEGA_FACTORY
-  ];
-
   const activeBuildingCount = await tx.building.count({
     where: {
       companyId,
-      buildingType: { in: productionBuildingTypes },
+      buildingType: { in: PRODUCTION_BUILDING_TYPES },
       status: BuildingStatus.ACTIVE
     }
   });

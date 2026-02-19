@@ -15,7 +15,8 @@ import {
   reactivateBuildingWithTx,
   getProductionCapacityForCompany,
   calculateRegionalStorageCapacity,
-  WAREHOUSE_CAPACITY_PER_SLOT
+  WAREHOUSE_CAPACITY_PER_SLOT,
+  PRODUCTION_BUILDING_TYPES
 } from "@corpsim/sim";
 import { PrismaService } from "../prisma/prisma.service";
 import { WorldService } from "../world/world.service";
@@ -330,18 +331,10 @@ export class BuildingsService {
 
     try {
       // Check for active production buildings
-      const productionBuildingTypes = [
-        BuildingType.WORKSHOP,
-        BuildingType.MINE,
-        BuildingType.FARM,
-        BuildingType.FACTORY,
-        BuildingType.MEGA_FACTORY
-      ];
-
       const activeBuildingCount = await this.prisma.building.count({
         where: {
           companyId: input.companyId,
-          buildingType: { in: productionBuildingTypes },
+          buildingType: { in: PRODUCTION_BUILDING_TYPES },
           status: BuildingStatus.ACTIVE
         }
       });

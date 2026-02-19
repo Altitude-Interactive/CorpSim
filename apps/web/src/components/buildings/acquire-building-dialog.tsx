@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  BuildingType,
   BuildingTypeDefinition,
   RegionSummary,
   acquireBuilding,
@@ -87,7 +88,7 @@ export function AcquireBuildingDialog({
         await acquireBuilding({
           companyId: activeCompanyId,
           regionId: selectedRegionId,
-          buildingType: selectedBuildingType as any,
+          buildingType: selectedBuildingType as BuildingType,
           name: buildingName || undefined
         });
 
