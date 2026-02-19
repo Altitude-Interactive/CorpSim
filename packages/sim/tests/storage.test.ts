@@ -1,4 +1,4 @@
-import { BuildingType, BuildingStatus, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import {
   DomainInvariantError,
