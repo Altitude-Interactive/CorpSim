@@ -14,7 +14,7 @@ import {
 describe("building service", () => {
   describe("acquireBuildingWithTx", () => {
     it("validates input parameters", async () => {
-      const tx = {} as any;
+      const tx = {} as Prisma.TransactionClient;
 
       await expect(
         acquireBuildingWithTx(tx, {
