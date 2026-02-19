@@ -299,12 +299,20 @@ async function settleMatch(
   const sellReservedQuantity = sellOrder.reservedQuantity - match.quantity;
 
   // Validate storage capacity BEFORE any inventory mutations
-  await validateStorageCapacity(
-    tx,
-    buyOrder.companyId,
-    buyOrder.regionId,
-    match.quantity
-  );
+  // Skip validation for self-trades in the same region and item (net inventory change is zero)
+  const isSelfTradeInSameRegionAndItem =
+    buyOrder.companyId === sellOrder.companyId &&
+    buyOrder.regionId === sellOrder.regionId &&
+    buyOrder.itemId === sellOrder.itemId;
+
+  if (!isSelfTradeInSameRegionAndItem) {
+    await validateStorageCapacity(
+      tx,
+      buyOrder.companyId,
+      buyOrder.regionId,
+      match.quantity
+    );
+  }
 
   if (buyerIsSeller) {
     await tx.company.update({
