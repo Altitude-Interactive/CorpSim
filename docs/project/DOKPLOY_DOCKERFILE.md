@@ -38,6 +38,8 @@ Create separate Dokploy apps from the same repository and Dockerfile:
    - `API_PORT=4310`
    - expose/public port `4310`
    - `CORS_ORIGIN=https://corpsim.altitude-interactive.com`
+   - `BETTER_AUTH_URL=https://corpsim.altitude-interactive.com`
+   - ⚠️ **IMPORTANT**: Set `BETTER_AUTH_URL` to the main web domain (not the API subdomain) so OAuth callbacks redirect to the correct domain
 
 3. `corpsim-worker`
    - `APP_ROLE=worker`
@@ -89,10 +91,26 @@ pnpm sim:seed
 
 ## Nginx upstream mapping
 
-- `corpsim.altitude-interactive.com` -> `10.7.0.3:4311`
-- `corpsim-api.altitude-interactive.com` -> `10.7.0.3:4310`
+- `corpsim.altitude-interactive.com` -> `10.7.0.3:4311` (web app)
+- `corpsim-api.altitude-interactive.com` -> `10.7.0.3:4310` (API server)
+
+**IMPORTANT**: The nginx configuration for `corpsim.altitude-interactive.com` must proxy `/api/auth/*` requests to the API server at port 4310. This allows OAuth callbacks to work correctly on the main web domain. See `docs/project/corpsim.altitude.nginx.conf` for the complete configuration.
 
 ## Troubleshooting
+
+### OAuth failing with "redirect_uri is not associated with this application"
+
+**Symptom:** When clicking "Continue with GitHub" (or other OAuth providers), you get:
+- Error from OAuth provider: "The redirect_uri is not associated with this application"
+- Failed OAuth authentication
+
+**Cause:** The `BETTER_AUTH_URL` environment variable for the API service is not configured correctly, or the nginx proxy is not set up to forward `/api/auth/*` requests from the web domain to the API server.
+
+**Solution:**
+1. Ensure `BETTER_AUTH_URL=https://corpsim.altitude-interactive.com` is set for the API service (use the main web domain, NOT the API subdomain)
+2. Verify the nginx configuration includes a proxy rule for `/api/auth/*` (see `docs/project/corpsim.altitude.nginx.conf`)
+3. Restart the API service and nginx after making changes
+4. Configure OAuth apps (GitHub, Google, Microsoft, Discord) to allow callback URLs like `https://corpsim.altitude-interactive.com/api/auth/callback/{provider}`
 
 ### Authentication failing with "Provider not found" or 404 errors
 
