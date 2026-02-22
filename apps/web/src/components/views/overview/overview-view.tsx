@@ -1,18 +1,37 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { formatCents, formatInt } from "@/lib/format";
-import { getDiscordServerUrl } from "@/lib/public-links";
+import { fetchDiscordServerUrlFromMeta, getDiscordServerUrl } from "@/lib/public-links";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 
 export function OverviewView() {
   const { health } = useWorldHealth();
-  const discordServerUrl = getDiscordServerUrl();
+  const [discordServerUrl, setDiscordServerUrl] = useState<string | null>(() => getDiscordServerUrl());
+
+  useEffect(() => {
+    if (discordServerUrl) {
+      return;
+    }
+
+    const controller = new AbortController();
+    void fetchDiscordServerUrlFromMeta(controller.signal).then((url) => {
+      if (!url) {
+        return;
+      }
+      setDiscordServerUrl(url);
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [discordServerUrl]);
 
   if (!health) {
     return <div className="text-sm text-muted-foreground">Loading overview metrics...</div>;
@@ -84,7 +103,7 @@ export function OverviewView() {
           {discordServerUrl ? (
             <Button asChild size="sm" variant="outline">
               <a href={discordServerUrl} target="_blank" rel="noreferrer">
-                Join Discord Updates
+                Join Discord for Updates
               </a>
             </Button>
           ) : null}
