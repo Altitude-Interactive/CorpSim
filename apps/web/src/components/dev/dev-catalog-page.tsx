@@ -3,6 +3,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { getIconCatalogItemByCode } from "@corpsim/shared";
 import { ItemLabel } from "@/components/items/item-label";
+import { ItemQuantityList } from "@/components/items/item-quantity-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -948,19 +949,19 @@ export function DevCatalogPage() {
                       <ItemLabel itemCode={recipe.outputItem.code} itemName={recipe.outputItem.name} />
                     </span>
                   </TableCell>
-                  <TableCell className="tabular-nums">{recipe.durationTicks}</TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {recipe.inputs.map((input) => (
-                        <p key={`${recipe.id}-${input.itemId}`} className="inline-flex items-center gap-1">
-                          <span>{input.quantityPerRun}</span>
-                          <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
-                        </p>
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell className="tabular-nums">{recipe.durationTicks}</TableCell>
+                    <TableCell>
+                      <ItemQuantityList
+                        items={recipe.inputs.map((input) => ({
+                          key: `${recipe.id}-${input.itemId}`,
+                          quantity: input.quantityPerRun,
+                          itemCode: input.item.code,
+                          itemName: input.item.name
+                        }))}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
               {pagedRecipes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
