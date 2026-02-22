@@ -194,6 +194,34 @@ function readArrayPayload(value: unknown, field: string): unknown[] {
   return readArray(value[field], field);
 }
 
+function readBuildingDefinitionsPayload(value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (!isRecord(value)) {
+    throw new Error('Invalid response payload for "definitions"');
+  }
+
+  const definitions = value.definitions;
+  if (Array.isArray(definitions)) {
+    return definitions;
+  }
+
+  if (isRecord(definitions)) {
+    return Object.entries(definitions).map(([buildingType, definition]) => {
+      if (!isRecord(definition)) {
+        throw new Error('Invalid response field "definitions" (expected array)');
+      }
+
+      return definition.buildingType === undefined
+        ? { ...definition, buildingType }
+        : definition;
+    });
+  }
+
+  throw new Error('Invalid response field "definitions" (expected array)');
+}
+
 function parseSupportAccountSummary(value: unknown): SupportAccountSummary {
   if (!isRecord(value)) {
     throw new Error("Invalid support account payload");
@@ -925,7 +953,7 @@ export async function preflightBuyOrder(input: {
 
 export async function getBuildingTypeDefinitions(): Promise<BuildingTypeDefinition[]> {
   return fetchJson("/v1/buildings/definitions", (value) =>
-    readArrayPayload(value, "definitions").map(parseBuildingTypeDefinition)
+    readBuildingDefinitionsPayload(value).map(parseBuildingTypeDefinition)
   );
 }
 
