@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["Verify"]
     types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +18,10 @@ concurrency:
 jobs:
   release:
     if: |
-      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main'
+      ) ||
       (
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.event == 'push' &&
