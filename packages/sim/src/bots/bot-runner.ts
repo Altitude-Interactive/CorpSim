@@ -343,7 +343,6 @@ export async function runBotsForTick(
     for (const order of openLiquidityOrders) {
       await cancelMarketOrderWithTx(tx, {
         orderId: order.id,
-        companyId: order.companyId,
         tick
       });
     }
