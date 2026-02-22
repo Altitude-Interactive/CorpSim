@@ -109,8 +109,6 @@ export function ResearchPage() {
   const [nodePageSize, setNodePageSize] =
     useState<(typeof RESEARCH_NODE_PAGE_SIZE_OPTIONS)[number]>(20);
   const deferredNodeSearch = useDeferredValue(nodeSearch);
-  const statusByNodeIdRef = useRef<Map<string, ResearchNode["status"]>>(new Map());
-  const didPrimeStatusesRef = useRef(false);
   const hasLoadedResearchRef = useRef(false);
 
   const loadResearch = useCallback(async (options?: { force?: boolean; showLoadingState?: boolean }) => {
@@ -190,64 +188,7 @@ export function ResearchPage() {
     return () => clearTimeout(timeout);
   }, [activeCompanyId, health?.currentTick, loadResearch, nextResearchCompletionTick]);
 
-  useEffect(() => {
-    statusByNodeIdRef.current = new Map();
-    didPrimeStatusesRef.current = false;
-  }, [activeCompanyId]);
-
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node] as const)), [nodes]);
-
-  useEffect(() => {
-    const nextStatusById = new Map(nodes.map((node) => [node.id, node.status] as const));
-    if (!didPrimeStatusesRef.current) {
-      statusByNodeIdRef.current = nextStatusById;
-      didPrimeStatusesRef.current = true;
-      return;
-    }
-
-    const completedNodes: ResearchNode[] = [];
-    for (const [nodeId, nextStatus] of nextStatusById.entries()) {
-      const previousStatus = statusByNodeIdRef.current.get(nodeId);
-      if (previousStatus !== "COMPLETED" && nextStatus === "COMPLETED") {
-        const node = nodeById.get(nodeId);
-        if (node) {
-          completedNodes.push(node);
-        }
-      }
-    }
-    if (completedNodes.length > 0) {
-      play("event_research_completed");
-      
-      // Show toast notification for completed research
-      const unlockedRecipes = completedNodes.flatMap((node) => node.unlockRecipes);
-      const uniqueRecipeNamesSet = new Set<string>(
-        unlockedRecipes
-          .map((recipe) => recipe.recipeName)
-          .filter((name): name is string => Boolean(name && name.trim()))
-      );
-      const uniqueRecipeNames = Array.from(uniqueRecipeNamesSet);
-      const MAX_RECIPES_IN_TOAST = 3;
-      let message: string;
-
-      if (uniqueRecipeNames.length > 0) {
-        const displayedNames = uniqueRecipeNames.slice(0, MAX_RECIPES_IN_TOAST);
-        const remainingCount = uniqueRecipeNames.length - displayedNames.length;
-        const baseList = displayedNames.join(", ");
-        const summary =
-          remainingCount > 0 ? `${baseList} + ${remainingCount} more` : baseList;
-        message = `Research complete! Unlocked recipes: ${summary}`;
-      } else {
-        message = "Research complete!";
-      }
-      
-      showToast({
-        title: completedNodes.length === 1 ? completedNodes[0].name : "Research Complete",
-        description: message,
-        variant: "success"
-      });
-    }
-    statusByNodeIdRef.current = nextStatusById;
-  }, [nodes, play, showToast, nodeById]);
 
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
 

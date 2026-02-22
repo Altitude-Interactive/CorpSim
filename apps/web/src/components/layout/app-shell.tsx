@@ -10,6 +10,7 @@ import { InventoryPreviewShortcut } from "./inventory-preview-shortcut";
 import { PageSearchCommand } from "./page-search-command";
 import { ProfilePanel } from "./profile-panel";
 import { QuickNavigationShortcuts } from "./quick-navigation-shortcuts";
+import { ResearchCompletionNotifier } from "./research-completion-notifier";
 import { ShortcutsHelpShortcut } from "./shortcuts-help-shortcut";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
@@ -95,6 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <InventoryPreviewShortcut />
       <ShortcutsHelpShortcut />
       <QuickNavigationShortcuts />
+      <ResearchCompletionNotifier />
       <ProfilePanel />
       <GuidedTutorialOverlay />
       <div className="min-h-screen bg-background text-foreground">
