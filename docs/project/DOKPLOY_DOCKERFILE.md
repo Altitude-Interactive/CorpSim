@@ -10,7 +10,7 @@ This project supports Dockerfile-only runtime modes via:
 
 Entrypoint: `scripts/start-container.sh`
 
-## ⚠️ Critical: Next.js Build Arguments
+## Critical: Next.js Build Arguments
 
 **IMPORTANT:** When deploying the `web` app (or `APP_ROLE=all`), Next.js `NEXT_PUBLIC_*` environment variables are **baked into the JavaScript bundle at build time**, NOT at runtime.
 
@@ -39,9 +39,9 @@ Create separate Dokploy apps from the same repository and Dockerfile:
    - `APP_ROLE=api`
    - `API_PORT=4310`
    - expose/public port `4310`
-   - `CORS_ORIGIN=https://corpsim.altitude-interactive.com`
-   - `BETTER_AUTH_URL=https://corpsim.altitude-interactive.com`
-   - ⚠️ **IMPORTANT**: Set `BETTER_AUTH_URL` to the main web domain (not the API subdomain) so OAuth callbacks redirect to the correct domain
+   - `CORS_ORIGIN=https://app.example.com`
+   - `BETTER_AUTH_URL=https://app.example.com`
+   - **IMPORTANT**: Set `BETTER_AUTH_URL` to the main web domain (not the API subdomain) so OAuth callbacks redirect to the correct domain
 
 3. `corpsim-worker`
    - `APP_ROLE=worker`
@@ -51,16 +51,16 @@ Create separate Dokploy apps from the same repository and Dockerfile:
    - `APP_ROLE=web`
    - `WEB_PORT=4311`
    - expose/public port `4311`
-   - ⚠️ **BUILD ARGUMENTS (set before building the image):**
-     - `NEXT_PUBLIC_APP_URL=https://corpsim.altitude-interactive.com`
-     - `NEXT_PUBLIC_AUTH_URL=https://corpsim.altitude-interactive.com` (optional)
-     - `NEXT_PUBLIC_API_URL=https://corpsim.altitude-interactive.com` (or leave empty)
+   - **BUILD ARGUMENTS (set before building the image):**
+     - `NEXT_PUBLIC_APP_URL=https://app.example.com`
+     - `NEXT_PUBLIC_AUTH_URL=https://app.example.com` (optional)
+     - `NEXT_PUBLIC_API_URL=https://app.example.com` (or leave empty)
    - **RUNTIME ENVIRONMENT VARIABLES:**
-     - `NEXT_PUBLIC_APP_URL=https://corpsim.altitude-interactive.com`
-     - `NEXT_PUBLIC_AUTH_URL=https://corpsim.altitude-interactive.com` (optional)
-     - `NEXT_PUBLIC_API_URL=https://corpsim.altitude-interactive.com` (or leave empty)
+     - `NEXT_PUBLIC_APP_URL=https://app.example.com`
+     - `NEXT_PUBLIC_AUTH_URL=https://app.example.com` (optional)
+     - `NEXT_PUBLIC_API_URL=https://app.example.com` (or leave empty)
      - `API_URL=http://corpsim-api:4310` (or internal Docker network address)
-     - `BETTER_AUTH_URL=https://corpsim.altitude-interactive.com`
+     - `BETTER_AUTH_URL=https://app.example.com`
 
 All runtime apps also need:
 
@@ -73,19 +73,19 @@ All runtime apps also need:
 If you insist on one container, set:
 
 **Build Arguments (must be set before building):**
-- `NEXT_PUBLIC_APP_URL=https://corpsim.altitude-interactive.com`
-- `NEXT_PUBLIC_AUTH_URL=https://corpsim.altitude-interactive.com` (optional)
-- `NEXT_PUBLIC_API_URL=https://corpsim.altitude-interactive.com` (or leave empty)
+- `NEXT_PUBLIC_APP_URL=https://app.example.com`
+- `NEXT_PUBLIC_AUTH_URL=https://app.example.com` (optional)
+- `NEXT_PUBLIC_API_URL=https://app.example.com` (or leave empty)
 
 **Runtime Environment Variables:**
 - `APP_ROLE=all`
 - `API_PORT=4310`
 - `WEB_PORT=4311`
-- `CORS_ORIGIN=https://corpsim.altitude-interactive.com`
-- `NEXT_PUBLIC_APP_URL=https://corpsim.altitude-interactive.com`
-- `NEXT_PUBLIC_AUTH_URL=https://corpsim.altitude-interactive.com` (optional)
-- `NEXT_PUBLIC_API_URL=https://corpsim.altitude-interactive.com` (or leave empty)
-- `BETTER_AUTH_URL=https://corpsim.altitude-interactive.com`
+- `CORS_ORIGIN=https://app.example.com`
+- `NEXT_PUBLIC_APP_URL=https://app.example.com`
+- `NEXT_PUBLIC_AUTH_URL=https://app.example.com` (optional)
+- `NEXT_PUBLIC_API_URL=https://app.example.com` (or leave empty)
+- `BETTER_AUTH_URL=https://app.example.com`
 - `API_URL=http://localhost:4310` (internal server-side API access)
 - `PREVIEW_DATABASE_URL=postgresql://postgres:<password>@postgres:5432/corpsim`
 - `PREVIEW_REDIS_HOST=redis`
@@ -103,9 +103,9 @@ pnpm sim:seed
 
 ## Nginx upstream mapping
 
-- `corpsim.altitude-interactive.com` -> `<web-upstream>:4311` (public)
+- `app.example.com` -> `192.0.2.10:4311` (public)
 - Keep API private/internal when possible; web route handlers proxy `/v1/*` and `/api/auth/*` to the API upstream.
-- If `corpsim-api.altitude-interactive.com` is still configured, redirect it to `corpsim.altitude-interactive.com`.
+- If `api.example.com` is still configured, redirect it to `app.example.com`.
 
 ## Troubleshooting
 
@@ -118,10 +118,10 @@ pnpm sim:seed
 **Cause:** The `BETTER_AUTH_URL` environment variable for the API service is not configured correctly, or the nginx proxy is not set up to forward `/api/auth/*` requests from the web domain to the API server.
 
 **Solution:**
-1. Ensure `BETTER_AUTH_URL=https://corpsim.altitude-interactive.com` is set for the API service (use the main web domain, NOT the API subdomain)
+1. Ensure `BETTER_AUTH_URL=https://app.example.com` is set for the API service (use the main web domain, NOT the API subdomain)
 2. Verify the nginx configuration includes a proxy rule for `/api/auth/*` (see `docs/project/corpsim.altitude.nginx.conf`)
 3. Restart the API service and nginx after making changes
-4. Configure OAuth apps (GitHub, Google, Microsoft, Discord) to allow callback URLs like `https://corpsim.altitude-interactive.com/api/auth/callback/{provider}`
+4. Configure OAuth apps (GitHub, Google, Microsoft, Discord) to allow callback URLs like `https://app.example.com/api/auth/callback/{provider}`
 
 ### Authentication failing with "Provider not found" or 404 errors
 
@@ -148,3 +148,5 @@ pnpm sim:seed
 3. Trigger an API request (e.g., try to sign in)
 4. Check request URLs - for single-domain SSO they should point to your web domain (not localhost)
 5. Alternatively, check the Console tab for any warnings from CorpSim about misconfigured URLs
+
+
