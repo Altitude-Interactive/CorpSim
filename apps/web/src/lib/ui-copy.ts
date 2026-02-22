@@ -4,6 +4,7 @@ export const UI_COPY = {
   modules: {
     overview: "Overview",
     market: "Market",
+    buildings: "Buildings",
     production: "Production",
     research: "Research",
     workforce: "Workforce",
@@ -105,9 +106,9 @@ export const UI_COPY = {
     routePaths: {
       "/overview": "/pages/overview",
       "/market": "/pages/market",
+      "/buildings": "/pages/buildings",
       "/production": "/pages/production",
       "/research": "/pages/research",
-      "/workforce": "/pages/workforce",
       "/inventory": "/pages/inventory",
       "/logistics": "/pages/logistics",
       "/contracts": "/pages/contracts",

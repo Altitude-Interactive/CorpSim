@@ -81,6 +81,10 @@ import {
   applyDurationMultiplierTicks,
   resolveWorkforceRuntimeModifiers
 } from "./workforce";
+import {
+  validateProductionBuildingAvailable,
+  validateStorageCapacity
+} from "./buildings";
 
 interface RecipeInputRow {
   itemId: string;
@@ -488,6 +492,12 @@ export async function createProductionJobWithTx(
     throw new DomainInvariantError("recipe durationTicks cannot be negative");
   }
 
+  // Validate player company has at least one active production building
+  // (bots operate with different rules and may not have buildings)
+  if (company.isPlayer) {
+    await validateProductionBuildingAvailable(tx, input.companyId);
+  }
+
   const requirements = calculateRecipeInputRequirements(recipe.inputs, input.quantity);
   const requiredItemIds = requirements.map((entry) => entry.itemId);
 
@@ -845,6 +855,26 @@ export async function completeDueProductionJobs(
       );
     }
 
+    const outputQuantity = job.recipe.outputQuantity * job.runs;
+    
+    // Calculate net inventory change (outputs added minus inputs consumed)
+    const totalInputQuantity = requirements.reduce(
+      (sum, requirement) => sum + requirement.quantity,
+      0
+    );
+    const netInventoryChange = outputQuantity - totalInputQuantity;
+
+    // Validate storage capacity accounts for net change after consuming inputs
+    // (only validate if net change is positive, i.e., we're adding more than consuming)
+    if (netInventoryChange > 0) {
+      await validateStorageCapacity(
+        tx,
+        job.companyId,
+        job.company.regionId,
+        netInventoryChange
+      );
+    }
+
     for (const requirement of requirements) {
       await tx.inventory.update({
         where: {
@@ -864,8 +894,6 @@ export async function completeDueProductionJobs(
         }
       });
     }
-
-    const outputQuantity = job.recipe.outputQuantity * job.runs;
 
     await tx.inventory.upsert({
       where: {

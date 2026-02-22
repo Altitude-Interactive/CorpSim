@@ -36,17 +36,14 @@ function sanitizeHeaders(source: Headers, blocked: Set<string>): Headers {
   const target = new Headers();
   source.forEach((value, key) => {
     if (!blocked.has(key.toLowerCase())) {
-      target.set(key, value);
+      target.append(key, value);
     }
   });
   return target;
 }
 
 function resolveApiUpstreamBaseUrl(): string {
-  const explicit =
-    process.env.API_URL?.trim() ||
-    process.env.API_INTERNAL_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_URL?.trim();
+  const explicit = process.env.API_URL?.trim() || process.env.API_INTERNAL_URL?.trim();
 
   if (explicit) {
     return explicit.endsWith("/") ? explicit.slice(0, -1) : explicit;

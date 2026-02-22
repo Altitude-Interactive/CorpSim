@@ -261,3 +261,43 @@ All notable changes to CorpSim are documented in this file.
 
 - [ops] Add APP_IMAGE_BYPASS_TAG flag to force preview image builds from latest commit
 - [ops] Fix SSO authentication in production by wiring backend runtime env vars and frontend build-time visibility flags
+
+## 0.10.0 - 2026-02-22
+
+### What's Changed
+
+- [web] Fix early UX and data visibility issues (forms, time display, workforce clarity, completion feedback)
+- [sim] Add building infrastructure domain layer for capital-based production system
+- [web,api,sim] Add Buildings Management UI with preflight validation and acquisition flows (Phase 4 & 5)
+- [web] Replace static onboarding tutorial with guided cross-page walkthrough
+- [ci] Use GitHub's built-in release notes generation
+- [web] Fix OAuth callback redirect URLs for GitHub, Microsoft, and Discord by configuring nginx proxy and BETTER_AUTH_URL
+- [web, api] Support single-origin SSO by proxying auth routes and preferring web origin for auth base URL
+- [ci] Run Prisma migrations before launching services in APP_ROLE=all mode
+- [web] Centralize item quantity rendering and apply quantifier labels to recipe outputs
+- [web] Fix market unknown item labels by using global item metadata
+- [web] Restrict market views to active company tradable items
+- [ops] Sanitize Dokploy/nginx docs to example domains and RFC 5737 IPs
+- [ops] Remove legacy API subdomain blocks from nginx sample
+- [web] Add ALPHA as-is disclaimer next to footer version badge
+- [web] Show ALPHA disclaimer on version hover and overview with Discord link
+- [web] Remove hover helper label from version badge
+- [web] Remove maintenance overlay focus ring rectangle
+- [web] Hide seeded example.com accounts from admin user listing
+- [web] Make ALPHA version tag clickable to Discord and share URL resolver
+- [web] Load Discord link from runtime meta config for alpha notices
+- [api, web] Allow admin accounts to access developer page read endpoints
+- [web] Accept optional redacted company cash fields in API parsers
+- [web] Clarify overview metrics and tutorial copy as world-level values
+- [web] Start guided tutorial with active company snapshot before world KPIs
+- [api, web] Enable admin access to developer research catalog without player ownership
+- [web] Improve recipe input readability with explicit separators and quantity labels
+- [sim] Refresh liquidity bot orders and add deterministic crossing to prevent zero-trade stalls
+- [api] Fix diagnostics missing-items endpoint DI so missing item logs can be created
+- [ci] Fix typecheck failures in web public-links route import and bot order cancellation input
+- [web] Wrap search-params dependent layout clients in Suspense to fix Next build prerendering
+- [ci] Restrict release workflow to main branch for both automatic and manual runs
+- [web] Fix local Prisma lock races and restore Buildings/research feedback visibility
+- [db] Run Prisma generate without relying on dotenv-cli shell binary
+- [web] Fix buildings definitions API response parsing in web client
+- [web] Accept legacy object-shaped buildings definitions payloads

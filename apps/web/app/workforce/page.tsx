@@ -1,5 +1,5 @@
-import { WorkforcePage } from "@/components/workforce/workforce-page";
+import { redirect } from "next/navigation";
 
 export default function WorkforceRoute() {
-  return <WorkforcePage />;
+  redirect("/buildings");
 }

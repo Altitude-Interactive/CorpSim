@@ -89,6 +89,7 @@ export function MarketPage() {
   const { activeCompanyId, activeCompany } = useActiveCompany();
   const { health, refresh: refreshHealth } = useWorldHealth();
 
+  const [catalogItems, setCatalogItems] = useState<ItemCatalogItem[]>([]);
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [regions, setRegions] = useState<RegionSummary[]>([]);
@@ -115,7 +116,8 @@ export function MarketPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = useCallback(async (): Promise<string> => {
-    const [itemRows, regionRows, companyRows] = await Promise.all([
+    const [catalogItemRows, selectableItemRows, regionRows, companyRows] = await Promise.all([
+      listItems(),
       listItems(activeCompanyId ?? undefined),
       listRegions(),
       listCompanies()
@@ -140,7 +142,8 @@ export function MarketPage() {
     }
 
     setUnlockedItemIds(Array.from(unlockedIds));
-    setItems(itemRows);
+    setCatalogItems(catalogItemRows);
+    setItems(selectableItemRows);
     setRegions(regionRows);
     setCompanies(companyRows);
     let resolvedRegionId = "";
@@ -393,11 +396,11 @@ export function MarketPage() {
   );
   const unlockedItemIdSet = useMemo(() => new Set(unlockedItemIds), [unlockedItemIds]);
   const sortedSelectableItems = useMemo(() => {
-    if (unlockedItemIdSet.size === 0) {
+    if (!activeCompanyId) {
       return sortedItems;
     }
     return sortedItems.filter((item) => unlockedItemIdSet.has(item.id));
-  }, [sortedItems, unlockedItemIdSet]);
+  }, [activeCompanyId, sortedItems, unlockedItemIdSet]);
   const filteredOrderSelectableItems = useMemo(() => {
     const needle = deferredOrderItemSearch.trim().toLowerCase();
     if (!needle) {
@@ -456,8 +459,11 @@ export function MarketPage() {
     [regions]
   );
   const itemMetaById = useMemo(
-    () => Object.fromEntries(items.map((item) => [item.id, { code: item.code, name: item.name }])),
-    [items]
+    () =>
+      Object.fromEntries(
+        catalogItems.map((item) => [item.id, { code: item.code, name: item.name }])
+      ),
+    [catalogItems]
   );
   const companyNameById = useMemo(
     () => Object.fromEntries(companies.map((company) => [company.id, company.name])),
@@ -469,6 +475,24 @@ export function MarketPage() {
       name: activeCompany.regionName
     })
     : null;
+  const visibleOrderBook = useMemo(() => {
+    if (!activeCompanyId) {
+      return orderBook;
+    }
+    return orderBook.filter((order) => unlockedItemIdSet.has(order.itemId));
+  }, [activeCompanyId, orderBook, unlockedItemIdSet]);
+  const visibleMyOrders = useMemo(() => {
+    if (!activeCompanyId) {
+      return myOrders;
+    }
+    return myOrders.filter((order) => unlockedItemIdSet.has(order.itemId));
+  }, [activeCompanyId, myOrders, unlockedItemIdSet]);
+  const visibleTrades = useMemo(() => {
+    if (!activeCompanyId) {
+      return trades;
+    }
+    return trades.filter((trade) => unlockedItemIdSet.has(trade.itemId));
+  }, [activeCompanyId, trades, unlockedItemIdSet]);
 
   useEffect(() => {
     if (orderFilters.itemId && !sortedSelectableItems.some((item) => item.id === orderFilters.itemId)) {
@@ -485,12 +509,14 @@ export function MarketPage() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <OrderPlacementCard
-          activeCompany={activeCompany}
-          items={sortedSelectableItems}
-          onSubmit={handlePlaceOrder}
-          isSubmitting={isSubmittingOrder}
-        />
+        <div data-tutorial-id="market-order-placement">
+          <OrderPlacementCard
+            activeCompany={activeCompany}
+            items={sortedSelectableItems}
+            onSubmit={handlePlaceOrder}
+            isSubmitting={isSubmittingOrder}
+          />
+        </div>
 
         <Card>
           <CardHeader>
@@ -604,21 +630,28 @@ export function MarketPage() {
                 Showing first {visibleOrderSelectableItems.length} matching items in order-item dropdown.
               </p>
             ) : null}
+            {activeCompanyId && sortedSelectableItems.length === 0 ? (
+              <p className="mt-2 text-xs text-amber-300">
+                No tradable items are currently unlocked for this company.
+              </p>
+            ) : null}
             {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
           </CardContent>
         </Card>
       </div>
 
-      <OrderBookCard
-        orders={orderBook}
-        isLoading={isLoadingOrderBook}
-        regionNameById={regionNameById}
-        itemMetaById={itemMetaById}
-        companyNameById={companyNameById}
-      />
+      <div data-tutorial-id="market-order-book">
+        <OrderBookCard
+          orders={visibleOrderBook}
+          isLoading={isLoadingOrderBook}
+          regionNameById={regionNameById}
+          itemMetaById={itemMetaById}
+          companyNameById={companyNameById}
+        />
+      </div>
 
       <MyOrdersCard
-        orders={myOrders}
+        orders={visibleMyOrders}
         isLoading={isLoadingMyOrders || Boolean(isCancellingOrderId)}
         regionNameById={regionNameById}
         itemMetaById={itemMetaById}
@@ -699,7 +732,7 @@ export function MarketPage() {
       </Card>
 
       <RecentTradesCard
-        trades={trades}
+        trades={visibleTrades}
         isLoading={isLoadingTrades}
         regionNameById={regionNameById}
         itemMetaById={itemMetaById}

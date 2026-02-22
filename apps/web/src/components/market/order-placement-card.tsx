@@ -30,8 +30,8 @@ export function OrderPlacementCard({
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [itemSearch, setItemSearch] = useState("");
-  const [priceInput, setPriceInput] = useState("1.00");
-  const [quantityInput, setQuantityInput] = useState("1");
+  const [priceInput, setPriceInput] = useState("");
+  const [quantityInput, setQuantityInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const deferredItemSearch = useDeferredValue(itemSearch);
 
@@ -144,7 +144,7 @@ export function OrderPlacementCard({
               <Input
                 value={quantityInput}
                 onChange={(event) => setQuantityInput(event.target.value)}
-                placeholder="1"
+                placeholder="Enter quantity (e.g., 100)"
               />
             </div>
           </div>
@@ -181,7 +181,7 @@ export function OrderPlacementCard({
             <Input
               value={priceInput}
               onChange={(event) => setPriceInput(event.target.value)}
-              placeholder="1.00"
+              placeholder="Enter price (e.g., 1.50)"
             />
             <p className="mt-1 text-xs text-muted-foreground">
               Enter dollars (for example, 0.80). The order is stored in cents.

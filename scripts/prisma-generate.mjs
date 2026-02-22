@@ -3,12 +3,27 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const MAX_RETRIES = 6;
 const BASE_DELAY_MS = 300;
+const LOCK_ACQUIRE_TIMEOUT_MS = 120_000;
+const LOCK_STALE_MS = 10 * 60 * 1_000;
+const LOCK_POLL_INTERVAL_MS = 250;
+
+class GenerateCommandFailedError extends Error {
+  constructor(exitCode) {
+    super(`[prisma:generate] generate:raw failed with exit code ${exitCode}`);
+    this.name = "GenerateCommandFailedError";
+    this.exitCode = exitCode;
+  }
+}
+
+function isNodeErrorWithCode(error) {
+  return typeof error === "object" && error !== null && "code" in error;
+}
 
 function toPosixPath(value) {
   return value.replace(/\\/g, "/");
@@ -116,6 +131,87 @@ function sleepMs(ms) {
   return new Promise((resolvePromise) => {
     setTimeout(resolvePromise, ms);
   });
+}
+
+async function isLockFileStale(lockPath) {
+  try {
+    const details = await stat(lockPath);
+    return Date.now() - details.mtimeMs > LOCK_STALE_MS;
+  } catch (error) {
+    if (isNodeErrorWithCode(error) && error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function acquireGenerateLock(repoRoot) {
+  const lockPath = resolve(repoRoot, ".corpsim/cache/prisma-generate.lock");
+  await mkdir(dirname(lockPath), { recursive: true });
+  const startedAt = Date.now();
+  let hasLoggedWaiting = false;
+
+  for (;;) {
+    try {
+      await writeFile(
+        lockPath,
+        JSON.stringify(
+          {
+            pid: process.pid,
+            lockedAt: new Date().toISOString()
+          },
+          null,
+          2
+        ) + "\n",
+        {
+          encoding: "utf8",
+          flag: "wx"
+        }
+      );
+
+      return async () => {
+        try {
+          await unlink(lockPath);
+        } catch (error) {
+          if (!isNodeErrorWithCode(error) || error.code !== "ENOENT") {
+            console.warn("[prisma:generate] could not remove lock file", error);
+          }
+        }
+      };
+    } catch (error) {
+      if (!isNodeErrorWithCode(error) || error.code !== "EEXIST") {
+        throw error;
+      }
+
+      if (await isLockFileStale(lockPath)) {
+        try {
+          await unlink(lockPath);
+          console.warn("[prisma:generate] removed stale generate lock file");
+          continue;
+        } catch (staleCleanupError) {
+          if (
+            !isNodeErrorWithCode(staleCleanupError) ||
+            (staleCleanupError.code !== "ENOENT" && staleCleanupError.code !== "EPERM")
+          ) {
+            throw staleCleanupError;
+          }
+        }
+      }
+
+      if (!hasLoggedWaiting) {
+        console.warn("[prisma:generate] another prisma:generate process is running; waiting for lock");
+        hasLoggedWaiting = true;
+      }
+
+      if (Date.now() - startedAt > LOCK_ACQUIRE_TIMEOUT_MS) {
+        throw new Error(
+          `[prisma:generate] timed out waiting for lock after ${LOCK_ACQUIRE_TIMEOUT_MS}ms`
+        );
+      }
+
+      await sleepMs(LOCK_POLL_INTERVAL_MS);
+    }
+  }
 }
 
 function normalizeNewlines(value) {
@@ -238,7 +334,7 @@ async function runGenerateWithRetry(repoRoot, schemaContent) {
       }
 
       flushProcessOutput(result);
-      process.exit(result.status ?? 1);
+      throw new GenerateCommandFailedError(result.status ?? 1);
     }
 
     const delayMs = BASE_DELAY_MS * 2 ** (attempt - 1);
@@ -252,72 +348,80 @@ async function runGenerateWithRetry(repoRoot, schemaContent) {
 async function main() {
   const scriptDir = dirname(fileURLToPath(import.meta.url));
   const repoRoot = findRepoRoot(resolve(scriptDir, ".."));
-  const forceGenerate = process.env.PRISMA_GENERATE_FORCE === "1";
-  const statePath = resolve(repoRoot, ".corpsim/cache/prisma-generate-state.json");
-  const { fingerprint, schemaContent } = await computeFingerprint(repoRoot);
-  const sentinelPath = getGeneratedClientSentinelPath(repoRoot);
-  const generatedSchemaPath = getGeneratedSchemaPath(repoRoot);
+  const releaseLock = await acquireGenerateLock(repoRoot);
+  try {
+    const forceGenerate = process.env.PRISMA_GENERATE_FORCE === "1";
+    const statePath = resolve(repoRoot, ".corpsim/cache/prisma-generate-state.json");
+    const { fingerprint, schemaContent } = await computeFingerprint(repoRoot);
+    const sentinelPath = getGeneratedClientSentinelPath(repoRoot);
+    const generatedSchemaPath = getGeneratedSchemaPath(repoRoot);
 
-  if (!forceGenerate && sentinelPath && existsSync(sentinelPath) && existsSync(statePath)) {
-    try {
-      const stateRaw = await readFile(statePath, "utf8");
-      const state = JSON.parse(stateRaw);
-      if (state?.fingerprint === fingerprint && hasUsableGeneratedClient(repoRoot)) {
-        console.log("[prisma:generate] schema unchanged; skipping generate");
-        return;
+    if (!forceGenerate && sentinelPath && existsSync(sentinelPath) && existsSync(statePath)) {
+      try {
+        const stateRaw = await readFile(statePath, "utf8");
+        const state = JSON.parse(stateRaw);
+        if (state?.fingerprint === fingerprint && hasUsableGeneratedClient(repoRoot)) {
+          console.log("[prisma:generate] schema unchanged; skipping generate");
+          return;
+        }
+      } catch {
+        // Ignore state parse/read errors and regenerate.
       }
-    } catch {
-      // Ignore state parse/read errors and regenerate.
     }
-  }
 
-  if (!forceGenerate && generatedSchemaPath && existsSync(generatedSchemaPath)) {
-    try {
-      const generatedSchemaContent = await readFile(generatedSchemaPath, "utf8");
-      if (
-        canonicalizePrismaSchema(generatedSchemaContent) ===
-        canonicalizePrismaSchema(schemaContent) &&
-        hasUsableGeneratedClient(repoRoot)
-      ) {
-        console.log("[prisma:generate] generated client already matches schema; skipping generate");
-        await mkdir(dirname(statePath), { recursive: true });
-        await writeFile(
-          statePath,
-          JSON.stringify(
-            {
-              fingerprint,
-              generatedAt: new Date().toISOString()
-            },
-            null,
-            2
-          ) + "\n",
-          "utf8"
-        );
-        return;
+    if (!forceGenerate && generatedSchemaPath && existsSync(generatedSchemaPath)) {
+      try {
+        const generatedSchemaContent = await readFile(generatedSchemaPath, "utf8");
+        if (
+          canonicalizePrismaSchema(generatedSchemaContent) ===
+          canonicalizePrismaSchema(schemaContent) &&
+          hasUsableGeneratedClient(repoRoot)
+        ) {
+          console.log("[prisma:generate] generated client already matches schema; skipping generate");
+          await mkdir(dirname(statePath), { recursive: true });
+          await writeFile(
+            statePath,
+            JSON.stringify(
+              {
+                fingerprint,
+                generatedAt: new Date().toISOString()
+              },
+              null,
+              2
+            ) + "\n",
+            "utf8"
+          );
+          return;
+        }
+      } catch {
+        // If we cannot read generated schema, continue with normal generate flow.
       }
-    } catch {
-      // If we cannot read generated schema, continue with normal generate flow.
     }
+
+    await runGenerateWithRetry(repoRoot, schemaContent);
+
+    await mkdir(dirname(statePath), { recursive: true });
+    await writeFile(
+      statePath,
+      JSON.stringify(
+        {
+          fingerprint,
+          generatedAt: new Date().toISOString()
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+  } finally {
+    await releaseLock();
   }
-
-  await runGenerateWithRetry(repoRoot, schemaContent);
-
-  await mkdir(dirname(statePath), { recursive: true });
-  await writeFile(
-    statePath,
-    JSON.stringify(
-      {
-        fingerprint,
-        generatedAt: new Date().toISOString()
-      },
-      null,
-      2
-    ) + "\n",
-    "utf8"
-  );
 }
 
 main().catch((error) => {
+  if (error instanceof GenerateCommandFailedError) {
+    process.exit(error.exitCode);
+  }
   console.error("[prisma:generate] failed", error);
   process.exit(1);
 });

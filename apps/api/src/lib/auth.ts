@@ -476,6 +476,7 @@ async function ensurePlayerExistsForAuthUser(user: {
 
 function resolveTrustedOrigins(): string[] {
   const sources = [
+    process.env.BETTER_AUTH_URL,
     process.env.CORS_ORIGIN,
     process.env.APP_URL,
     process.env.WEB_URL,
@@ -497,14 +498,24 @@ function resolveTrustedOrigins(): string[] {
   return Array.from(resolved);
 }
 
-function resolveAuthBaseUrl(): string {
-  const explicit =
-    process.env.BETTER_AUTH_URL?.trim() ||
-    process.env.API_URL?.trim() ||
-    process.env.APP_URL?.trim();
+function trimTrailingSlash(value: string): string {
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
 
-  if (explicit) {
-    return explicit;
+function resolveAuthBaseUrl(): string {
+  const sources = [
+    process.env.BETTER_AUTH_URL,
+    process.env.APP_URL,
+    process.env.WEB_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.API_URL
+  ];
+
+  for (const source of sources) {
+    const explicit = source?.trim();
+    if (explicit) {
+      return trimTrailingSlash(explicit);
+    }
   }
 
   const apiPort = process.env.API_PORT?.trim() || process.env.PORT?.trim() || "4310";

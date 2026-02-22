@@ -32,7 +32,14 @@ run_migrate() {
   exec pnpm exec prisma migrate deploy --schema packages/db/prisma/schema.prisma
 }
 
+apply_migrations() {
+  pnpm exec prisma migrate deploy --schema packages/db/prisma/schema.prisma
+}
+
 run_all() {
+  # Ensure schema is current before starting long-running processes in single-container mode.
+  apply_migrations
+
   pnpm --filter @corpsim/api start &
   api_pid=$!
 

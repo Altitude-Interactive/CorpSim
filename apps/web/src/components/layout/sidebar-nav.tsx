@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Building2,
   BookOpenText,
   Box,
   CircleDollarSign,
@@ -19,7 +20,6 @@ import {
   Wrench,
   Truck,
   TrendingUp,
-  Users
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SIDEBAR_PAGE_NAVIGATION, APP_PAGE_NAVIGATION } from "@/lib/page-navigation";
@@ -33,9 +33,9 @@ import { isAdminRole, isModeratorRole } from "@/lib/roles";
 const NAV_ICON_BY_ROUTE: Record<string, LucideIcon> = {
   "/overview": LayoutDashboard,
   "/market": TrendingUp,
+  "/buildings": Building2,
   "/production": Factory,
   "/research": FlaskConical,
-  "/workforce": Users,
   "/inventory": PackageSearch,
   "/logistics": Truck,
   "/contracts": ClipboardList,

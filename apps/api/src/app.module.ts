@@ -2,6 +2,8 @@ import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { AuthModule } from "@thallesp/nestjs-better-auth";
 import { MaintenanceModeMiddleware } from "./common/middleware/maintenance-mode.middleware";
 import { SchemaReadinessMiddleware } from "./common/middleware/schema-readiness.middleware";
+import { BuildingsController } from "./buildings/buildings.controller";
+import { BuildingsService } from "./buildings/buildings.service";
 import { CompaniesController } from "./companies/companies.controller";
 import { CompaniesService } from "./companies/companies.service";
 import { ContractsController } from "./contracts/contracts.controller";
@@ -63,6 +65,7 @@ import { auth } from "./lib/auth";
     ContractsController,
     PlayersController,
     CompaniesController,
+    BuildingsController,
     MarketController,
     ItemsController,
     RegionsController,
@@ -83,6 +86,7 @@ import { auth } from "./lib/auth";
     FinanceService,
     ContractsService,
     CompaniesService,
+    BuildingsService,
     PlayersService,
     MarketService,
     MaintenanceService,

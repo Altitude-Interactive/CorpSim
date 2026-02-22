@@ -5,7 +5,11 @@ import { adminClient, twoFactorClient, usernameClient } from "better-auth/client
 import { isLocalhostHostname, isLocalhostUrl } from "./localhost-utils";
 
 function resolveAuthBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+  const raw =
+    process.env.NEXT_PUBLIC_AUTH_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_URL?.trim() ||
+    "";
   if (!raw) {
     return "";
   }
@@ -17,7 +21,10 @@ function validateAuthConfiguration(): void {
     return;
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  const authUrl =
+    process.env.NEXT_PUBLIC_AUTH_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_URL?.trim();
   const currentHost = window.location.hostname;
 
   // Skip validation in development
@@ -25,21 +32,32 @@ function validateAuthConfiguration(): void {
     return;
   }
 
-  // Check if API URL is missing or pointing to localhost in production
-  if (!apiUrl) {
+  if (!authUrl) {
+    return;
+  }
+
+  if (isLocalhostUrl(authUrl)) {
     console.warn(
-      "[CorpSim Auth] NEXT_PUBLIC_API_URL is not set. Authentication will fail. " +
-      "Ensure NEXT_PUBLIC_API_URL is set as a build argument when building the Docker image."
+      `[CorpSim Auth] Auth base URL is set to "${authUrl}" but you're accessing the site from "${currentHost}". ` +
+      "This likely means the environment variable was not set as a build argument. " +
+      "Authentication requests may fail. " +
+      "Set NEXT_PUBLIC_AUTH_URL (or NEXT_PUBLIC_APP_URL) to your deployed app origin and rebuild the image."
     );
     return;
   }
 
-  if (isLocalhostUrl(apiUrl)) {
+  try {
+    const authHost = new URL(authUrl).hostname;
+    if (authHost !== currentHost) {
+      console.warn(
+        `[CorpSim Auth] Auth base URL host "${authHost}" differs from current host "${currentHost}". ` +
+        "For SSO providers that require a single domain, point auth traffic to the same public origin."
+      );
+    }
+  } catch {
     console.warn(
-      `[CorpSim Auth] NEXT_PUBLIC_API_URL is set to "${apiUrl}" but you're accessing the site from "${currentHost}". ` +
-      "This likely means the environment variable was not set as a build argument. " +
-      "Authentication requests will fail. " +
-      "Set NEXT_PUBLIC_API_URL as a build argument in your deployment platform and rebuild the image."
+      `[CorpSim Auth] Auth base URL "${authUrl}" is not a valid absolute URL. ` +
+      "Use an absolute HTTPS URL, or leave it empty to use same-origin routing."
     );
   }
 }

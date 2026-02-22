@@ -4,7 +4,8 @@ import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, u
 import { resolveCompanySpecializationCooldownHours } from "@corpsim/shared";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
-import { ItemLabel } from "@/components/items/item-label";
+import { ItemQuantityLabel } from "@/components/items/item-quantity-label";
+import { ItemQuantityList } from "@/components/items/item-quantity-list";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +79,7 @@ export function ProductionPage() {
   const [recipePage, setRecipePage] = useState(1);
   const [recipePageSize, setRecipePageSize] =
     useState<(typeof PRODUCTION_RECIPE_PAGE_SIZE_OPTIONS)[number]>(10);
-  const [quantityInput, setQuantityInput] = useState("1");
+  const [quantityInput, setQuantityInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
@@ -331,18 +332,33 @@ export function ProductionPage() {
       return;
     }
 
-    let hasNewCompletion = false;
-    for (const jobId of nextIds) {
-      if (!completedJobIdsRef.current.has(jobId)) {
-        hasNewCompletion = true;
-        break;
+    const newlyCompleted: ProductionJob[] = [];
+    for (const job of completedJobs) {
+      if (!completedJobIdsRef.current.has(job.id)) {
+        newlyCompleted.push(job);
       }
     }
-    if (hasNewCompletion) {
+    if (newlyCompleted.length > 0) {
       play("event_production_completed");
+      
+      // Show toast notification for completed jobs
+      if (newlyCompleted.length === 1) {
+        const job = newlyCompleted[0];
+        showToast({
+          title: "Production Complete",
+          description: `Produced ${job.quantity} × ${job.recipe.outputItem.name}`,
+          variant: "success"
+        });
+      } else {
+        showToast({
+          title: "Production Complete",
+          description: `${newlyCompleted.length} production jobs completed`,
+          variant: "success"
+        });
+      }
     }
     completedJobIdsRef.current = nextIds;
-  }, [completedJobs, play]);
+  }, [completedJobs, play, showToast]);
   const showInitialRecipesSkeleton = isLoadingRecipes && !hasLoadedRecipes;
   const showInitialJobsSkeleton = isLoadingJobs && !hasLoadedJobs;
 
@@ -538,7 +554,7 @@ export function ProductionPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card data-tutorial-id="production-start">
             <CardHeader>
               <CardTitle>Start Production</CardTitle>
             </CardHeader>
@@ -614,7 +630,7 @@ export function ProductionPage() {
                   <Input
                     value={quantityInput}
                     onChange={(event) => setQuantityInput(event.target.value)}
-                    placeholder="1"
+                    placeholder="Enter number of runs (e.g., 10)"
                   />
                 </div>
 
@@ -625,23 +641,25 @@ export function ProductionPage() {
                       Duration: {formatCadenceCount(selectedRecipe.durationTicks)} / run
                     </p>
                     <p>
-                      Output: {selectedRecipe.outputQuantity}{" "}
-                      <ItemLabel
+                      Output:{" "}
+                      <ItemQuantityLabel
+                        quantity={selectedRecipe.outputQuantity}
                         itemCode={selectedRecipe.outputItem.code}
                         itemName={selectedRecipe.outputItem.name}
                         className="inline-flex"
                       />
                     </p>
-                    <p>Inputs:</p>
-                    <ul className="list-disc pl-4">
-                      {selectedRecipe.inputs.map((input) => (
-                        <li key={input.itemId} className="flex items-center gap-1">
-                          <span>{input.quantityPerRun}</span>
-                          <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
-                          <span>/ run</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="space-y-1">
+                      <p>Inputs / run:</p>
+                      <ItemQuantityList
+                        items={selectedRecipe.inputs.map((input) => ({
+                          key: input.itemId,
+                          quantity: input.quantityPerRun,
+                          itemCode: input.item.code,
+                          itemName: input.item.name
+                        }))}
+                      />
+                    </div>
                   </div>
                 ) : null}
 
@@ -654,7 +672,7 @@ export function ProductionPage() {
           </Card>
         </div>
 
-        <Card>
+        <Card data-tutorial-id="production-recipes">
           <CardHeader>
             <CardTitle>Recipes</CardTitle>
           </CardHeader>
@@ -745,24 +763,22 @@ export function ProductionPage() {
                       <p className="font-medium">{row.recipe.name}</p>
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1">
-                        <span>{row.recipe.outputQuantity}</span>
-                        <ItemLabel
-                          itemCode={row.recipe.outputItem.code}
-                          itemName={row.recipe.outputItem.name}
-                        />
-                      </span>
+                      <ItemQuantityLabel
+                        quantity={row.recipe.outputQuantity}
+                        itemCode={row.recipe.outputItem.code}
+                        itemName={row.recipe.outputItem.name}
+                      />
                     </TableCell>
                     <TableCell>{formatCadenceCount(row.recipe.durationTicks)}</TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {row.recipe.inputs.map((input) => (
-                          <span key={input.itemId} className="inline-flex items-center gap-1">
-                            <span>{input.quantityPerRun}</span>
-                            <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
-                          </span>
-                        ))}
-                      </div>
+                      <ItemQuantityList
+                        items={row.recipe.inputs.map((input) => ({
+                          key: input.itemId,
+                          quantity: input.quantityPerRun,
+                          itemCode: input.item.code,
+                          itemName: input.item.name
+                        }))}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

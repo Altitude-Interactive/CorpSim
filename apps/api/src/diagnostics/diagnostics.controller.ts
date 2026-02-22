@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Controller,
   ForbiddenException,
   Get,
@@ -89,7 +90,11 @@ function isStaffRole(role: string | string[] | null | undefined): boolean {
 
 @Controller("diagnostics")
 export class DiagnosticsController {
-  constructor(private readonly diagnosticsService: DiagnosticsService) {}
+  private readonly diagnosticsService: DiagnosticsService;
+
+  constructor(@Inject(DiagnosticsService) diagnosticsService: DiagnosticsService) {
+    this.diagnosticsService = diagnosticsService;
+  }
 
   private assertStaffSession(request: RequestWithSession): void {
     const session = request.session;

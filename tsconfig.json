@@ -3,6 +3,9 @@
   "compilerOptions": {
     "types": ["node", "vitest/globals"],
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["apps/web/src/*"]
+    },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },

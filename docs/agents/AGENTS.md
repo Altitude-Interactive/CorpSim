@@ -101,6 +101,7 @@ Create one release entry in `.releases/unreleased/*.md` including:
 * Do NOT bump root `package.json` version during normal commits
 * Do NOT create git tags
 * Do NOT bump version if remote already has the same version tag
+* NEVER COMMIT TO MAIN, suggest committing to a new dedicated branch (or canary)
 * Version bump occurs only in a dedicated release-cut commit (`pnpm release:cut`)
 * Exception: explicitly requested emergency hotfix release
 
@@ -298,15 +299,16 @@ availableInventory = quantity - reservedQuantity
 
 ### Tick Pipeline Order (NEVER REORDER)
 1. Bot actions
-2. Production completions
-3. Research completions
-4. Market matching
-5. Shipment deliveries
-6. Workforce updates
-7. Demand sink
-8. Contract lifecycle
-9. Market candles
-10. World state update
+2. Building operating costs
+3. Production completions
+4. Research completions
+5. Market matching
+6. Shipment deliveries
+7. Workforce updates
+8. Demand sink
+9. Contract lifecycle
+10. Market candles
+11. World state update
 
 Changing this order is a **breaking change**.
 
@@ -356,15 +358,15 @@ import { useToastManager } from '@/components/ui/toast-manager';
 const { showToast, confirmPopup } = useToastManager();
 
 // Show toast
-showToast({ 
-  title: "Order placed", 
-  variant: "success" 
+showToast({
+  title: "Order placed",
+  variant: "success"
 });
 
 // Confirmation dialog
-const confirmed = await confirmPopup({ 
+const confirmed = await confirmPopup({
   title: "Cancel order?",
-  variant: "danger" 
+  variant: "danger"
 });
 ```
 

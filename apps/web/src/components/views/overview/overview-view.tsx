@@ -1,16 +1,39 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { formatCents, formatInt } from "@/lib/format";
+import { fetchDiscordServerUrlFromMeta, getDiscordServerUrl } from "@/lib/public-links";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
-import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
+import { formatCodeLabel, getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 
 export function OverviewView() {
   const { health } = useWorldHealth();
+  const { activeCompany } = useActiveCompany();
+  const [discordServerUrl, setDiscordServerUrl] = useState<string | null>(() => getDiscordServerUrl());
+
+  useEffect(() => {
+    if (discordServerUrl) {
+      return;
+    }
+
+    const controller = new AbortController();
+    void fetchDiscordServerUrlFromMeta(controller.signal).then((url) => {
+      if (!url) {
+        return;
+      }
+      setDiscordServerUrl(url);
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [discordServerUrl]);
 
   if (!health) {
     return <div className="text-sm text-muted-foreground">Loading overview metrics...</div>;
@@ -18,16 +41,44 @@ export function OverviewView() {
 
   const kpis = [
     { label: `Current ${UI_CADENCE_TERMS.singularTitle}`, value: formatInt(health.currentTick) },
-    { label: "Open Orders", value: formatInt(health.ordersOpenCount) },
-    { label: "Trades (Last 100)", value: formatInt(health.tradesLast100Count) },
-    { label: "Companies", value: formatInt(health.companiesCount) },
-    { label: "Total Cash", value: formatCents(health.sumCashCents) },
-    { label: "Reserved Cash", value: formatCents(health.sumReservedCashCents) }
+    { label: "World Open Orders", value: formatInt(health.ordersOpenCount) },
+    { label: "World Trades (Last 100)", value: formatInt(health.tradesLast100Count) },
+    { label: "World Companies", value: formatInt(health.companiesCount) },
+    { label: "World Total Cash", value: formatCents(health.sumCashCents) },
+    { label: "World Reserved Cash", value: formatCents(health.sumReservedCashCents) }
   ];
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <Card data-tutorial-id="overview-company">
+        <CardHeader>
+          <CardTitle>Active Company Snapshot</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Company</p>
+            <p className="font-medium">{activeCompany?.name ?? UI_COPY.common.noCompanySelected}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Region</p>
+            <p className="font-medium">{activeCompany?.regionName ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Specialization</p>
+            <p className="font-medium">
+              {activeCompany ? formatCodeLabel(activeCompany.specialization) : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Company Cash</p>
+            <p className="font-medium tabular-nums">
+              {activeCompany?.cashCents ? formatCents(activeCompany.cashCents) : "Hidden/Unavailable"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-tutorial-id="overview-kpis">
         {kpis.map((kpi) => (
           <Card key={kpi.label}>
             <CardHeader>
@@ -40,7 +91,7 @@ export function OverviewView() {
         ))}
       </section>
 
-      <Card>
+      <Card data-tutorial-id="overview-integrity">
         <CardHeader>
           <div className="flex items-center gap-2">
             <CardTitle>System Integrity</CardTitle>
@@ -68,6 +119,28 @@ export function OverviewView() {
       </Card>
 
       <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle>Alpha Preview Notice</CardTitle>
+            <Badge variant="warning">ALPHA</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            This preview is provided as-is with no player support. Progress and economy data may be
+            reset or wiped at any time until beta.
+          </p>
+          {discordServerUrl ? (
+            <Button asChild size="sm" variant="outline">
+              <a href={discordServerUrl} target="_blank" rel="noreferrer">
+                Join Discord for Updates
+              </a>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card data-tutorial-id="overview-docs">
         <CardHeader>
           <CardTitle>{UI_COPY.documentation.title}</CardTitle>
         </CardHeader>

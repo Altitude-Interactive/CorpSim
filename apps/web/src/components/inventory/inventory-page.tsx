@@ -168,7 +168,7 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card data-tutorial-id="inventory-filters">
         <CardHeader>
           <CardTitle>Inventory</CardTitle>
         </CardHeader>
@@ -265,7 +265,7 @@ export function InventoryPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-tutorial-id="inventory-table">
         <CardContent className="pt-0">
           <Table>
             <TableHeader>

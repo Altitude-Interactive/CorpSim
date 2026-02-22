@@ -98,7 +98,11 @@ export function MaintenanceOverlay({ state }: { state: MaintenanceState }) {
       labelledBy="maintenance-title"
       describedBy="maintenance-description"
     >
-      <div ref={dialogRef} tabIndex={0}>
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="outline-none focus:outline-none focus-visible:outline-none"
+      >
         <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Operations notice</p>
         <h1 id="maintenance-title" className="mt-3 text-2xl font-semibold">
           CorpSim is under maintenance

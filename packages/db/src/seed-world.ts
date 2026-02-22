@@ -721,14 +721,14 @@ export async function seedWorld(
 
   if (playerCompany) {
     inventoryRows.unshift(
-      { companyId: playerCompany.id, itemKey: "ironOre", quantity: 240 },
-      { companyId: playerCompany.id, itemKey: "coal", quantity: 140 },
-      { companyId: playerCompany.id, itemKey: "copperOre", quantity: 180 },
-      { companyId: playerCompany.id, itemKey: "water", quantity: 200 },
-      { companyId: playerCompany.id, itemKey: "fertilizer", quantity: 150 },
-      { companyId: playerCompany.id, itemKey: "bioSubstrate", quantity: 160 },
-      { companyId: playerCompany.id, itemKey: "ironIngot", quantity: 12 },
-      { companyId: playerCompany.id, itemKey: "copperIngot", quantity: 6 }
+      { companyId: playerCompany.id, itemKey: "ironOre", quantity: 200 },
+      { companyId: playerCompany.id, itemKey: "coal", quantity: 120 },
+      { companyId: playerCompany.id, itemKey: "copperOre", quantity: 150 },
+      { companyId: playerCompany.id, itemKey: "water", quantity: 150 },
+      { companyId: playerCompany.id, itemKey: "fertilizer", quantity: 120 },
+      { companyId: playerCompany.id, itemKey: "bioSubstrate", quantity: 130 },
+      { companyId: playerCompany.id, itemKey: "ironIngot", quantity: 10 },
+      { companyId: playerCompany.id, itemKey: "copperIngot", quantity: 5 }
     );
   }
 
@@ -765,6 +765,23 @@ export async function seedWorld(
       reservedQuantity: row.reservedQuantity ?? 0
     }))
   });
+
+  // Create factory for player company to support production
+  if (playerCompany) {
+    await prisma.building.create({
+      data: {
+        companyId: playerCompany.id,
+        regionId: coreRegion.id,
+        buildingType: "FACTORY",
+        status: "ACTIVE",
+        acquisitionCostCents: 0n,
+        weeklyOperatingCostCents: 0n,
+        capacitySlots: 5,
+        tickAcquired: 0,
+        lastOperatingCostTick: 0
+      }
+    });
+  }
 
   const recipesByKey: Record<string, { id: string; code: string }> = {};
   for (const definition of RECIPE_DEFINITIONS) {

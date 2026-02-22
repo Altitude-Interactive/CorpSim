@@ -109,8 +109,6 @@ export function ResearchPage() {
   const [nodePageSize, setNodePageSize] =
     useState<(typeof RESEARCH_NODE_PAGE_SIZE_OPTIONS)[number]>(20);
   const deferredNodeSearch = useDeferredValue(nodeSearch);
-  const statusByNodeIdRef = useRef<Map<string, ResearchNode["status"]>>(new Map());
-  const didPrimeStatusesRef = useRef(false);
   const hasLoadedResearchRef = useRef(false);
 
   const loadResearch = useCallback(async (options?: { force?: boolean; showLoadingState?: boolean }) => {
@@ -190,34 +188,8 @@ export function ResearchPage() {
     return () => clearTimeout(timeout);
   }, [activeCompanyId, health?.currentTick, loadResearch, nextResearchCompletionTick]);
 
-  useEffect(() => {
-    statusByNodeIdRef.current = new Map();
-    didPrimeStatusesRef.current = false;
-  }, [activeCompanyId]);
-
-  useEffect(() => {
-    const nextStatusById = new Map(nodes.map((node) => [node.id, node.status] as const));
-    if (!didPrimeStatusesRef.current) {
-      statusByNodeIdRef.current = nextStatusById;
-      didPrimeStatusesRef.current = true;
-      return;
-    }
-
-    let hasNewCompletion = false;
-    for (const [nodeId, nextStatus] of nextStatusById.entries()) {
-      const previousStatus = statusByNodeIdRef.current.get(nodeId);
-      if (previousStatus !== "COMPLETED" && nextStatus === "COMPLETED") {
-        hasNewCompletion = true;
-        break;
-      }
-    }
-    if (hasNewCompletion) {
-      play("event_research_completed");
-    }
-    statusByNodeIdRef.current = nextStatusById;
-  }, [nodes, play]);
-
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node] as const)), [nodes]);
+
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
 
   const filteredNodes = useMemo(() => {

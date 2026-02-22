@@ -21,6 +21,12 @@ export const APP_PAGE_NAVIGATION: AppPageNavigationItem[] = [
     showInSidebar: true
   },
   {
+    href: "/buildings",
+    label: UI_COPY.modules.buildings,
+    keywords: ["facilities", "expansion", "capacity"],
+    showInSidebar: true
+  },
+  {
     href: "/production",
     label: UI_COPY.modules.production,
     keywords: ["recipes", "factory", "manufacturing"],
@@ -30,12 +36,6 @@ export const APP_PAGE_NAVIGATION: AppPageNavigationItem[] = [
     href: "/research",
     label: UI_COPY.modules.research,
     keywords: ["technology", "nodes", "unlocks"],
-    showInSidebar: true
-  },
-  {
-    href: "/workforce",
-    label: UI_COPY.modules.workforce,
-    keywords: ["staff", "allocation", "capacity"],
     showInSidebar: true
   },
   {

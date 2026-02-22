@@ -1,57 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { completeOnboardingTutorial, getOnboardingStatus } from "@/lib/api";
 import { getDocumentationUrl } from "@/lib/ui-copy";
+import { GUIDED_TUTORIAL_STEPS } from "@/components/tutorial/guided-tutorial-steps";
 
-interface TutorialStep {
-  title: string;
-  summary: string;
-  bullets: string[];
-}
-
-const TUTORIAL_STEPS: TutorialStep[] = [
-  {
-    title: "Welcome to CorpSim",
-    summary: "You run a company in a living market. Every choice affects your growth.",
-    bullets: [
-      "You produce goods, trade them, and grow your company over time.",
-      "Markets move as companies buy and sell, so timing matters.",
-      "Plan ahead: cash, stock, and production speed all work together."
-    ]
-  },
-  {
-    title: "How the Economy Works",
-    summary: "Buy low, sell smart, and keep enough stock to avoid downtime.",
-    bullets: [
-      "Production turns raw materials into higher-value products.",
-      "If demand is high and supply is low, prices usually rise.",
-      "Keep reserve cash so you can react quickly to opportunities."
-    ]
-  },
-  {
-    title: "Core Features",
-    summary: "These pages are your daily tools for running the company.",
-    bullets: [
-      "Production: start jobs and keep lines running.",
-      "Market and Contracts: buy inputs, sell outputs, and secure deals.",
-      "Finance, Research, and Logistics: track cash, unlock upgrades, and move goods."
-    ]
-  },
-  {
-    title: "Documentation",
-    summary: "Use the docs anytime for walkthroughs and page-by-page help.",
-    bullets: [
-      "Open the docs from the top bar or sidebar while playing.",
-      "Follow module guides to learn efficient production loops.",
-      "Use references when you need exact steps for a feature."
-    ]
-  }
-];
+const GUIDED_TUTORIAL_TOTAL_STEPS = GUIDED_TUTORIAL_STEPS.length;
 
 function readErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
@@ -65,7 +23,6 @@ export default function TutorialPage() {
   const [isLoading, setLoading] = useState(true);
   const [isSubmitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -104,15 +61,7 @@ export default function TutorialPage() {
     };
   }, [router]);
 
-  const step = useMemo(() => TUTORIAL_STEPS[stepIndex], [stepIndex]);
-  const isLastStep = stepIndex >= TUTORIAL_STEPS.length - 1;
-
-  async function handleContinue() {
-    if (!isLastStep) {
-      setStepIndex((current) => Math.min(current + 1, TUTORIAL_STEPS.length - 1));
-      return;
-    }
-
+  async function handleSkipTutorial() {
     if (isSubmitting) {
       return;
     }
@@ -130,18 +79,22 @@ export default function TutorialPage() {
     }
   }
 
+  function handleStartTour() {
+    router.replace("/overview?tutorial=1&tutorialStep=0");
+  }
+
   if (isLoading) {
     return (
-      <AuthPageShell title="Quick Tutorial" description="Loading your introduction...">
-        <p className="text-sm text-muted-foreground">Preparing your first steps in CorpSim.</p>
+      <AuthPageShell title="Guided Tutorial" description="Loading your walkthrough...">
+        <p className="text-sm text-muted-foreground">Preparing your first guided steps.</p>
       </AuthPageShell>
     );
   }
 
   return (
     <AuthPageShell
-      title="Quick Tutorial"
-      description="A short walkthrough before you enter your dashboard."
+      title="Guided Tutorial"
+      description="A short in-app walkthrough will guide you across the pages you need first."
       footer={
         <a
           href={getDocumentationUrl()}
@@ -154,37 +107,27 @@ export default function TutorialPage() {
       }
     >
       <div className="space-y-4">
-        <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          Step {stepIndex + 1} of {TUTORIAL_STEPS.length}
-        </p>
         <div className="space-y-2 rounded-lg border border-border/70 bg-background/40 p-4">
-          <h2 className="text-lg font-semibold tracking-tight">{step.title}</h2>
-          <p className="text-sm text-muted-foreground">{step.summary}</p>
+          <h2 className="text-lg font-semibold tracking-tight">What to expect</h2>
+          <p className="text-sm text-muted-foreground">
+            You will be guided through Overview, Market, Production, and Inventory with focused
+            highlights on the exact sections that matter first.
+          </p>
           <ul className="space-y-1 text-sm text-foreground/90">
-            {step.bullets.map((bullet) => (
-              <li key={bullet}>- {bullet}</li>
-            ))}
+            <li>- {GUIDED_TUTORIAL_TOTAL_STEPS} short guided steps across core pages.</li>
+            <li>- Each step highlights one UI section and tells you what to do there.</li>
+            <li>- You can skip now and still continue directly to the dashboard.</li>
           </ul>
-          {isLastStep ? (
-            <p className="pt-1 text-sm text-muted-foreground">
-              Ready to play? You can open the docs now or continue to the dashboard.
-            </p>
-          ) : null}
         </div>
 
         {error ? <Alert variant="destructive">{error}</Alert> : null}
 
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setStepIndex((current) => Math.max(0, current - 1))}
-            disabled={stepIndex === 0 || isSubmitting}
-          >
-            Back
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => void handleSkipTutorial()} disabled={isSubmitting}>
+            {isSubmitting ? "Skipping..." : "Skip for now"}
           </Button>
-          <Button type="button" onClick={() => void handleContinue()} disabled={isSubmitting}>
-            {isLastStep ? (isSubmitting ? "Finishing..." : "Enter Dashboard") : "Next"}
+          <Button type="button" onClick={handleStartTour} disabled={isSubmitting}>
+            Start guided tour
           </Button>
         </div>
       </div>

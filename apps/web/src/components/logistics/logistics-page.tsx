@@ -5,6 +5,7 @@ import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { useUiSfx } from "@/components/layout/ui-sfx-provider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import {
 import { formatCents } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { formatCodeLabel, getRegionLabel, UI_COPY } from "@/lib/ui-copy";
+import Link from "next/link";
 
 const SHIPMENT_REFRESH_DEBOUNCE_MS = 600;
 const SHIPMENT_BASE_FEE_CENTS = Number.parseInt(
@@ -714,28 +716,62 @@ export function LogisticsPage() {
             </TableHeader>
             <TableBody>
               {showInitialShipmentsSkeleton && pagedInTransit.length === 0 ? <TableSkeletonRows columns={5} /> : null}
-              {pagedInTransit.map((shipment) => (
-                <TableRow key={shipment.id}>
-                  <TableCell>
-                    <ItemLabel itemCode={shipment.item.code} itemName={shipment.item.name} />
-                  </TableCell>
-                  <TableCell>
-                    {`${getRegionLabel({ code: shipment.fromRegion.code, name: shipment.fromRegion.name })} -> ${getRegionLabel({ code: shipment.toRegion.code, name: shipment.toRegion.name })}`}
-                  </TableCell>
-                  <TableCell className="tabular-nums">{shipment.quantity}</TableCell>
-                  <TableCell className="tabular-nums">{shipment.tickArrives}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleCancelShipment(shipment.id)}
-                      disabled={isSubmitting}
-                    >
-                      Cancel
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {pagedInTransit.map((shipment) => {
+                const isStuck = health?.currentTick !== undefined && shipment.tickArrives < health.currentTick;
+                return (
+                  <TableRow key={shipment.id}>
+                    <TableCell>
+                      <ItemLabel itemCode={shipment.item.code} itemName={shipment.item.name} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {`${getRegionLabel({ code: shipment.fromRegion.code, name: shipment.fromRegion.name })} -> ${getRegionLabel({ code: shipment.toRegion.code, name: shipment.toRegion.name })}`}
+                        </span>
+                        {isStuck ? (
+                          <Badge
+                            variant="warning"
+                            className="cursor-help"
+                            title="Waiting for storage capacity in destination or origin region. Free up space to allow delivery."
+                          >
+                            Stuck
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="tabular-nums">{shipment.quantity}</TableCell>
+                    <TableCell className="tabular-nums">{shipment.tickArrives}</TableCell>
+                    <TableCell>
+                      {isStuck ? (
+                        <div className="flex gap-2">
+                          <Link href="/buildings">
+                            <Button variant="outline" size="sm" type="button">
+                              Manage Storage
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void handleCancelShipment(shipment.id)}
+                            disabled={isSubmitting}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleCancelShipment(shipment.id)}
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {!showInitialShipmentsSkeleton && pagedInTransit.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
