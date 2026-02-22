@@ -89,6 +89,7 @@ export function MarketPage() {
   const { activeCompanyId, activeCompany } = useActiveCompany();
   const { health, refresh: refreshHealth } = useWorldHealth();
 
+  const [catalogItems, setCatalogItems] = useState<ItemCatalogItem[]>([]);
   const [items, setItems] = useState<ItemCatalogItem[]>([]);
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [regions, setRegions] = useState<RegionSummary[]>([]);
@@ -115,7 +116,8 @@ export function MarketPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = useCallback(async (): Promise<string> => {
-    const [itemRows, regionRows, companyRows] = await Promise.all([
+    const [catalogItemRows, selectableItemRows, regionRows, companyRows] = await Promise.all([
+      listItems(),
       listItems(activeCompanyId ?? undefined),
       listRegions(),
       listCompanies()
@@ -140,7 +142,8 @@ export function MarketPage() {
     }
 
     setUnlockedItemIds(Array.from(unlockedIds));
-    setItems(itemRows);
+    setCatalogItems(catalogItemRows);
+    setItems(selectableItemRows);
     setRegions(regionRows);
     setCompanies(companyRows);
     let resolvedRegionId = "";
@@ -456,8 +459,11 @@ export function MarketPage() {
     [regions]
   );
   const itemMetaById = useMemo(
-    () => Object.fromEntries(items.map((item) => [item.id, { code: item.code, name: item.name }])),
-    [items]
+    () =>
+      Object.fromEntries(
+        catalogItems.map((item) => [item.id, { code: item.code, name: item.name }])
+      ),
+    [catalogItems]
   );
   const companyNameById = useMemo(
     () => Object.fromEntries(companies.map((company) => [company.id, company.name])),
