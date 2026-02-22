@@ -134,13 +134,16 @@ export function parseCompanySummary(value: unknown): CompanySummary {
     throw new Error("Invalid company item");
   }
 
+  const cashCents =
+    value.cashCents === undefined ? undefined : readString(value.cashCents, "cashCents");
+
   return {
     id: readString(value.id, "id"),
     code: readString(value.code, "code"),
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
     specialization: parseCompanySpecialization(value.specialization),
-    cashCents: readString(value.cashCents, "cashCents"),
+    cashCents,
     regionId: readString(value.regionId, "regionId"),
     regionCode: readString(value.regionCode, "regionCode"),
     regionName: readString(value.regionName, "regionName")
@@ -245,12 +248,15 @@ export function parsePlayerRegistryCompany(value: unknown): PlayerRegistryCompan
     throw new Error("Invalid player registry company");
   }
 
+  const cashCents =
+    value.cashCents === undefined ? undefined : readString(value.cashCents, "cashCents");
+
   return {
     id: readString(value.id, "id"),
     code: readString(value.code, "code"),
     name: readString(value.name, "name"),
     isBot: readBoolean(value.isBot, "isBot"),
-    cashCents: readString(value.cashCents, "cashCents"),
+    cashCents,
     regionId: readString(value.regionId, "regionId"),
     regionCode: readString(value.regionCode, "regionCode"),
     regionName: readString(value.regionName, "regionName"),
