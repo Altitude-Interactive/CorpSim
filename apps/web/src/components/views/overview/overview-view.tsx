@@ -6,29 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { formatCents, formatInt } from "@/lib/format";
+import { getDiscordServerUrl } from "@/lib/public-links";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 
-function resolveDiscordServerUrl(): string | null {
-  const raw = process.env.NEXT_PUBLIC_DISCORD_SERVER_URL?.trim();
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = new URL(raw);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      return null;
-    }
-    return parsed.toString();
-  } catch {
-    return null;
-  }
-}
-
 export function OverviewView() {
   const { health } = useWorldHealth();
-  const discordServerUrl = resolveDiscordServerUrl();
+  const discordServerUrl = getDiscordServerUrl();
 
   if (!health) {
     return <div className="text-sm text-muted-foreground">Loading overview metrics...</div>;
