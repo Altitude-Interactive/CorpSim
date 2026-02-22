@@ -925,7 +925,7 @@ export async function preflightBuyOrder(input: {
 
 export async function getBuildingTypeDefinitions(): Promise<BuildingTypeDefinition[]> {
   return fetchJson("/v1/buildings/definitions", (value) =>
-    readArray(value, "definitions").map(parseBuildingTypeDefinition)
+    readArrayPayload(value, "definitions").map(parseBuildingTypeDefinition)
   );
 }
 
