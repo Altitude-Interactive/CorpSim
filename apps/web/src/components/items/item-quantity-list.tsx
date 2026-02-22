@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { ItemLabel } from "@/components/items/item-label";
+import { ItemQuantityLabel } from "@/components/items/item-quantity-label";
 import { cn } from "@/lib/utils";
 
 export interface ItemQuantityListEntry {
@@ -35,10 +35,12 @@ export function ItemQuantityList({
               {separator}
             </span>
           ) : null}
-          <span className={cn("inline-flex items-center gap-1 whitespace-nowrap", itemClassName)}>
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">x{entry.quantity}</span>
-            <ItemLabel itemCode={entry.itemCode} itemName={entry.itemName} />
-          </span>
+          <ItemQuantityLabel
+            quantity={entry.quantity}
+            itemCode={entry.itemCode}
+            itemName={entry.itemName}
+            className={itemClassName}
+          />
         </Fragment>
       ))}
     </div>

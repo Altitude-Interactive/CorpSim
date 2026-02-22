@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, u
 import { resolveCompanySpecializationCooldownHours } from "@corpsim/shared";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
-import { ItemLabel } from "@/components/items/item-label";
+import { ItemQuantityLabel } from "@/components/items/item-quantity-label";
 import { ItemQuantityList } from "@/components/items/item-quantity-list";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { useUiSfx } from "@/components/layout/ui-sfx-provider";
@@ -626,8 +626,9 @@ export function ProductionPage() {
                       Duration: {formatCadenceCount(selectedRecipe.durationTicks)} / run
                     </p>
                     <p>
-                      Output: {selectedRecipe.outputQuantity}{" "}
-                      <ItemLabel
+                      Output:{" "}
+                      <ItemQuantityLabel
+                        quantity={selectedRecipe.outputQuantity}
                         itemCode={selectedRecipe.outputItem.code}
                         itemName={selectedRecipe.outputItem.name}
                         className="inline-flex"
@@ -747,13 +748,11 @@ export function ProductionPage() {
                       <p className="font-medium">{row.recipe.name}</p>
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1">
-                        <span>{row.recipe.outputQuantity}</span>
-                        <ItemLabel
-                          itemCode={row.recipe.outputItem.code}
-                          itemName={row.recipe.outputItem.name}
-                        />
-                      </span>
+                      <ItemQuantityLabel
+                        quantity={row.recipe.outputQuantity}
+                        itemCode={row.recipe.outputItem.code}
+                        itemName={row.recipe.outputItem.name}
+                      />
                     </TableCell>
                     <TableCell>{formatCadenceCount(row.recipe.durationTicks)}</TableCell>
                     <TableCell>
