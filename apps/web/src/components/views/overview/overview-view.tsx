@@ -48,7 +48,7 @@ export function OverviewView() {
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-tutorial-id="overview-kpis">
         {kpis.map((kpi) => (
           <Card key={kpi.label}>
             <CardHeader>
@@ -61,7 +61,7 @@ export function OverviewView() {
         ))}
       </section>
 
-      <Card>
+      <Card data-tutorial-id="overview-integrity">
         <CardHeader>
           <div className="flex items-center gap-2">
             <CardTitle>System Integrity</CardTitle>
@@ -110,7 +110,7 @@ export function OverviewView() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-tutorial-id="overview-docs">
         <CardHeader>
           <CardTitle>{UI_COPY.documentation.title}</CardTitle>
         </CardHeader>

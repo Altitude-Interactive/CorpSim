@@ -554,7 +554,7 @@ export function ProductionPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card data-tutorial-id="production-start">
             <CardHeader>
               <CardTitle>Start Production</CardTitle>
             </CardHeader>
@@ -672,7 +672,7 @@ export function ProductionPage() {
           </Card>
         </div>
 
-        <Card>
+        <Card data-tutorial-id="production-recipes">
           <CardHeader>
             <CardTitle>Recipes</CardTitle>
           </CardHeader>

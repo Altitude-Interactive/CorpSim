@@ -15,6 +15,7 @@ import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 import { useWorldHealth } from "./world-health-provider";
 import { isAuthPage, isOnboardingPage, isProfilePage, isTutorialPage } from "@/lib/auth-routes";
+import { GuidedTutorialOverlay } from "@/components/tutorial/guided-tutorial-overlay";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -95,6 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <ShortcutsHelpShortcut />
       <QuickNavigationShortcuts />
       <ProfilePanel />
+      <GuidedTutorialOverlay />
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto flex min-h-screen max-w-[1600px]">
           <SidebarNav />

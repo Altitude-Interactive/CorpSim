@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { OnboardingStatus } from "@corpsim/shared";
 import { getOnboardingStatus } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
@@ -15,6 +15,8 @@ import {
   isTutorialPage
 } from "@/lib/auth-routes";
 import { isAdminRole, isModeratorRole, isStaffRole } from "@/lib/roles";
+
+const GUIDED_TUTORIAL_ALLOWED_PAGES = new Set(["/overview", "/market", "/production", "/inventory"]);
 
 function resolveSafeNextPath(raw: string | null): string | null {
   if (!raw || !raw.startsWith("/")) {
@@ -36,13 +38,13 @@ function FullscreenMessage({ message }: { message: string }) {
 
 export function AuthRouteGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const nextPathFromQuery = (() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-    return resolveSafeNextPath(new URLSearchParams(window.location.search).get("next"));
-  })();
+  const nextPathFromQuery = useMemo(
+    () => resolveSafeNextPath(searchParams.get("next")),
+    [searchParams]
+  );
+  const isGuidedTutorialMode = searchParams.get("tutorial") === "1";
   const { data: session, isPending } = authClient.useSession();
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [onboardingStatusPathname, setOnboardingStatusPathname] = useState<string | null>(null);
@@ -149,6 +151,9 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
       if (isTutorialPage(pathname) || isProfilePage(pathname)) {
         return null;
       }
+      if (isGuidedTutorialMode && GUIDED_TUTORIAL_ALLOWED_PAGES.has(pathname)) {
+        return null;
+      }
       return "/tutorial";
     }
 
@@ -164,6 +169,7 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
     onboardingStatus,
     onboardingStatusPathname,
     pathname,
+    isGuidedTutorialMode,
     session?.user?.id
   ]);
 

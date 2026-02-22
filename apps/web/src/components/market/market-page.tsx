@@ -509,12 +509,14 @@ export function MarketPage() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <OrderPlacementCard
-          activeCompany={activeCompany}
-          items={sortedSelectableItems}
-          onSubmit={handlePlaceOrder}
-          isSubmitting={isSubmittingOrder}
-        />
+        <div data-tutorial-id="market-order-placement">
+          <OrderPlacementCard
+            activeCompany={activeCompany}
+            items={sortedSelectableItems}
+            onSubmit={handlePlaceOrder}
+            isSubmitting={isSubmittingOrder}
+          />
+        </div>
 
         <Card>
           <CardHeader>
@@ -638,13 +640,15 @@ export function MarketPage() {
         </Card>
       </div>
 
-      <OrderBookCard
-        orders={visibleOrderBook}
-        isLoading={isLoadingOrderBook}
-        regionNameById={regionNameById}
-        itemMetaById={itemMetaById}
-        companyNameById={companyNameById}
-      />
+      <div data-tutorial-id="market-order-book">
+        <OrderBookCard
+          orders={visibleOrderBook}
+          isLoading={isLoadingOrderBook}
+          regionNameById={regionNameById}
+          itemMetaById={itemMetaById}
+          companyNameById={companyNameById}
+        />
+      </div>
 
       <MyOrdersCard
         orders={visibleMyOrders}
