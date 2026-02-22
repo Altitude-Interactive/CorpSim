@@ -4,7 +4,7 @@
   "dependencies": {
     "@corpsim/db": "workspace:*",
     "@corpsim/sim": "workspace:*",
-    "bullmq": "^5.69.3",
+    "bullmq": "^5.70.0",
     "ioredis": "^5.7.0"
   },
   "scripts": {
