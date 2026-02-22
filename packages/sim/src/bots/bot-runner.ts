@@ -60,11 +60,12 @@
  * - Invalid state gracefully skipped
  * - DomainInvariantError for configuration validation
  */
-import { OrderSide, OrderStatus, Prisma } from "@prisma/client";
+import { BuildingStatus, BuildingType, OrderSide, OrderStatus, Prisma } from "@prisma/client";
 import { resolveIconItemFallbackPriceCents } from "@corpsim/shared";
 import { DomainInvariantError } from "../domain/errors";
 import { availableCash } from "../domain/reservations";
-import { placeMarketOrderWithTx } from "../services/market-orders";
+import { cancelMarketOrderWithTx, placeMarketOrderWithTx } from "../services/market-orders";
+import { calculateRegionalStorageCapacity } from "../services/buildings";
 import { runProducerBot } from "./strategies/producer-bot";
 import {
   LiquidityBotConfig,
@@ -89,6 +90,7 @@ export interface BotCompanySnapshot {
   companyCode: string;
   strategy: "LIQUIDITY" | "PRODUCER";
   availableCashCents: bigint;
+  availableStorageUnits: number;
   items: LiquidityBotState["items"];
 }
 
@@ -208,6 +210,7 @@ export function planBotActions(
     const planned = planLiquidityOrders(
       {
         availableCashCents: company.availableCashCents,
+        availableStorageUnits: company.availableStorageUnits,
         items: company.items
       },
       liquidityConfig
@@ -319,8 +322,34 @@ export async function runBotsForTick(
 
   const companyIds = companies.map((entry) => entry.id);
   const itemIds = items.map((entry) => entry.id);
+  const liquidityCompanyIds = companies
+    .filter((entry) => inferStrategy(entry.code) === "LIQUIDITY")
+    .map((entry) => entry.id);
 
-  const [inventories, openOrders, bookOrders, latestTrades] = await Promise.all([
+  if (liquidityCompanyIds.length > 0) {
+    const openLiquidityOrders = await tx.marketOrder.findMany({
+      where: {
+        companyId: { in: liquidityCompanyIds },
+        itemId: { in: itemIds },
+        status: OrderStatus.OPEN
+      },
+      orderBy: [{ id: "asc" }],
+      select: {
+        id: true,
+        companyId: true
+      }
+    });
+
+    for (const order of openLiquidityOrders) {
+      await cancelMarketOrderWithTx(tx, {
+        orderId: order.id,
+        companyId: order.companyId,
+        tick
+      });
+    }
+  }
+
+  const [inventories, openOrders, bookOrders, latestTrades, regionalInventoryTotals, regionalWarehouses] = await Promise.all([
     tx.inventory.findMany({
       where: {
         companyId: { in: companyIds },
@@ -353,6 +382,7 @@ export async function runBotsForTick(
         status: OrderStatus.OPEN
       },
       select: {
+        companyId: true,
         regionId: true,
         itemId: true,
         side: true,
@@ -367,6 +397,26 @@ export async function runBotsForTick(
         itemId: true,
         unitPriceCents: true
       }
+    }),
+    tx.inventory.groupBy({
+      by: ["companyId", "regionId"],
+      where: {
+        companyId: { in: companyIds }
+      },
+      _sum: {
+        quantity: true
+      }
+    }),
+    tx.building.groupBy({
+      by: ["companyId", "regionId"],
+      where: {
+        companyId: { in: companyIds },
+        buildingType: BuildingType.WAREHOUSE,
+        status: BuildingStatus.ACTIVE
+      },
+      _count: {
+        _all: true
+      }
     })
   ]);
 
@@ -378,12 +428,40 @@ export async function runBotsForTick(
   const openOrderKeySet = new Set(
     openOrders.map((entry) => `${entry.companyId}:${entry.regionId}:${entry.itemId}:${entry.side}`)
   );
+  const regionalInventoryTotalByCompanyRegion = new Map<string, number>(
+    regionalInventoryTotals.map((entry) => [
+      `${entry.companyId}:${entry.regionId}`,
+      entry._sum.quantity ?? 0
+    ])
+  );
+  const regionalWarehouseCountByCompanyRegion = new Map<string, number>(
+    regionalWarehouses.map((entry) => [
+      `${entry.companyId}:${entry.regionId}`,
+      entry._count._all
+    ])
+  );
 
   const bestBuyPriceByRegionItem = new Map<string, bigint>();
   const bestSellPriceByRegionItem = new Map<string, bigint>();
+  const bookOrdersByRegionItem = new Map<
+    string,
+    Array<{
+      companyId: string;
+      side: OrderSide;
+      unitPriceCents: bigint;
+    }>
+  >();
 
   for (const order of bookOrders) {
     const key = `${order.regionId}:${order.itemId}`;
+    const byRegionItem = bookOrdersByRegionItem.get(key) ?? [];
+    byRegionItem.push({
+      companyId: order.companyId,
+      side: order.side,
+      unitPriceCents: order.unitPriceCents
+    });
+    bookOrdersByRegionItem.set(key, byRegionItem);
+
     if (order.side === OrderSide.BUY) {
       const current = bestBuyPriceByRegionItem.get(key);
       if (current === undefined || order.unitPriceCents > current) {
@@ -409,6 +487,11 @@ export async function runBotsForTick(
   const referencePriceByCompanyId = new Map<string, Map<string, bigint>>();
 
   const companySnapshots: BotCompanySnapshot[] = companies.map((company) => {
+    const regionKey = `${company.id}:${company.regionId}`;
+    const regionalInventoryTotal = regionalInventoryTotalByCompanyRegion.get(regionKey) ?? 0;
+    const regionalWarehouseCount = regionalWarehouseCountByCompanyRegion.get(regionKey) ?? 0;
+    const regionalStorageCapacity = calculateRegionalStorageCapacity(regionalWarehouseCount);
+    const availableStorageUnits = Math.max(0, regionalStorageCapacity - regionalInventoryTotal);
     const referencePriceByItemId = new Map<string, bigint>(
       items.map((item) => [
         item.id,
@@ -432,6 +515,51 @@ export async function runBotsForTick(
         0,
         (companyInventory?.quantity ?? 0) - (companyInventory?.reservedQuantity ?? 0)
       );
+      const externalBookOrders =
+        bookOrdersByRegionItem.get(`${company.regionId}:${item.id}`) ?? [];
+      let bestExternalBuyPriceCents: bigint | null = null;
+      let bestExternalSellPriceCents: bigint | null = null;
+      let bestOwnBuyPriceCents: bigint | null = null;
+      let bestOwnSellPriceCents: bigint | null = null;
+
+      for (const order of externalBookOrders) {
+        if (order.companyId === company.id) {
+          if (order.side === OrderSide.BUY) {
+            if (
+              bestOwnBuyPriceCents === null ||
+              order.unitPriceCents > bestOwnBuyPriceCents
+            ) {
+              bestOwnBuyPriceCents = order.unitPriceCents;
+            }
+            continue;
+          }
+
+          if (
+            bestOwnSellPriceCents === null ||
+            order.unitPriceCents < bestOwnSellPriceCents
+          ) {
+            bestOwnSellPriceCents = order.unitPriceCents;
+          }
+          continue;
+        }
+
+        if (order.side === OrderSide.BUY) {
+          if (
+            bestExternalBuyPriceCents === null ||
+            order.unitPriceCents > bestExternalBuyPriceCents
+          ) {
+            bestExternalBuyPriceCents = order.unitPriceCents;
+          }
+          continue;
+        }
+
+        if (
+          bestExternalSellPriceCents === null ||
+          order.unitPriceCents < bestExternalSellPriceCents
+        ) {
+          bestExternalSellPriceCents = order.unitPriceCents;
+        }
+      }
 
       return {
         itemId: item.id,
@@ -443,7 +571,11 @@ export async function runBotsForTick(
         ),
         hasOpenSellOrder: openOrderKeySet.has(
           `${company.id}:${company.regionId}:${item.id}:${OrderSide.SELL}`
-        )
+        ),
+        bestOwnBuyPriceCents,
+        bestOwnSellPriceCents,
+        bestExternalBuyPriceCents,
+        bestExternalSellPriceCents
       };
     });
 
@@ -455,6 +587,7 @@ export async function runBotsForTick(
         cashCents: company.cashCents,
         reservedCashCents: company.reservedCashCents
       }),
+      availableStorageUnits,
       items: itemsForCompany
     };
   });
