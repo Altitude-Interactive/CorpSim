@@ -28,7 +28,9 @@ You can use local `.env.preview` as the canonical template for these values.
 1. Go to your Compose app → **Environment** tab
 2. Set runtime environment variables as usual
 3. **Additionally**, if Dokploy provides a "Build Arguments" section, set:
-   - `NEXT_PUBLIC_API_URL=https://<your-api-domain>`
+   - `NEXT_PUBLIC_APP_URL=https://<your-web-domain>`
+   - `NEXT_PUBLIC_AUTH_URL=https://<your-web-domain>` (optional)
+   - `NEXT_PUBLIC_API_URL=https://<your-web-domain>` (recommended) or leave empty for same-origin routing
 
 If Dokploy doesn't have a separate Build Arguments UI, note that variables set only in the **Environment** section are runtime variables and are **not** automatically available at build time. In that case, you must manually edit your `docker-compose.preview.yml` and add these as Docker build arguments (under the `args:` section of `x-app-build` or the relevant `build:` configuration for the `web` service) so that the `NEXT_PUBLIC_*` values are passed into the Next.js build.
 
@@ -45,7 +47,10 @@ If Dokploy doesn't have a separate Build Arguments UI, note that variables set o
 - `WEB_PORT=4311`
 - `WEB_PUBLIC_PORT=4311`
 - `CORS_ORIGIN=https://<your-web-domain>`
-- `NEXT_PUBLIC_API_URL=https://<your-api-domain>` ⚠️ **Must also be set as build argument**
+- `NEXT_PUBLIC_APP_URL=https://<your-web-domain>` ⚠️ **Must also be set as build argument**
+- `NEXT_PUBLIC_AUTH_URL=https://<your-web-domain>` (optional, also set as build argument)
+- `NEXT_PUBLIC_API_URL=https://<your-web-domain>` (recommended, also set as build argument; can be empty for same-origin)
+- `BETTER_AUTH_URL=https://<your-web-domain>`
 
 Release image settings (tag-first):
 
@@ -65,7 +70,7 @@ Recommended worker settings:
 ## 3) Networking / domains
 
 - Route `web` publicly on `WEB_PUBLIC_PORT`.
-- Route `api` publicly on `API_PUBLIC_PORT`.
+- Prefer keeping `api` internal/private and letting web proxy `/v1/*` and `/api/auth/*` to the API service.
 - Keep `postgres` and `redis` internal only.
 
 ## 4) First deployment init
@@ -95,13 +100,16 @@ Do not run `sim:reset` in preview unless you intentionally want to wipe/reseed s
 - 404 errors in browser console for `/api/auth/sign-in/social`
 - Auth requests going to wrong URL (e.g., `localhost` instead of your domain)
 
-**Cause:** The `NEXT_PUBLIC_API_URL` build argument was not set correctly when the Docker image was built. Next.js bakes these values into the client-side JavaScript bundle at build time.
+**Cause:** Public auth/API URLs were built with the wrong origin (often localhost or a separate API host), or missing entirely.
 
 **Solution:**
-1. In Dokploy, ensure `NEXT_PUBLIC_API_URL` is set as a **build argument** (check Build Arguments or Build Environment section)
-2. Trigger a **full rebuild** (not just a restart)
-3. Verify the built image has the correct value by checking browser's network tab - requests should go to your API domain, not localhost
+1. In Dokploy, set `NEXT_PUBLIC_APP_URL` (and optionally `NEXT_PUBLIC_AUTH_URL`) as **build arguments**
+2. Set `NEXT_PUBLIC_API_URL` to your web domain (or leave it empty to use same-origin routing)
+3. Set runtime `BETTER_AUTH_URL` to your web domain
+4. Ensure runtime `API_URL` points to your internal API service
+5. Trigger a **full rebuild** (not just a restart)
+6. Verify in browser devtools that auth/API requests use your web domain, not localhost
 
 ### API calls going to localhost or wrong domain
 
-This is the same issue as above - `NEXT_PUBLIC_*` variables must be set as build arguments before building the image.
+This is the same issue as above: set correct `NEXT_PUBLIC_*` build arguments and rebuild the image.

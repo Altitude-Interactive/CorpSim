@@ -9,17 +9,27 @@ if (typeof window !== "undefined") {
   const currentHost = window.location.hostname;
   const isProduction = !isLocalhostHostname(currentHost);
 
-  if (isProduction && !API_BASE_URL) {
-    console.warn(
-      "[CorpSim API Client] NEXT_PUBLIC_API_URL is not set. API requests may fail. " +
-      "Ensure NEXT_PUBLIC_API_URL is set as a build argument when building the Docker image."
-    );
-  } else if (isProduction && isLocalhostUrl(API_BASE_URL)) {
+  if (isProduction && API_BASE_URL && isLocalhostUrl(API_BASE_URL)) {
     console.warn(
       `[CorpSim API Client] NEXT_PUBLIC_API_URL is set to "${API_BASE_URL}" but you're accessing from "${currentHost}". ` +
       "This likely means the environment variable was not set as a build argument. " +
       "Set NEXT_PUBLIC_API_URL as a build argument in your deployment platform and rebuild."
     );
+  } else if (isProduction && API_BASE_URL) {
+    try {
+      const apiHost = new URL(API_BASE_URL).hostname;
+      if (apiHost !== currentHost) {
+        console.warn(
+          `[CorpSim API Client] API base URL host "${apiHost}" differs from current host "${currentHost}". ` +
+          "For single-domain SSO deployments, prefer same-origin API routing."
+        );
+      }
+    } catch {
+      console.warn(
+        `[CorpSim API Client] NEXT_PUBLIC_API_URL is set to "${API_BASE_URL}" but is not a valid absolute URL. ` +
+        "Use an absolute HTTPS URL, or leave it empty to use same-origin routing."
+      );
+    }
   }
 }
 

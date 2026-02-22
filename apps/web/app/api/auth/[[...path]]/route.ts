@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 type RouteContext = {
   params: Promise<{
-    path: string[];
+    path?: string[];
   }>;
 };
 
@@ -55,9 +55,8 @@ function resolveApiUpstreamBaseUrl(): string {
 
 async function proxyToApi(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { path } = await context.params;
-  const upstreamUrl = new URL(
-    `${resolveApiUpstreamBaseUrl()}/v1/${path.join("/")}`
-  );
+  const suffix = path && path.length > 0 ? `/${path.join("/")}` : "";
+  const upstreamUrl = new URL(`${resolveApiUpstreamBaseUrl()}/api/auth${suffix}`);
   upstreamUrl.search = request.nextUrl.search;
 
   const headers = sanitizeHeaders(request.headers, REQUEST_BLOCKED_HEADERS);
@@ -84,7 +83,7 @@ async function proxyToApi(request: NextRequest, context: RouteContext): Promise<
       headers: responseHeaders
     });
   } catch {
-    return NextResponse.json({ message: "API upstream is unreachable." }, { status: 502 });
+    return NextResponse.json({ message: "Auth upstream is unreachable." }, { status: 502 });
   }
 }
 
