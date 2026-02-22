@@ -46,6 +46,11 @@ interface SupportAccount {
 
 const MAIN_ADMIN_EMAIL = "admin@corpsim.local";
 const STALE_IMPORT_TICK_THRESHOLD = 5;
+
+function isSeededExampleAccount(email: string): boolean {
+  return email.trim().toLowerCase().endsWith("@example.com");
+}
+
 export function AdminPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +86,8 @@ export function AdminPage() {
       });
 
       if (result.data) {
-        setUsers(result.data.users as unknown as UserData[]);
+        const loadedUsers = result.data.users as unknown as UserData[];
+        setUsers(loadedUsers.filter((user) => !isSeededExampleAccount(user.email)));
       } else if (result.error) {
         showToast({
           title: "Failed to load users",
