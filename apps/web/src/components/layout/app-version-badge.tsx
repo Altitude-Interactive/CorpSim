@@ -32,9 +32,13 @@ export function AppVersionBadge({ className }: { className?: string }) {
     };
   }, []);
 
-  if (!version) {
-    return null;
-  }
-
-  return <p className={cn("text-xs text-muted-foreground", className)}>CorpSim ERP v{version}</p>;
+  return (
+    <div className={cn("max-w-[22rem] space-y-1 text-muted-foreground", className)}>
+      <p className="text-xs">{version ? `CorpSim ERP v${version}` : "CorpSim ERP"} · ALPHA</p>
+      <p className="text-[10px] leading-tight">
+        Preview build provided as-is with no player support. Data may be reset or wiped at any time
+        until beta.
+      </p>
+    </div>
+  );
 }
