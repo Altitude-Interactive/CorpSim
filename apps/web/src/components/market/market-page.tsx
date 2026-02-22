@@ -396,11 +396,11 @@ export function MarketPage() {
   );
   const unlockedItemIdSet = useMemo(() => new Set(unlockedItemIds), [unlockedItemIds]);
   const sortedSelectableItems = useMemo(() => {
-    if (unlockedItemIdSet.size === 0) {
+    if (!activeCompanyId) {
       return sortedItems;
     }
     return sortedItems.filter((item) => unlockedItemIdSet.has(item.id));
-  }, [sortedItems, unlockedItemIdSet]);
+  }, [activeCompanyId, sortedItems, unlockedItemIdSet]);
   const filteredOrderSelectableItems = useMemo(() => {
     const needle = deferredOrderItemSearch.trim().toLowerCase();
     if (!needle) {
@@ -475,6 +475,24 @@ export function MarketPage() {
       name: activeCompany.regionName
     })
     : null;
+  const visibleOrderBook = useMemo(() => {
+    if (!activeCompanyId) {
+      return orderBook;
+    }
+    return orderBook.filter((order) => unlockedItemIdSet.has(order.itemId));
+  }, [activeCompanyId, orderBook, unlockedItemIdSet]);
+  const visibleMyOrders = useMemo(() => {
+    if (!activeCompanyId) {
+      return myOrders;
+    }
+    return myOrders.filter((order) => unlockedItemIdSet.has(order.itemId));
+  }, [activeCompanyId, myOrders, unlockedItemIdSet]);
+  const visibleTrades = useMemo(() => {
+    if (!activeCompanyId) {
+      return trades;
+    }
+    return trades.filter((trade) => unlockedItemIdSet.has(trade.itemId));
+  }, [activeCompanyId, trades, unlockedItemIdSet]);
 
   useEffect(() => {
     if (orderFilters.itemId && !sortedSelectableItems.some((item) => item.id === orderFilters.itemId)) {
@@ -610,13 +628,18 @@ export function MarketPage() {
                 Showing first {visibleOrderSelectableItems.length} matching items in order-item dropdown.
               </p>
             ) : null}
+            {activeCompanyId && sortedSelectableItems.length === 0 ? (
+              <p className="mt-2 text-xs text-amber-300">
+                No tradable items are currently unlocked for this company.
+              </p>
+            ) : null}
             {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
           </CardContent>
         </Card>
       </div>
 
       <OrderBookCard
-        orders={orderBook}
+        orders={visibleOrderBook}
         isLoading={isLoadingOrderBook}
         regionNameById={regionNameById}
         itemMetaById={itemMetaById}
@@ -624,7 +647,7 @@ export function MarketPage() {
       />
 
       <MyOrdersCard
-        orders={myOrders}
+        orders={visibleMyOrders}
         isLoading={isLoadingMyOrders || Boolean(isCancellingOrderId)}
         regionNameById={regionNameById}
         itemMetaById={itemMetaById}
@@ -705,7 +728,7 @@ export function MarketPage() {
       </Card>
 
       <RecentTradesCard
-        trades={trades}
+        trades={visibleTrades}
         isLoading={isLoadingTrades}
         regionNameById={regionNameById}
         itemMetaById={itemMetaById}
