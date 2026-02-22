@@ -101,7 +101,6 @@ Create one release entry in `.releases/unreleased/*.md` including:
 * Do NOT bump root `package.json` version during normal commits
 * Do NOT create git tags
 * Do NOT bump version if remote already has the same version tag
-* NEVER COMMIT TO MAIN, suggest committing to a new dedicated branch (or canary)
 * Version bump occurs only in a dedicated release-cut commit (`pnpm release:cut`)
 * Exception: explicitly requested emergency hotfix release
 
