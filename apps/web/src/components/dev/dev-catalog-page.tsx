@@ -3,6 +3,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { getIconCatalogItemByCode } from "@corpsim/shared";
 import { ItemLabel } from "@/components/items/item-label";
+import { ItemQuantityLabel } from "@/components/items/item-quantity-label";
 import { ItemQuantityList } from "@/components/items/item-quantity-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -944,24 +945,25 @@ export function DevCatalogPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center gap-1">
-                      <span>{recipe.outputQuantity}</span>
-                      <ItemLabel itemCode={recipe.outputItem.code} itemName={recipe.outputItem.name} />
-                    </span>
+                    <ItemQuantityLabel
+                      quantity={recipe.outputQuantity}
+                      itemCode={recipe.outputItem.code}
+                      itemName={recipe.outputItem.name}
+                    />
                   </TableCell>
-                    <TableCell className="tabular-nums">{recipe.durationTicks}</TableCell>
-                    <TableCell>
-                      <ItemQuantityList
-                        items={recipe.inputs.map((input) => ({
-                          key: `${recipe.id}-${input.itemId}`,
-                          quantity: input.quantityPerRun,
-                          itemCode: input.item.code,
-                          itemName: input.item.name
-                        }))}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  <TableCell className="tabular-nums">{recipe.durationTicks}</TableCell>
+                  <TableCell>
+                    <ItemQuantityList
+                      items={recipe.inputs.map((input) => ({
+                        key: `${recipe.id}-${input.itemId}`,
+                        quantity: input.quantityPerRun,
+                        itemCode: input.item.code,
+                        itemName: input.item.name
+                      }))}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
               {pagedRecipes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
