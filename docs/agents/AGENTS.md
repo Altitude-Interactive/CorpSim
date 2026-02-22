@@ -101,6 +101,7 @@ Create one release entry in `.releases/unreleased/*.md` including:
 * Do NOT bump root `package.json` version during normal commits
 * Do NOT create git tags
 * Do NOT bump version if remote already has the same version tag
+* NEVER COMMIT TO MAIN, suggest committing to a new dedicated branch (or canary)
 * Version bump occurs only in a dedicated release-cut commit (`pnpm release:cut`)
 * Exception: explicitly requested emergency hotfix release
 
@@ -357,15 +358,15 @@ import { useToastManager } from '@/components/ui/toast-manager';
 const { showToast, confirmPopup } = useToastManager();
 
 // Show toast
-showToast({ 
-  title: "Order placed", 
-  variant: "success" 
+showToast({
+  title: "Order placed",
+  variant: "success"
 });
 
 // Confirmation dialog
-const confirmed = await confirmPopup({ 
+const confirmed = await confirmPopup({
   title: "Cancel order?",
-  variant: "danger" 
+  variant: "danger"
 });
 ```
 
