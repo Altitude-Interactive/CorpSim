@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { completeOnboardingTutorial } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ function readErrorMessage(error: unknown): string {
   return "Unable to finish tutorial right now. Please try again.";
 }
 
-export function GuidedTutorialOverlay() {
+function GuidedTutorialOverlayContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -236,5 +236,13 @@ export function GuidedTutorialOverlay() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function GuidedTutorialOverlay() {
+  return (
+    <Suspense fallback={null}>
+      <GuidedTutorialOverlayContent />
+    </Suspense>
   );
 }

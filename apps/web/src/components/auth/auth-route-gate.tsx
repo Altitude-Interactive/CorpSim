@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { OnboardingStatus } from "@corpsim/shared";
 import { getOnboardingStatus } from "@/lib/api";
@@ -36,7 +36,7 @@ function FullscreenMessage({ message }: { message: string }) {
   );
 }
 
-export function AuthRouteGate({ children }: { children: React.ReactNode }) {
+function AuthRouteGateContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -197,4 +197,12 @@ export function AuthRouteGate({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+export function AuthRouteGate({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<FullscreenMessage message="Checking session..." />}>
+      <AuthRouteGateContent>{children}</AuthRouteGateContent>
+    </Suspense>
+  );
 }
