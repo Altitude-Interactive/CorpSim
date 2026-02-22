@@ -5,6 +5,7 @@ import { resolveCompanySpecializationCooldownHours } from "@corpsim/shared";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useActiveCompany } from "@/components/company/active-company-provider";
 import { ItemLabel } from "@/components/items/item-label";
+import { ItemQuantityList } from "@/components/items/item-quantity-list";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { useUiSfx } from "@/components/layout/ui-sfx-provider";
 import { Badge } from "@/components/ui/badge";
@@ -647,16 +648,17 @@ export function ProductionPage() {
                         className="inline-flex"
                       />
                     </p>
-                    <p>Inputs:</p>
-                    <ul className="list-disc pl-4">
-                      {selectedRecipe.inputs.map((input) => (
-                        <li key={input.itemId} className="flex items-center gap-1">
-                          <span>{input.quantityPerRun}</span>
-                          <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
-                          <span>/ run</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="space-y-1">
+                      <p>Inputs / run:</p>
+                      <ItemQuantityList
+                        items={selectedRecipe.inputs.map((input) => ({
+                          key: input.itemId,
+                          quantity: input.quantityPerRun,
+                          itemCode: input.item.code,
+                          itemName: input.item.name
+                        }))}
+                      />
+                    </div>
                   </div>
                 ) : null}
 
@@ -770,14 +772,14 @@ export function ProductionPage() {
                     </TableCell>
                     <TableCell>{formatCadenceCount(row.recipe.durationTicks)}</TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {row.recipe.inputs.map((input) => (
-                          <span key={input.itemId} className="inline-flex items-center gap-1">
-                            <span>{input.quantityPerRun}</span>
-                            <ItemLabel itemCode={input.item.code} itemName={input.item.name} />
-                          </span>
-                        ))}
-                      </div>
+                      <ItemQuantityList
+                        items={row.recipe.inputs.map((input) => ({
+                          key: input.itemId,
+                          quantity: input.quantityPerRun,
+                          itemCode: input.item.code,
+                          itemName: input.item.name
+                        }))}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
