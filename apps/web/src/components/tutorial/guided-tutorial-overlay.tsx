@@ -16,8 +16,9 @@ const GUIDED_TUTORIAL_STEPS: GuidedTutorialStep[] = [
   {
     route: "/overview",
     targetId: "overview-kpis",
-    title: "Start with your company pulse",
-    description: "These metrics are your quick status check before taking any action."
+    title: "Start with the world pulse",
+    description:
+      "These metrics summarize the full simulation (all companies), not just your company."
   },
   {
     route: "/overview",

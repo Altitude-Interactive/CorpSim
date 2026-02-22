@@ -39,11 +39,11 @@ export function OverviewView() {
 
   const kpis = [
     { label: `Current ${UI_CADENCE_TERMS.singularTitle}`, value: formatInt(health.currentTick) },
-    { label: "Open Orders", value: formatInt(health.ordersOpenCount) },
-    { label: "Trades (Last 100)", value: formatInt(health.tradesLast100Count) },
-    { label: "Companies", value: formatInt(health.companiesCount) },
-    { label: "Total Cash", value: formatCents(health.sumCashCents) },
-    { label: "Reserved Cash", value: formatCents(health.sumReservedCashCents) }
+    { label: "World Open Orders", value: formatInt(health.ordersOpenCount) },
+    { label: "World Trades (Last 100)", value: formatInt(health.tradesLast100Count) },
+    { label: "World Companies", value: formatInt(health.companiesCount) },
+    { label: "World Total Cash", value: formatCents(health.sumCashCents) },
+    { label: "World Reserved Cash", value: formatCents(health.sumReservedCashCents) }
   ];
 
   return (
