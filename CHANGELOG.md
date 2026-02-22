@@ -301,3 +301,9 @@ All notable changes to CorpSim are documented in this file.
 - [db] Run Prisma generate without relying on dotenv-cli shell binary
 - [web] Fix buildings definitions API response parsing in web client
 - [web] Accept legacy object-shaped buildings definitions payloads
+
+## 0.10.1 - 2026-02-22
+
+### What's Changed
+
+- [db] Add idempotent static catalog sync and run it on container startup
