@@ -9,8 +9,26 @@ import { formatCents, formatInt } from "@/lib/format";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
 import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 
+function resolveDiscordServerUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_DISCORD_SERVER_URL?.trim();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function OverviewView() {
   const { health } = useWorldHealth();
+  const discordServerUrl = resolveDiscordServerUrl();
 
   if (!health) {
     return <div className="text-sm text-muted-foreground">Loading overview metrics...</div>;
@@ -64,6 +82,28 @@ export function OverviewView() {
           <Button asChild variant="ghost" size="sm" className="h-auto px-0 text-xs">
             <Link href="/world">Open World Status</Link>
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle>Alpha Preview Notice</CardTitle>
+            <Badge variant="warning">ALPHA</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            This preview is provided as-is with no player support. Progress and economy data may be
+            reset or wiped at any time until beta.
+          </p>
+          {discordServerUrl ? (
+            <Button asChild size="sm" variant="outline">
+              <a href={discordServerUrl} target="_blank" rel="noreferrer">
+                Join Discord Updates
+              </a>
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 
