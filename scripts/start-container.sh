@@ -36,9 +36,37 @@ apply_migrations() {
   pnpm exec prisma migrate deploy --schema packages/db/prisma/schema.prisma
 }
 
+is_truthy() {
+  local value="${1:-}"
+  local normalized
+  normalized="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+  [[ "$normalized" == "1" || "$normalized" == "true" || "$normalized" == "yes" || "$normalized" == "on" ]]
+}
+
+should_sync_static_catalog() {
+  local configured="${CORPSIM_SYNC_STATIC_DATA_ON_START:-}"
+  if [[ -n "$configured" ]]; then
+    is_truthy "$configured"
+    return $?
+  fi
+
+  if [[ "$role" == "all" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+sync_static_catalog() {
+  if should_sync_static_catalog; then
+    pnpm sim:sync-static
+  fi
+}
+
 run_all() {
   # Ensure schema is current before starting long-running processes in single-container mode.
   apply_migrations
+  sync_static_catalog
 
   pnpm --filter @corpsim/api start &
   api_pid=$!
@@ -59,6 +87,7 @@ run_all() {
 
 case "$role" in
   api)
+    sync_static_catalog
     run_api
     ;;
   web)

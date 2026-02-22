@@ -31,6 +31,7 @@
     "sim:advance": "tsx scripts/sim-advance.ts",
     "sim:reset": "tsx scripts/sim-reset.ts",
     "sim:seed": "pnpm -C packages/db seed",
+    "sim:sync-static": "tsx scripts/sim-sync-static.ts",
     "sim:stats": "tsx scripts/sim-stats.ts",
     "release:entry": "node scripts/release-entry.mjs",
     "release:check": "node scripts/check-release-entry.mjs",

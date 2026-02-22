@@ -577,6 +577,245 @@ function isRecipeAutoUnlocked(recipeCode: string): boolean {
   );
 }
 
+function chunkArray<T>(rows: T[], chunkSize: number): T[][] {
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const chunks: T[][] = [];
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    chunks.push(rows.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
+export interface SyncStaticCatalogResult {
+  itemsSynced: number;
+  recipesSynced: number;
+  researchNodesSynced: number;
+  prerequisitesSynced: number;
+  companyRecipeLinksCreated: number;
+}
+
+export async function syncStaticCatalog(prisma: PrismaClient): Promise<SyncStaticCatalogResult> {
+  return prisma.$transaction(async (tx) => {
+    const itemsByKey: Record<string, { id: string; code: string; name: string }> = {};
+
+    for (const definition of ITEM_DEFINITIONS) {
+      const item = await tx.item.upsert({
+        where: { code: definition.code },
+        update: { name: definition.name },
+        create: {
+          code: definition.code,
+          name: definition.name
+        }
+      });
+      itemsByKey[definition.key] = item;
+    }
+
+    const recipesByKey: Record<string, { id: string; code: string }> = {};
+    for (const definition of RECIPE_DEFINITIONS) {
+      const outputItem = itemsByKey[definition.outputItemKey];
+      if (!outputItem) {
+        throw new Error(`seed recipe ${definition.code} references unknown output item key ${definition.outputItemKey}`);
+      }
+
+      const recipe = await tx.recipe.upsert({
+        where: { code: definition.code },
+        update: {
+          name: definition.name,
+          durationTicks: definition.durationTicks,
+          outputItemId: outputItem.id,
+          outputQuantity: definition.outputQuantity
+        },
+        create: {
+          code: definition.code,
+          name: definition.name,
+          durationTicks: definition.durationTicks,
+          outputItemId: outputItem.id,
+          outputQuantity: definition.outputQuantity
+        }
+      });
+
+      recipesByKey[definition.key] = recipe;
+
+      const expectedInputItemIds: string[] = [];
+      for (const input of definition.inputs) {
+        const inputItem = itemsByKey[input.itemKey];
+        if (!inputItem) {
+          throw new Error(`seed recipe ${definition.code} references unknown input item key ${input.itemKey}`);
+        }
+
+        expectedInputItemIds.push(inputItem.id);
+
+        await tx.recipeInput.upsert({
+          where: {
+            recipeId_itemId: {
+              recipeId: recipe.id,
+              itemId: inputItem.id
+            }
+          },
+          update: {
+            quantity: input.quantity
+          },
+          create: {
+            recipeId: recipe.id,
+            itemId: inputItem.id,
+            quantity: input.quantity
+          }
+        });
+      }
+
+      if (expectedInputItemIds.length === 0) {
+        await tx.recipeInput.deleteMany({
+          where: {
+            recipeId: recipe.id
+          }
+        });
+      } else {
+        await tx.recipeInput.deleteMany({
+          where: {
+            recipeId: recipe.id,
+            itemId: {
+              notIn: expectedInputItemIds
+            }
+          }
+        });
+      }
+    }
+
+    const researchNodesByKey: Record<string, { id: string; code: string }> = {};
+    for (const definition of RESEARCH_DEFINITIONS) {
+      const node = await tx.researchNode.upsert({
+        where: { code: definition.code },
+        update: {
+          name: definition.name,
+          description: definition.description,
+          costCashCents: definition.costCashCents,
+          durationTicks: definition.durationTicks
+        },
+        create: {
+          code: definition.code,
+          name: definition.name,
+          description: definition.description,
+          costCashCents: definition.costCashCents,
+          durationTicks: definition.durationTicks
+        }
+      });
+
+      researchNodesByKey[definition.key] = node;
+
+      const expectedUnlockRecipeIds: string[] = [];
+      for (const recipeKey of definition.unlockRecipeKeys) {
+        const recipe = recipesByKey[recipeKey];
+        if (!recipe) {
+          throw new Error(`research node ${definition.code} references unknown recipe key ${recipeKey}`);
+        }
+        expectedUnlockRecipeIds.push(recipe.id);
+        await tx.researchNodeUnlockRecipe.upsert({
+          where: {
+            nodeId_recipeId: {
+              nodeId: node.id,
+              recipeId: recipe.id
+            }
+          },
+          update: {},
+          create: {
+            nodeId: node.id,
+            recipeId: recipe.id
+          }
+        });
+      }
+
+      if (expectedUnlockRecipeIds.length === 0) {
+        await tx.researchNodeUnlockRecipe.deleteMany({
+          where: {
+            nodeId: node.id
+          }
+        });
+      } else {
+        await tx.researchNodeUnlockRecipe.deleteMany({
+          where: {
+            nodeId: node.id,
+            recipeId: {
+              notIn: expectedUnlockRecipeIds
+            }
+          }
+        });
+      }
+    }
+
+    await tx.researchPrerequisite.deleteMany();
+    await tx.researchPrerequisite.createMany({
+      data: RESEARCH_PREREQUISITES.map((entry) => {
+        const node = researchNodesByKey[entry.nodeKey];
+        const prerequisiteNode = researchNodesByKey[entry.prerequisiteKey];
+        if (!node) {
+          throw new Error(`research prerequisite references unknown node key ${entry.nodeKey}`);
+        }
+        if (!prerequisiteNode) {
+          throw new Error(`research prerequisite references unknown prerequisite key ${entry.prerequisiteKey}`);
+        }
+        return {
+          nodeId: node.id,
+          prerequisiteNodeId: prerequisiteNode.id
+        };
+      })
+    });
+
+    const allRecipes = Object.values(recipesByKey);
+    const autoUnlockedRecipeIdSet = new Set<string>(
+      allRecipes.filter((recipe) => isRecipeAutoUnlocked(recipe.code)).map((recipe) => recipe.id)
+    );
+
+    let companyRecipeLinksCreated = 0;
+    if (allRecipes.length > 0) {
+      const companies = await tx.company.findMany({
+        select: { id: true }
+      });
+
+      for (const company of companies) {
+        const rows = allRecipes.map((recipe) => ({
+          companyId: company.id,
+          recipeId: recipe.id,
+          isUnlocked: autoUnlockedRecipeIdSet.has(recipe.id)
+        }));
+
+        for (const batch of chunkArray(rows, 1000)) {
+          const created = await tx.companyRecipe.createMany({
+            data: batch,
+            skipDuplicates: true
+          });
+          companyRecipeLinksCreated += created.count;
+        }
+      }
+
+      const autoUnlockedRecipeIds = Array.from(autoUnlockedRecipeIdSet);
+      if (autoUnlockedRecipeIds.length > 0) {
+        await tx.companyRecipe.updateMany({
+          where: {
+            recipeId: {
+              in: autoUnlockedRecipeIds
+            },
+            isUnlocked: false
+          },
+          data: {
+            isUnlocked: true
+          }
+        });
+      }
+    }
+
+    return {
+      itemsSynced: ITEM_DEFINITIONS.length,
+      recipesSynced: RECIPE_DEFINITIONS.length,
+      researchNodesSynced: RESEARCH_DEFINITIONS.length,
+      prerequisitesSynced: RESEARCH_PREREQUISITES.length,
+      companyRecipeLinksCreated
+    };
+  });
+}
+
 export async function seedWorld(
   prisma: PrismaClient,
   options: SeedWorldOptions = {}
