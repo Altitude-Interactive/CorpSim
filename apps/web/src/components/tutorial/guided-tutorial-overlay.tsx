@@ -4,65 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { completeOnboardingTutorial } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-
-interface GuidedTutorialStep {
-  route: string;
-  targetId: string;
-  title: string;
-  description: string;
-}
-
-const GUIDED_TUTORIAL_STEPS: GuidedTutorialStep[] = [
-  {
-    route: "/overview",
-    targetId: "overview-kpis",
-    title: "Start with the world pulse",
-    description:
-      "These metrics summarize the full simulation (all companies), not just your company."
-  },
-  {
-    route: "/overview",
-    targetId: "overview-integrity",
-    title: "Watch system integrity",
-    description: "If there are issues here, investigate before scaling operations."
-  },
-  {
-    route: "/market",
-    targetId: "market-order-placement",
-    title: "Place buy and sell orders",
-    description: "This is where you create market orders for the active company."
-  },
-  {
-    route: "/market",
-    targetId: "market-order-book",
-    title: "Read the order book",
-    description: "Use this table to inspect current prices, quantity, and market depth."
-  },
-  {
-    route: "/production",
-    targetId: "production-start",
-    title: "Start production runs",
-    description: "Pick a recipe and quantity, then launch jobs from this panel."
-  },
-  {
-    route: "/production",
-    targetId: "production-recipes",
-    title: "Review recipes first",
-    description: "Check output, duration, and required inputs before committing runs."
-  },
-  {
-    route: "/inventory",
-    targetId: "inventory-filters",
-    title: "Filter your inventory view",
-    description: "Search and region filters help you focus the exact stock you need."
-  },
-  {
-    route: "/inventory",
-    targetId: "inventory-table",
-    title: "Track available stock",
-    description: "Use quantity, reserved, and available values to avoid production stalls."
-  }
-];
+import { GUIDED_TUTORIAL_STEPS } from "./guided-tutorial-steps";
 
 const SPOTLIGHT_PADDING_PX = 8;
 const CARD_ESTIMATED_HEIGHT_PX = 220;

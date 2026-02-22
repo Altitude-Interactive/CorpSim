@@ -5,14 +5,16 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useActiveCompany } from "@/components/company/active-company-provider";
 import { useWorldHealth } from "@/components/layout/world-health-provider";
 import { formatCents, formatInt } from "@/lib/format";
 import { fetchDiscordServerUrlFromMeta, getDiscordServerUrl } from "@/lib/public-links";
 import { UI_CADENCE_TERMS } from "@/lib/ui-terms";
-import { getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
+import { formatCodeLabel, getDocumentationUrl, UI_COPY } from "@/lib/ui-copy";
 
 export function OverviewView() {
   const { health } = useWorldHealth();
+  const { activeCompany } = useActiveCompany();
   const [discordServerUrl, setDiscordServerUrl] = useState<string | null>(() => getDiscordServerUrl());
 
   useEffect(() => {
@@ -48,6 +50,34 @@ export function OverviewView() {
 
   return (
     <div className="space-y-4">
+      <Card data-tutorial-id="overview-company">
+        <CardHeader>
+          <CardTitle>Active Company Snapshot</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Company</p>
+            <p className="font-medium">{activeCompany?.name ?? UI_COPY.common.noCompanySelected}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Region</p>
+            <p className="font-medium">{activeCompany?.regionName ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Specialization</p>
+            <p className="font-medium">
+              {activeCompany ? formatCodeLabel(activeCompany.specialization) : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Company Cash</p>
+            <p className="font-medium tabular-nums">
+              {activeCompany?.cashCents ? formatCents(activeCompany.cashCents) : "Hidden/Unavailable"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-tutorial-id="overview-kpis">
         {kpis.map((kpi) => (
           <Card key={kpi.label}>

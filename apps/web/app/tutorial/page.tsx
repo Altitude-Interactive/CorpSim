@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { AuthPageShell } from "@/components/auth/auth-page-shell";
 import { completeOnboardingTutorial, getOnboardingStatus } from "@/lib/api";
 import { getDocumentationUrl } from "@/lib/ui-copy";
+import { GUIDED_TUTORIAL_STEPS } from "@/components/tutorial/guided-tutorial-steps";
 
-const GUIDED_TUTORIAL_TOTAL_STEPS = 8;
+const GUIDED_TUTORIAL_TOTAL_STEPS = GUIDED_TUTORIAL_STEPS.length;
 
 function readErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
