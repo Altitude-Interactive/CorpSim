@@ -36,7 +36,7 @@ function sanitizeHeaders(source: Headers, blocked: Set<string>): Headers {
   const target = new Headers();
   source.forEach((value, key) => {
     if (!blocked.has(key.toLowerCase())) {
-      target.set(key, value);
+      target.append(key, value);
     }
   });
   return target;
