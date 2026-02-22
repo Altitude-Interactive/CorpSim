@@ -54,6 +54,31 @@ export class ResearchService {
     this.prisma = prisma;
   }
 
+  private async resolveAdminCatalogCompanyId(companyId?: string): Promise<string> {
+    if (companyId) {
+      return companyId;
+    }
+
+    const firstPlayerCompany = await this.prisma.company.findFirst({
+      where: {
+        isPlayer: true,
+        ownerPlayerId: { not: null }
+      },
+      orderBy: {
+        createdAt: "asc"
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!firstPlayerCompany) {
+      throw new DomainInvariantError("no player-owned companies available for research catalog");
+    }
+
+    return firstPlayerCompany.id;
+  }
+
   private async resolveOwnedCompanyId(playerId: string, companyId?: string): Promise<string> {
     if (companyId) {
       await assertCompanyOwnedByPlayer(this.prisma, playerId, companyId);
@@ -74,6 +99,20 @@ export class ResearchService {
   ): Promise<{ companyId: string; nodes: ResearchNode[] }> {
     const player = await resolvePlayerById(this.prisma, playerId);
     const resolvedCompanyId = await this.resolveOwnedCompanyId(player.id, companyId);
+    const nodes = await listResearchForCompany(this.prisma, {
+      companyId: resolvedCompanyId
+    });
+
+    return {
+      companyId: resolvedCompanyId,
+      nodes: nodes.map(mapNodeToDto)
+    };
+  }
+
+  async listResearchForAdminCatalog(
+    companyId?: string
+  ): Promise<{ companyId: string; nodes: ResearchNode[] }> {
+    const resolvedCompanyId = await this.resolveAdminCatalogCompanyId(companyId);
     const nodes = await listResearchForCompany(this.prisma, {
       companyId: resolvedCompanyId
     });
