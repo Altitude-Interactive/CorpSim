@@ -5,7 +5,7 @@
     "@corpsim/db": "workspace:*",
     "@corpsim/sim": "workspace:*",
     "bullmq": "^5.69.3",
-    "ioredis": "^5.7.0"
+    "ioredis": "^5.10.0"
   },
   "scripts": {
     "dev": "tsx watch src/main.ts",
