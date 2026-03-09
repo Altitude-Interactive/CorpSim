@@ -3,77 +3,26 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "06:00"
       timezone: "UTC"
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "06:00"
       timezone: "UTC"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 1
     rebase-strategy: "auto"
-
-  - package-ecosystem: "npm"
-    directory: "/apps/api"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
-    rebase-strategy: "auto"
-
-  - package-ecosystem: "npm"
-    directory: "/apps/web"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
-    rebase-strategy: "auto"
-
-  - package-ecosystem: "npm"
-    directory: "/apps/worker"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
-    rebase-strategy: "auto"
-
-  - package-ecosystem: "npm"
-    directory: "/packages/db"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
-    rebase-strategy: "auto"
-
-  - package-ecosystem: "npm"
-    directory: "/packages/shared"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
-    rebase-strategy: "auto"
-
-  - package-ecosystem: "npm"
-    directory: "/packages/sim"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
-    rebase-strategy: "auto"
+    groups:
+      npm-all:
+        patterns:
+          - "*"
