@@ -155,7 +155,7 @@ jobs:
 
       - name: Build and push app image
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./docker/app.Dockerfile
