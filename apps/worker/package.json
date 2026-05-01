@@ -4,8 +4,8 @@
   "dependencies": {
     "@corpsim/db": "workspace:*",
     "@corpsim/sim": "workspace:*",
-    "bullmq": "^5.70.4",
-    "ioredis": "^5.10.0"
+    "bullmq": "^5.76.4",
+    "ioredis": "^5.10.1"
   },
   "scripts": {
     "dev": "tsx watch src/main.ts",
