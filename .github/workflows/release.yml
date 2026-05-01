@@ -214,7 +214,7 @@ jobs:
 
       - name: Publish GitHub release
         if: steps.freshness.outputs.should_release == 'true' && steps.version.outputs.can_publish_version == 'true' && steps.tag.outputs.tag_available == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: CorpSim ${{ steps.version.outputs.tag }}
