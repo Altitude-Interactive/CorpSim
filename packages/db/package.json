@@ -8,13 +8,13 @@
   },
   "dependencies": {
     "@corpsim/sim": "workspace:*",
-    "@prisma/client": "^6.19.2",
-    "dotenv": "^17.3.1"
+    "@prisma/client": "^7.8.0",
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "dotenv-cli": "^11.0.0",
-    "prisma": "^6.19.2",
-    "tsx": "^4.21.0"
+    "prisma": "^7.8.0",
+    "tsx": "^4.22.4"
   },
   "scripts": {
     "generate": "node ../../scripts/prisma-generate.mjs",
